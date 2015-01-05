@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+export S2L3APPHOME=${PWD}
+export S2L3APPCFG=$S3L2APPHOME/cfg
+export PATH=$S2L3APPHOME/bin:$PATH
+export PYTHONPATH=/usr/lib64/python2.6/site-packages/osgeo
+export GDAL_DATA=/usr/share/epsg_csv
