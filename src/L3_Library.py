@@ -16,6 +16,15 @@ from matplotlib import pyplot as plt
 import time
 import os, sys, fnmatch
 
+def stdoutWrite(s):
+    sys.stdout.write(s)
+    sys.stdout.flush()
+    
+
+def stderrWrite(s):
+    sys.stderr.write(s)
+    sys.stderr.flush() 
+
 
 def statistics(arr, comment = ''):
     if len(arr) == 0:
