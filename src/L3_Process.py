@@ -10,8 +10,11 @@ from time import time
 
 from L3_Config import L3_Config
 from L3_Tables import L3_Tables
-from L3_STP import L3_STP
+from L3_XmlParser import L3_XmlParser
 from L3_UnitTests import L3_UnitTests
+from L3_STP import L3_STP
+from L3_Library import stdoutWrite, stderrWrite, showImage
+from lxml import etree, objectify
 
 class L3_Process(object):
     def __init__(self, workdir):
@@ -57,7 +60,8 @@ class L3_Process(object):
             self.config.logger.info('selected resolution is 10m')
             if(self._processed20 == False):
                 self.config.resolution = 20
-                print('20m resolution must be processed first ...')
+                stdoutWrite('20m resolution must be processed first ...\n')
+                self.config.tracer.info('20m resolution must be processed first')
                 self.config.logger.info('20m resolution must be processed first')
                 self.selectAndProcess(tile)
 
@@ -72,7 +76,8 @@ class L3_Process(object):
             self.config.logger.info('selected resolution is 20m')
             if(self._processed60 == False):
                 self.config.resolution = 60
-                print('60m resolution must be processed first ...')
+                stdoutWrite('60m resolution must be processed first ...\n')
+                self.config.tracer.info('60m resolution must be processed first')
                 self.config.logger.info('60m resolution must be processed first')
                 self.selectAndProcess(tile)
 
@@ -105,29 +110,36 @@ class L3_Process(object):
         if(args.tests == True):
             self.config.timestamp('L3_Process: perform a series of Unit Tests')
             self.config.logger.info('Performing unit tests with resolution %d m', self.config.resolution)
-            tests = L3_UnitTests(self.config, self.tables)
+            tests = L3_UnitTests(self.config, self.tables)           
             if(tests.process() == False):
                 return False
-            self.config.timestamp('L3_Process: start of Post Processing')
-            if(self.postprocess() == False):
-                return False
-            return True        
         else:
             self.config.timestamp('L3_Process: start of Spatio Temporal Processing')
             self.config.logger.info('Performing Spatio Temporal Processing with resolution %d m', self.config.resolution)
             stp = L3_STP(self.config, self.tables)
             if(stp.process() == False):
                 return False
-            self.config.timestamp('L3_Process: start of Post Processing')
-            if(self.postprocess() == False):
-                return False
-            return True
+            
+        self.config.timestamp('L3_Process: start of Post Processing')
+        if(self.postprocess() == False):
+            return False
+        return True
 
     def preprocess(self):
         self.config.logger.info('Pre-processing with resolution %d m', self.config.resolution)
-        if self.tables.initOrUpdateTable('L03') == True:
-            return self.tables.importTable()
-        return False
+  
+        # validate the meta data:
+        xp = L3_XmlParser(self.config, 'UP2A')
+        xp.validate()
+        xp.export()
+        xp = L3_XmlParser(self.config, 'T2A')
+        xp.validate()
+        xp.export()
+        xp = L3_XmlParser(self.config, 'DS2A')
+        xp.validate()
+        xp.export()      
+        
+        return self.tables.importTable()
 
     def postprocess(self):
         self.config.logger.info('Post-processing with resolution %d m', self.config.resolution)
@@ -146,12 +158,12 @@ class L3_Process(object):
 def main(args, config):
     
     if os.path.exists(args.directory) == False:
-        print('directory "' + args.directory + '" does not exist.')
+        stderrWrite('directory "%s" does not exist\n.' % args.directory)
         return False
 
     processor = L3_Process(args.directory)
     HelloWorld = config.processorName +', '+ config.processorVersion +', created: '+ config.processorDate
-    print '\n' + HelloWorld + ' started ...\n'
+    stdoutWrite('\n%s started ...\n' % HelloWorld)
     tStart = time()
     S2A_mask = 'S2A_*'
 
@@ -176,13 +188,13 @@ def main(args, config):
 
         result = processor.selectAndProcess(tile)
         if(result == False):
-            print 'Application terminated with errors, see log file and traces'
+            stderrWrite('Application terminated with errors, see log file and traces.\n')
             return False
 
         tMeasure = time() - tStart
         config.writeTimeEstimation(resolution, tMeasure)
     
-    print '\nApplication terminated successfully'
+    stdoutWrite('\nApplication terminated successfully.\n')
     return True
 
 

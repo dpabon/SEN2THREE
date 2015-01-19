@@ -2,7 +2,6 @@
 
 from numpy import *
 from PIL import Image
-from L3_Config import L3_Config
 from scipy import ndimage
 from scipy import stats
 from scipy.signal import medfilt2d
@@ -43,7 +42,7 @@ def statistics(arr, comment = ''):
 
 def showImage(arr):
     if(arr.ndim) != 2:
-        print('Must be a two dimensional array')
+        sys.stderr.write('Must be a two dimensional array.\n')
         return False
 
     arrmin = arr.mean() - 3*arr.std()

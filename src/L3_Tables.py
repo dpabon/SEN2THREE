@@ -8,8 +8,6 @@ import subprocess
 import threading
 import sys, os
 import glob
-import L3_UserProduct
-import L3_Tile
 from numpy import *
 from tables import *
 import numexpr as ne
@@ -43,9 +41,9 @@ class Particle(IsDescription):
 
 
 class gdalThreadRead(threading.Thread):
-    def __init__(self, index, tables, filename):
+    def __init__(self, bandIndex, tables, filename):
         threading.Thread.__init__(self)
-        self._index = index
+        self._bandIndex = bandIndex
         self._tables = tables
         self._config = tables.config
         self._filename = filename
@@ -53,7 +51,7 @@ class gdalThreadRead(threading.Thread):
     def run(self):
         command = 'gdal_translate '
         filename = self._filename
-        tmpfile = self._tables._L3_bandDir + '/.tmpfile_' + '%02d.tif' % self._index
+        tmpfile = self._tables._L3_bandDir + '/.tmpfile_' + '%02d.tif' % self._bandIndex
         if os.name == 'posix':
             DEV0 = ' > /dev/null'
         else:
@@ -72,9 +70,9 @@ class gdalThreadRead(threading.Thread):
 
 
 class gdalThreadWrite(threading.Thread):
-    def __init__(self, index, tables, filename):
+    def __init__(self, bandIndex, tables, filename):
         threading.Thread.__init__(self)
-        self._index = index
+        self._bandIndex = bandIndex
         self._config = tables.config
         self._tables = tables
         self._filename = filename
@@ -85,7 +83,7 @@ class gdalThreadWrite(threading.Thread):
         else:
             DEV0 = ' > NUL'
         tables = self._tables
-        tmpfile = tables.L3_bandDir + '/.tmpfile_' + '%02d.tif' % self._index
+        tmpfile = tables.L3_bandDir + '/.tmpfile_' + '%02d.tif' % self._bandIndex
         option2 = ' UInt16 '    
             
         if os.name == 'posix':
@@ -103,11 +101,12 @@ class gdalThreadWrite(threading.Thread):
 
         self._filename = os.path.basename(self._filename.strip('.jp2'))
         with threadLock:
+            '''
             imageId = L3_UserProduct.IMAGE_IDType()
             imageId.set_valueOf_(self._filename)
             tables.granuleType.add_IMAGE_ID(imageId)
-
-        bandName = tables.getBandNameFromIndex(self._index)
+            '''
+        bandName = tables.getBandNameFromIndex(self._bandIndex)
         self._config.logger.debug('Band: ' + bandName + ' converted')    
         return
         
@@ -330,11 +329,11 @@ class L3_Tables(Borg):
         del self._projection
 
 
-    def getBandNameFromIndex(self, index):
-        return self._bandNames[index]
+    def getBandNameFromIndex(self, bandIndex):
+        return self._bandNames[bandIndex]
 
 
-    def get_band_index(self):
+    def get_band_bandIndex(self):
         return self._bandIndex
 
 
@@ -346,7 +345,7 @@ class L3_Tables(Borg):
         return self._dbName
 
 
-    def set_band_index(self, value):
+    def set_band_bandIndex(self, value):
         self._bandIndex = value
 
 
@@ -358,7 +357,7 @@ class L3_Tables(Borg):
         self._dbName = value
 
 
-    def del_band_index(self):
+    def del_band_bandIndex(self):
         del self._bandIndex
 
 
@@ -618,7 +617,7 @@ class L3_Tables(Borg):
     CLD = property(get_qcl, set_qcl, del_qcl, "CLD's docstring")
     PRV = property(get_prv, set_prv, del_prv, "PRV's docstring")
     config = property(get_config, set_config, del_config, "config's docstring")
-    bandIndex = property(get_band_index, set_band_index, del_band_index, "bandIndex's docstring")
+    bandIndex = property(get_band_bandIndex, set_band_bandIndex, del_band_bandIndex, "bandIndex's docstring")
     nBands = property(get_n_bands, set_n_bands, del_n_bands, "nBands's docstring")
     dbName = property(get_db_name, set_db_name, del_db_name, "dbName's docstring")
     cornerCoordinates = property(get_corner_coordinates, set_corner_coordinates, del_corner_coordinates, "cornerCoordinates's docstring")
@@ -643,7 +642,6 @@ class L3_Tables(Borg):
             trans_coords.append([x,y])
         return trans_coords
 
-
     def GetExtent(self, gt,cols,rows):
         ''' Return list of corner coordinates from a geotransform
             @type gt:   C{tuple/list}
@@ -667,51 +665,33 @@ class L3_Tables(Borg):
             yarr.reverse()
         return ext
     
-    def initOrUpdateTable(self, context):
-        self._context = context
-        database = self._ImageDataBase
+    def initDatabase(self):
         # initialize H5 database for usage:
         try:
-            h5file = openFile(database, mode='a', title =  str(self._resolution) + 'm bands')
+            h5file = openFile(self._ImageDatabase, mode='w', title =  str(self._resolution) + 'm bands')
             # remove all existing L2A tables as they will be replaced by the new data set
-            if context == 'L1C':
-                if(h5file.__contains__('/L1C')):
-                    self.removeAllBands('L1C')
-                # Create new L2A group and arrays:
-                h5file.createGroup('/', 'L1C', 'bands L1C')
-            elif context == 'L2A':
-                if(h5file.__contains__('/L2A')):
-                    self.removeAllBands('L2A')
-                # Create new L2A group and arrays:
-                h5file.createGroup('/', 'L2A', 'bands L2A')
-            elif context == 'L03':
-                if(h5file.__contains__('/L2A')):
-                    self.removeAllBands('L2A') # but keep L03 Bands
-                # Create new L2A group and arrays:
-                h5file.createGroup('/', 'L2A', 'bands L2A')
-                # Create L03 group if not already existing
-                if(h5file.__contains__('/L03') == False):
-                    h5file.createGroup('/', 'L03', 'bands L03')
+            h5file.createGroup('/', 'L1C', 'bands L1C')
+            h5file.createGroup('/', 'L2A', 'bands L2A')
+            h5file.createGroup('/', 'L03', 'bands L03')
             result = True
         except:
-            self.config.logger.fatal('error in initialization of database: %s:' % database)
+            self.config.logger.fatal('error in initialization of database: %s:' % self._ImageDatabase)
             self.config.exitError()
             result = False
         h5file.close()
         return result
     
-    def importTable(self):
+    def importBandList(self, productlevel, bandDir):
         self.config.timestamp('L3_Tables: start import')
-        workDir = self._L2A_bandDir
-        os.chdir(workDir)
-        dirs = sorted(os.listdir(workDir))
+        os.chdir(bandDir)
+        dirs = sorted(os.listdir(bandDir))
         bands = self._bandIndex
         for i in bands:
             for filename in dirs:     
-                self.importBand(i, filename)  
+                self.importBand(i, productlevel, filename)  
         return
     
-    def importBand(self, bandIndex, filename):
+    def importBand(self, productlevel, bandIndex, filename):
         bandName = self.getBandNameFromIndex(bandIndex)
         filemask = '*_L2A_*_%3s_?0m.jp2' % bandName
         if fnmatch.fnmatch(filename, filemask) == False:
@@ -740,7 +720,7 @@ class L3_Tables(Borg):
 
         # Create new arrays:
         database = self._ImageDataBase
-        nodeStr = self._context
+        nodeStr = self._productLevel
         try:
             h5file = openFile(database, mode='a')
             if(h5file.__contains__('/' + nodeStr)) == False:
@@ -748,11 +728,11 @@ class L3_Tables(Borg):
                 self.config.exitError()
                 return False
                 
-            if self._context == 'L1C':
+            if self._productLevel == 'L1C':
                 locator = h5file.root.L1C
-            elif self._context == 'L2A':
+            elif self._productLevel == 'L2A':
                 locator = h5file.root.L2A
-            elif self._context == 'L03':
+            elif self._productLevel == 'L03':
                 locator = h5file.root.L2A
                 
             inband = indataset.GetRasterBand(1)
@@ -766,26 +746,43 @@ class L3_Tables(Borg):
                 node.append(scanline)
     
             indataset = None
-            self.config.logger.info('L3_Tables: Level ' + self._context + ' band ' + bandName + ' imported')
-            self.config.timestamp('L3_Tables: Level ' + self._context + ' band ' + bandName + ' imported')
+            self.config.logger.info('L3_Tables: Level ' + self._productLevel + ' band ' + bandName + ' imported')
+            self.config.timestamp('L3_Tables: Level ' + self._productLevel + ' band ' + bandName + ' imported')
             result = True
         except:
-            self.config.logger.fatal('error in import of band %s in context %s.' % (bandName, self._context))
+            self.config.logger.fatal('error in import of band %s in productLevel %s.' % (bandName, self._productLevel))
             self.config.exitError()
             result = False
         h5file.close()
         return result
 
-    def exportTable(self):
+    def getBand(self, bandIndex, productLevel, dataType=uint16):
+        self.verifyProductId(productLevel)
+        bandName = self.getBandNameFromIndex(bandIndex)
+        try:
+            h5file = openFile(self._ImageDataBase, mode='r')
+            node = h5file.getNode('/' + productLevel, bandName)
+            if (node.dtype != dataType):
+                self.config.logger.fatal('Wrong data type, must be: ' + str(node.dtype))
+                result = False
+                self.config.exitError()
+            else:
+                result = node.read()
+        except NoSuchNodeError:
+            self.config.logger.debug('%s: Band %s is missing', productLevel, self.getBandNameFromIndex(bandIndex))
+            result = False
+        h5file.close()
+        return result
+
+    def exportBandList(self, productLevel, bandDir):
         # converts all bands from hdf5 to JPEG 2000
-        workDir = self._L3_bandDir
-        if(os.path.exists(workDir) == False):
-            self.config.logger.fatal('missing directory %s:' % workDir)
+        if(os.path.exists(bandDir) == False):
+            self.config.logger.fatal('missing directory %s:' % bandDir)
             self.config.exitError()
             return False
 
-        os.chdir(workDir)
-        self.config.timestamp('L3_Tables: start export')
+        os.chdir(bandDir)
+        self.config.timestamp(productLevel + '_Tables: start export')
         if(self._resolution == 10):
             bandIndex = [1,2,3,7]
 
@@ -796,61 +793,61 @@ class L3_Tables(Borg):
             bandIndex = [0,1,2,3,4,5,6,8,9,11,12]
 
         #prepare the xml export
-        granuleType = L3_UserProduct.GranuleType500()
+        '''
         granuleType.set_granuleIdentifier(self.config.L3_TILE_ID)
         granuleType.set_datastripIdentifier(self.config.L3_DS_ID)
         granuleType.set_imageFormat("JPEG2000")
         self.granuleType = granuleType
+        '''
+        for bandIndex in bandIndex:
+            filename = self._L3_Tile_BND_File
+            self.exportBand(productLevel, bandIndex, filename)
 
-        for index in bandIndex:
-            self.exportBand(index)
-
+        '''
         granuleList = L3_UserProduct.Granule_ListType()
         granuleList.add_Granule(granuleType)
         xmlParser = L3_XmlParser(self.config, 'UP')
         productOrganisation = xmlParser.root.General_Info.Product_Info.Product_Organisation
         productOrganisation.add_Granule_List(granuleList)
         xmlParser.export()
-
         # update on tile level
         xmlParser = L3_XmlParser(self.config, 'TILE')
         xmlParser.root.General_Info.TILE_ID.valueOf_ = self.config.L3_TILE_ID
         xmlParser.root.General_Info.DATASTRIP_ID.valueOf_ =self.config.L3_DS_ID
-
+        '''
         # clean up and post processing actions:
         if(self._resolution == 60):
             self.createPreviewImage()
-            self.config.timestamp('L3_Tables: preview image exported')
+            self.config.timestamp(productLevel + '_Tables: preview image exported')
             '''
             qiiL3 = xmlParser.root.Quality_Indicators_Info
             qiiL3.PVI_FILENAME = os.path.basename(self._L3_Tile_PVI_File)
             qiiL3 = xmlParser.root.Quality_Indicators_Info
             qiList = L3_Tile.A_L3_Pixel_Level_QI_LIST()
             qiiL3.L3_Pixel_Level_QI = qiList
-            '''
         xmlParser.export()
-        self.delDatabase()
+        '''
         globdir = self.config.L3_UP_DIR + '/GRANULE/' + self.config.L3_TILE_ID + '/*/*.jp2.aux.xml'
         for filename in glob.glob(globdir):
             os.remove(filename)
         globdir = self.config.L3_UP_DIR + '/GRANULE/' + self.config.L3_TILE_ID + '/*/*/*.jp2.aux.xml'
         for filename in glob.glob(globdir):
             os.remove(filename)
-        self.config.timestamp('L3_Tables: stop export')
+        self.config.timestamp(productLevel + '_Tables: stop export')
         return True
     
-    def exportBand(self, bandIndex):
-        # converts all bands from hdf5 to JPEG 200
-        bandName = self.getBandNameFromIndex(bandIndex)
-        filename = self._L3_Tile_BND_File
-        filename = filename.replace('BXX', bandName)
-        #tmpfile = self._TmpFile + '%02d.tif' % index
+    def exportBand(self, productLevel, bandIndex, filename):
+        # converts all bands from hdf5 to JPEG 2000
+        #tmpfile = self._TmpFile + '%02d.tif' % bandIndex
         database = self._ImageDataBase
+        bandName = self.getBandNameFromIndex(bandIndex)
+        filename = filename.replace('BXX', bandName)
+        
         
         try:
             h5file = openFile(database, mode='r')
-            if(h5file.__contains__('/L03/' +  bandName)):
-                node = h5file.getNode('/L03', bandName)
+            if(h5file.__contains__('/' + productLevel + '/' +  bandName)):
+                node = h5file.getNode('/'+ productLevel, bandName)
             array = node.read()
             out_driver = gdal.GetDriverByName('JPEG2000')
             outdataset = out_driver.Create(filename, self._rows, self._cols, 0, GDT_UInt16)
@@ -863,13 +860,78 @@ class L3_Tables(Borg):
             outband = outdataset.GetRasterBand(1)
             outband.WriteArray(array)
             outdataset = None
-            self.config.logger.info('Band ' + bandName + ' exported')
-            self.config.timestamp('L3_Tables: band ' + bandName + ' exported')
+            self.config.logger.info('Band ' + productLevel + ', ' + bandName + ' exported')
+            self.config.timestamp('L3_Tables: ' + productLevel + ', ' + bandName + ' exported')
             result = True
         except:
             result = False
         h5file.close()
         return result  
+
+    def setBand(self, productLevel, bandIndex, array):
+        self.verifyProductId(productLevel)
+        try:
+            h5file = openFile(self._ImageDataBase, mode='a')
+            bandName = self.getBandNameFromIndex(bandIndex)
+            # remove old entries:
+            if(h5file.__contains__('/' + productLevel + '/' + bandName)):
+                node = h5file.getNode('/' + productLevel, bandName)
+                node.remove
+            dtIn = self.setDataType(array.dtype)
+            filters = Filters(complib="zlib", complevel=1)
+            # create new group and append node:
+            if productLevel == 'L1C':
+                locator = h5file.root.L1C
+            elif productLevel == 'L2A':
+                locator = h5file.root.L2A
+            elif productLevel == 'L03':
+                locator = h5file.root.L03
+
+            node = h5file.createEArray(locator, bandName, dtIn, (0,array.shape[1]), bandName, filters=filters)
+            self.config.logger.debug('%s: Band %02d %s added to table', productLevel, bandIndex, self.getBandNameFromIndex(bandIndex))
+            node.append(array)
+            result = True
+        except NoSuchNodeError:
+            self.config.logger.debug('%s: Band %s cannot be set', productLevel, self.getBandNameFromIndex(bandIndex))
+            result = False
+        h5file.close()
+        return result
+
+    def delBand(self, productLevel, bandIndex):
+        self.verifyProductId(productLevel)
+        try:
+            h5file = openFile(self._ImageDataBase, mode='a')
+            bandName = self.getBandNameFromIndex(bandIndex)
+            if(h5file.__contains__('/' + productLevel + '/' + bandName)):
+                node = h5file.getNode('/' + productLevel, bandName)
+                node.remove()
+                self.config.logger.debug('%s: Band %02d %s removed from table', productLevel, bandIndex, self.getBandNameFromIndex(bandIndex))
+            result = True
+        except NoSuchNodeError:
+            self.config.logger.debug('%s: Band %s cannot be removed', productLevel, self.getBandNameFromIndex(bandIndex))
+            result = False
+        h5file.close()
+        return result
+
+    def delBandList(self, productLevel):
+        try:
+            h5file = openFile(self._ImageDataBase, mode='a')
+            if(h5file.__contains__('/' + productLevel)):
+                node = h5file.getNode('/' + productLevel)
+                del node
+                self.config.logger.debug('%s: Bands removed from table', productLevel)
+            result = True
+        except NoSuchNodeError:
+            self.config.logger.debug('%s: Bands cannot be removed', productLevel)
+            result = False          
+        h5file.close()
+        return result            
+        
+    def delDatabase(self):
+        database = self._ImageDataBase
+        if(os.path.isfile(database)):
+            os.remove(database)
+        return
 
     def createPreviewImage(self):
         self.config.logger.debug('Creating Preview Image')
@@ -942,139 +1004,56 @@ class L3_Tables(Borg):
         self.config.logger.info(status)
         return result
     
-    def verifyProductId(self, context):
-        if context != 'L1C' and context != 'L2A' and context != 'L03':
-            self.config.logger.fatal('Wrong product ID %s', context)
+    def verifyProductId(self, productLevel):
+        if productLevel != 'L1C' and productLevel != 'L2A' and productLevel != 'L03':
+            self.config.logger.fatal('Wrong product ID %s', productLevel)
             self.config.exitError()
         return True
     
-    def testBand(self, context, index):
-        self.verifyProductId(context)
-        bandName = self.getBandNameFromIndex(index)
+    def testBand(self, productLevel, bandIndex):
+        self.verifyProductId(productLevel)
+        bandName = self.getBandNameFromIndex(bandIndex)
         try:
             h5file = openFile(self._ImageDataBase, mode='r')
-            h5file.getNode('/' + context , bandName)
-            self.config.logger.debug('%s: Band %s is present', context, self.getBandNameFromIndex(index))
+            h5file.getNode('/' + productLevel , bandName)
+            self.config.logger.debug('%s: Band %s is present', productLevel, self.getBandNameFromIndex(bandIndex))
             result = True
         except NoSuchNodeError:
-            self.config.logger.debug('%s: Band %s is missing', context, self.getBandNameFromIndex(index))
+            self.config.logger.debug('%s: Band %s is missing', productLevel, self.getBandNameFromIndex(bandIndex))
             result = False
         h5file.close()
         return result
 
-    def getBandSize(self, context, index):
-        self.verifyProductId(context)
-        bandName = self.getBandNameFromIndex(index)
+    def getBandSize(self, productLevel, bandIndex):
+        self.verifyProductId(productLevel)
+        bandName = self.getBandNameFromIndex(bandIndex)
         try:
             h5file = openFile(self._ImageDataBase, mode='r')
-            node = h5file.getNode('/' + context, bandName)
+            node = h5file.getNode('/' + productLevel, bandName)
             array = node.read()
             ncols = array.shape[1]
             nrows = array.shape[0]
             result = (nrows, ncols)
         except NoSuchNodeError:
-            self.config.logger.debug('%s: Band %s is missing', context, self.getBandNameFromIndex(index))
+            self.config.logger.debug('%s: Band %s is missing', productLevel, self.getBandNameFromIndex(bandIndex))
             result = False            
         h5file.close()
         return result
 
-    def getDataType(self, context, index):
-        self.verifyProductId(context)
-        bandName = self.getBandNameFromIndex(index)
+    def getDataType(self, productLevel, bandIndex):
+        self.verifyProductId(productLevel)
+        bandName = self.getBandNameFromIndex(bandIndex)
         try:
             h5file = openFile(self._ImageDataBase, mode='r')
-            node = h5file.getNode('/' + context, bandName)
+            node = h5file.getNode('/' + productLevel, bandName)
             result = node.dtype
         except NoSuchNodeError:
-            self.config.logger.debug('%s: Band %s is missing', context, self.getBandNameFromIndex(index))
+            self.config.logger.debug('%s: Band %s is missing', productLevel, self.getBandNameFromIndex(bandIndex))
             result = False            
         h5file.close()
         return result
         
-    def getBand(self, context, index, dataType=uint16):
-        self.verifyProductId(context)
-        bandName = self.getBandNameFromIndex(index)
-        try:
-            h5file = openFile(self._ImageDataBase, mode='r')
-            node = h5file.getNode('/' + context, bandName)
-            if (node.dtype != dataType):
-                self.config.logger.fatal('Wrong data type, must be: ' + str(node.dtype))
-                result = False
-                self.config.exitError()
-            else:
-                result = node.read()
-        except NoSuchNodeError:
-            self.config.logger.debug('%s: Band %s is missing', context, self.getBandNameFromIndex(index))
-            result = False
-        h5file.close()
-        return result
-
-    def setBand(self, context, index, array):
-        self.verifyProductId(context)
-        try:
-            h5file = openFile(self._ImageDataBase, mode='a')
-            bandName = self.getBandNameFromIndex(index)
-            # remove old entries:
-            if(h5file.__contains__('/' + context + '/' + bandName)):
-                node = h5file.getNode('/' + context, bandName)
-                node.remove
-            dtIn = self.setDataType(array.dtype)
-            filters = Filters(complib="zlib", complevel=1)
-            # create new group and append node:
-            if context == 'L1C':
-                locator = h5file.root.L1C
-            elif context == 'L2A':
-                locator = h5file.root.L2A
-            elif context == 'L03':
-                locator = h5file.root.L03
-
-            node = h5file.createEArray(locator, bandName, dtIn, (0,array.shape[1]), bandName, filters=filters)
-            self.config.logger.debug('%s: Band %02d %s added to table', context, index, self.getBandNameFromIndex(index))
-            node.append(array)
-            result = True
-        except NoSuchNodeError:
-            self.config.logger.debug('%s: Band %s cannot be set', context, self.getBandNameFromIndex(index))
-            result = False
-        h5file.close()
-        return result
-
-    def delBand(self, context, index):
-        self.verifyProductId(context)
-        try:
-            h5file = openFile(self._ImageDataBase, mode='a')
-            bandName = self.getBandNameFromIndex(index)
-            if(h5file.__contains__('/' + context + '/' + bandName)):
-                node = h5file.getNode('/' + context, bandName)
-                node.remove()
-                self.config.logger.debug('%s: Band %02d %s removed from table', context, index, self.getBandNameFromIndex(index))
-            result = True
-        except NoSuchNodeError:
-            self.config.logger.debug('%s: Band %s cannot be removed', context, self.getBandNameFromIndex(index))
-            result = False
-        h5file.close()
-        return result
-
-    def delAllBands(self, context):
-        try:
-            h5file = openFile(self._ImageDataBase, mode='a')
-            if(h5file.__contains__('/' + context)):
-                node = h5file.getNode('/' + context)
-                del node
-                self.config.logger.debug('%s: Bands removed from table', context)
-            result = True
-        except NoSuchNodeError:
-            self.config.logger.debug('%s: Bands cannot be removed', context)
-            result = False          
-        h5file.close()
-        return result            
-        
-    def delDatabase(self):
-        database = self._ImageDataBase
-        if(os.path.isfile(database)):
-            os.remove(database)
-        return
-
-    def setDataType(self, dtIn):
+    def mapDataType(self, dtIn):
         if(dtIn == uint8):
             dtOut = UInt8Atom()
         elif(dtIn == uint16):

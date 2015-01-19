@@ -4,7 +4,7 @@ from lxml import etree, objectify
 from L3_Library import stdoutWrite, stderrWrite
 from L3_Borg import Borg
 
-class L2A_XmlParser(Borg):
+class L3_XmlParser(Borg):
     def __init__(self, config, product):
         self._config = config
         self._product = product
@@ -20,12 +20,15 @@ class L2A_XmlParser(Borg):
             cs = root.Common_Section
             upScheme1c = cs.UP_Scheme_1C.text
             upScheme2a = cs.UP_Scheme_2A.text
+            upScheme3 = cs.UP_Scheme_3.text            
             tileScheme1c = cs.Tile_Scheme_1C.text
             tileScheme2a = cs.Tile_Scheme_2A.text
+            tileScheme3 = cs.Tile_Scheme_3.text            
             dsScheme1c = cs.DS_Scheme_1C.text
             dsScheme2a = cs.DS_Scheme_2A.text
+            dsScheme3 = cs.DS_Scheme_3.text            
         except:
-            config.tracer.fatal('Error in parsing config file.')
+            config.logger.fatal('Error in parsing configuration file.')
             config.exitError();
 
         if(product == 'UP1C'):
@@ -34,23 +37,33 @@ class L2A_XmlParser(Borg):
         elif(product == 'UP2A'):
             self._xmlFn = config.L2A_UP_MTD_XML
             self._scheme = upScheme2a
+        elif(product == 'UP03'):
+            self._xmlFn = config.L3_UP_MTD_XML
+            self._scheme = upScheme3            
         elif(product == 'DS1C'):
             self._xmlFn = config.L1C_DS_MTD_XML
             self._scheme = dsScheme1c
         elif(product == 'DS2A'):
             self._xmlFn = config.L2A_DS_MTD_XML
             self._scheme = dsScheme2a
+        elif(product == 'DS03'):
+            self._xmlFn = config.L3_DS_MTD_XML
+            self._scheme = dsScheme3            
         elif(product == 'T1C'):
             self._xmlFn = config.L1C_TILE_MTD_XML
             self._scheme = tileScheme1c
         elif(product == 'T2A'):
             self._xmlFn = config.L2A_TILE_MTD_XML
             self._scheme = tileScheme2a
+        elif(product == 'T03'):
+            self._xmlFn = config.L3_TILE_MTD_XML
+            self._scheme = tileScheme3
+            
         elif(product == 'GIPP'):
             self._xmlFn = config.configFn
             self._scheme = None
         else:
-            config.tracer.fatal('wrong identifier for xml structure: ' + product)
+            config.logger.fatal('wrong identifier for xml structure: ' + product)
             config.exitError()
         
         self.setRoot();
@@ -153,21 +166,17 @@ class L2A_XmlParser(Borg):
         outfile.write('<?xml version="1.0"  encoding="UTF-8"?>\n')
         objectify.deannotate(self._root, xsi_nil=True, cleanup_namespaces=True)
         outstr = etree.tostring(self._root, pretty_print=True)
-        outstr = outstr.replace('-1C', '-2A')
-        outstr = outstr.replace('Product_Info>', 'L2A_Product_Info>')
-        outstr = outstr.replace('Product_Organisation>', 'L2A_Product_Organisation>')
-        outstr = outstr.replace('Product_Image_Characteristics>', 'L2A_Product_Image_Characteristics>')
-        outstr = outstr.replace('Pixel_Level_QI', 'L1C_Pixel_Level_QI')
-        outstr = outstr.replace('TILE_ID>', 'TILE_ID_2A>')
-        outstr = outstr.replace('DATASTRIP_ID>', 'DATASTRIP_ID_2A>')
-        if self._product == 'T2A':
-            outstr = outstr.replace('Image_Content_QI>', 'L1C_Image_Content_QI>')
-        if self._product == 'UP2A':
-            outstr = outstr.replace('QUANTIFICATION_VALUE', 'L1C_L2A_Quantification_Values_List')
-            outstr = outstr.replace('</n1:Auxiliary_Data_Info>', '</n1:Auxiliary_Data_Info>\n'\
-                                '<n1:L2A_Auxiliary_Data_Info/>')
-            outstr = outstr.replace('</n1:Quality_Indicators_Info>', '</n1:Quality_Indicators_Info>\n'\
-                                '<n1:L2A_Quality_Indicators_Info/>')
+        outstr = outstr.replace('-2A', '-3')
+        outstr = outstr.replace('L2A_Product_Info>', 'L3_Product_Info>')
+        outstr = outstr.replace('L2A_Product_Organisation>', 'L3_Product_Organisation>')
+        outstr = outstr.replace('L2A_Product_Image_Characteristics>', 'L3_Product_Image_Characteristics>')
+        outstr = outstr.replace('L2A_Pixel_Level_QI', 'L3_Pixel_Level_QI')
+        outstr = outstr.replace('TILE_ID_2A>', 'TILE_ID_3>')
+        outstr = outstr.replace('DATASTRIP_ID_2A>', 'DATASTRIP_ID_3>')
+        if self._product == 'T03':
+            outstr = outstr.replace('L2A_Image_Content_QI>', 'L3_Image_Content_QI>')
+        if self._product == 'UP03':
+            outstr = outstr.replace('L1C_L2A_Quantification_Values_List', 'L2A_L3_Quantification_Values_List')
         outfile.write(outstr)
         outfile.close()
         return self.setRoot()

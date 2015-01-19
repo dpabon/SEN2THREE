@@ -3,14 +3,15 @@
 from numpy import *
 import fnmatch
 import sys, os
-import datetime
 import logging
 import ConfigParser
-from time import time, localtime, strftime
+from L3_XmlParser import L3_XmlParser
+from L3_Library import stdoutWrite, stderrWrite
+from lxml import etree, objectify
+from time import strftime
+from datetime import datetime, date
 from distutils.dir_util import copy_tree
 from distutils.file_util import copy_file
-from L3_XmlParser import L3_XmlParser
-from xml.etree import ElementTree as ET
 from L3_Borg import Borg
 
 
@@ -31,7 +32,7 @@ class L3_Config(Borg):
             self._binDir = self._home + 'bin/'
             self._libDir = self._home + 'lib/'
             self._logDir = self._home + 'log/'
-            self._configFn = self._configDir + 'L3_GIPP.xml'
+            self._configFn = self._configDir + 'L03_GIPP.xml'
             self._calibrationFn = ''
             self._solarIrradianceFn = ''
             self._elevationMapFn = ''
@@ -60,7 +61,9 @@ class L3_Config(Borg):
             self._GIPP = ''
             self._ECMWF = ''
             self._DEM = ''
-            self._L3_BOA_QUANTIFICATION_VALUE = 2000.
+            self._L2A_BOA_QUANTIFICATION_VALUE = 2000
+            self._L2A_WVP_QUANTIFICATION_VALUE = 1000
+            self._L2A_AOT_QUANTIFICATION_VALUE = 1000
             self._dnScale = 4095.0
             self._adj_km = 1.0
             self._d2 = None
@@ -71,16 +74,41 @@ class L3_Config(Borg):
             self._targetRow = None
             self._sceneStartTime = None
             self._sceneStopTime = None
-            self._timestamp = time()
-            self._L3_INSPIRE_XML = None
-            self._L3_MANIFEST_SAFE = None
-            self._L3_UP_MTD_XML = None
-            self._L3_DS_MTD_XML = None
+            self._solaz = None
+            self._solaz_arr = None
+            self._solze = None
+            self._solze_arr = None
+            self._vaa_arr = None
+            self._vza_arr = None
+            self._visibility = 30.0
+            self._wl940a = array([0.895, 1.000])     # range of moderate wv absorption region around  940 nm
+            self._wl1130a = array([1.079, 1.180])    # range of moderate wv absorption region around 1130 nm
+            self._wl1400a = array([1.330, 1.490])    # range for interpolation
+            self._wl1900a = array([1.780, 1.970])    # range for interpolation
+            self._wv_thr_cirrus = 0.60
+            self._timestamp = datetime.now()
+            self._c0 = None
+            self._c1 = None
+            self._e0 = None
+            self._d2 = None
+            self._wvlsen = None
+            self._fwhm = None
+            self._acOnly = False
+            self._L2A_INSPIRE_XML = None
+            self._L2A_MANIFEST_SAFE = None
+            self._L1C_UP_MTD_XML = None
+            self._L1C_DS_MTD_XML = None
+            self._L1C_TILE_MTD_XML = None
+            self._L1C_UP_ID = None
+            self._L1C_DS_ID = None
+            self._L1C_TILE_ID = None
+            self._L2A_UP_MTD_XML = None
+            self._L2A_DS_MTD_XML = None
             self._L2A_TILE_MTD_XML = None
-            self._L3_TILE_MTD_XML = None
             self._L3_UP_ID = None
             self._L3_DS_ID = None
             self._L3_TILE_ID = None
+            self._L3_TILE_MTD_XML = None
             self._logger = None
             self._fnLog = None
             self._creationDate = None
@@ -818,10 +846,11 @@ class L3_Config(Borg):
             return 'NOTSET'
 
     loglevel = property(get_logLevel, set_logLevel)
-
-    def initLogger(self):
-        self.creationDate = strftime('%Y%m%dT%H%M%S', localtime())
-        logname = 'L3_' + self.creationDate
+    
+    def initLog(self):
+        dt = datetime.now()
+        self.creationDate = strftime('%Y%m%dT%H%M%S', dt.timetuple())
+        logname = 'L2A_' + self.creationDate
         self._logger = logging.Logger(logname)
         self._fnLog = self._logDir + logname + '_report.xml'
         f = open(self._fnLog, 'w')
@@ -844,19 +873,19 @@ class L3_Config(Borg):
         L2A_UP_MASK = '*2A_*'
         L2A_UP_DIR = self.workDir
         if os.path.exists(L2A_UP_DIR) == False:
-            print('directory "' + L2A_UP_DIR + '" does not exist.')
+            stderrWrite('directory "' + L2A_UP_DIR + '" does not exist.')
             self.exitError()
             return False
 
         dirname, basename = os.path.split(L2A_UP_DIR)
         if(fnmatch.fnmatch(basename, L2A_UP_MASK) == False):
-            print(basename + ': identifier "*2A_*" is missing')
+            stderrWrite(basename + ': identifier "*2A_*" is missing')
             self.exitError()
             return False
 
         GRANULE = L2A_UP_DIR + '/GRANULE'
         if os.path.exists(GRANULE) == False:
-            print('directory "' + GRANULE + '" does not exist.')
+            stderrWrite('directory "' + GRANULE + '" does not exist.')
             self.exitError()
             return False
         #
@@ -905,7 +934,7 @@ class L3_Config(Borg):
                 found = True
                 break
         if found == False:
-            print('No metadata for user product')
+            stderrWrite('No metadata for user product')
             self.exitError()
 
         # prepare L3 User Product metadata file
@@ -913,26 +942,40 @@ class L3_Config(Borg):
         fn_L3 = filename[:4] + 'USER' + filename[8:]
         fn_L3 = fn_L3.replace('L2A_', 'L03_')
         fn_L3 = L3_UP_DIR + '/' + fn_L3
+        self.L2A_UP_MTD_XML = fn_L2A        
         self.L3_UP_MTD_XML = fn_L3
-
         if firstInit == True:
+            # copy L2A schemes from config_dir into rep_info:    
+            xp = L3_XmlParser(self, 'GIPP')
+            cs = xp.getRoot('Common_Section')
+            upScheme2a = cs.UP_Scheme_2A.text
+            tileScheme2a = cs.Tile_Scheme_2A.text
+            dsScheme2a = cs.DS_Scheme_2A.text
+            copy_file(self.get_config_dir() + upScheme2a, L3_UP_DIR + REP_INFO + '/' + upScheme2a)
+            copy_file(self.get_config_dir() + tileScheme2a, L3_UP_DIR + REP_INFO + '/' + tileScheme2a)
+            copy_file(self.get_config_dir() + dsScheme2a, L3_UP_DIR + REP_INFO + '/' + dsScheme2a)
             # copy L3 User Product metadata file:
             copy_file(fn_L2A, fn_L3)
             # remove old L2A entries from L3_UP_MTD_XML:
-            xml = L3_XmlParser(self, 'UP')
-            pi = xml.root.General_Info.Product_Info
-            pi.PRODUCT_URI = 'http://localhost'
-            pi.PROCESSING_LEVEL.valueOf_ = 'Level-3'
-            pi.PRODUCT_TYPE = 'S2MSI2A'
-            pi.GENERATION_TIME = datetime.datetime.fromtimestamp(time())
-            pi.PREVIEW_IMAGE_URL.valueOf_ = 'http://localhost'
+            xp = L3_XmlParser(self, 'UP2A')
+            if(xp.convert() == False):
+                self.tracer.fatal('error in converting user product metadata to level 3')
+                self.exitError()
+            xp = L3_XmlParser(self, 'UP2A')
+            pi = xp.getTree('General_Info', 'L2A_Product_Info')
+            del pi.L3_Product_Organisation.Granule_List[:]            
+            # update L2A entries from L2A_UP_MTD_XML:
+            pi.PRODUCT_URI = 'http://www.telespazio-vega.de'
+            pi.PROCESSING_LEVEL = 'Level-3p'
+            pi.PRODUCT_TYPE = 'S2MSI03p'
+            dt = datetime.utcnow()
+            pi.GENERATION_TIME = strftime('%Y-%m-%dT%H:%M:%SZ', dt.timetuple())
+            pi.PREVIEW_IMAGE_URL = 'http://www.telespazio-vega.de'
             qo = pi.Query_Options
-            qo.PREVIEW_IMAGE = True
-            qo.METADATA_LEVEL = 'Standard'
-            qo.Aux_List.productLevel = 'Level-3'
-            del pi.Product_Organisation.Granule_List[:]
-            del xml.root.Auxiliary_Data_Info.GIPP_List.GIPP_FILENAME[:]
-            xml.export()
+            #qo.PREVIEW_IMAGE = True
+            #qo.METADATA_LEVEL = 'Standard'
+            qo.Aux_List.attrib['productLevel'] = 'Level-3p'
+            xp.export()
 
         #create datastrip ID:
         self._L3_DS_DIR = self._L3_UP_DIR + DATASTRIP
@@ -943,7 +986,7 @@ class L3_Config(Borg):
                 found = True
                 break
         if found == False:
-            print('No subdirectory in datastrip')
+            stderrWrite('No subdirectory in datastrip')
             self.exitError()
 
         L2A_DS_ID = dirname
@@ -958,22 +1001,22 @@ class L3_Config(Borg):
             os.rename(olddir, newdir)
 
         #find datastrip metadada, rename and change it:
-        self._L3_DS_DIR = newdir
-        filelist = sorted(os.listdir(self._L3_DS_DIR))
+        L3_DS_DIR = newdir
+        filelist = sorted(os.listdir(L3_DS_DIR))
         found = False
         for filename in filelist:
             if(fnmatch.fnmatch(filename, S2A_mask) == True):
                 found = True
                 break
         if found == False:
-            print('No metadata in datastrip')
+            stderrWrite('No metadata in datastrip')
             self.exitError()
 
-        L2A_DS_MTD_XML = filename
-        L3_DS_MTD_XML = L2A_DS_MTD_XML[:4] + 'USER' + L2A_DS_MTD_XML[8:]
-        L3_DS_MTD_XML = L3_DS_MTD_XML.replace('L2A_', 'L3_')
+        LXX_DS_MTD_XML = filename
+        L3_DS_MTD_XML = LXX_DS_MTD_XML[:4] + 'USER' + LXX_DS_MTD_XML[8:]
+        L3_DS_MTD_XML = L3_DS_MTD_XML.replace('L2A_', 'L03_')
 
-        oldfile = self._L3_DS_DIR + '/' + L2A_DS_MTD_XML
+        oldfile = self._L3_DS_DIR + '/' + L3_DS_MTD_XML
         newfile = self._L3_DS_DIR + '/' + L3_DS_MTD_XML
         self.L3_DS_MTD_XML = newfile
 
@@ -983,7 +1026,7 @@ class L3_Config(Borg):
             del xml.root.Image_Data_Info.Tiles_Information.Tile_List.Tile[:]
             xml.export()
 
-        return sorted(os.listdir(L2A_UP_DIR + GRANULE))
+        return sorted(os.listdir(L3_UP_DIR + GRANULE))
 
     def postprocess(self):
         # copy log to QI data as a report:
