@@ -1,35 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns="http://pdgs.s2.esa.int/PSD/Inventory_Metadata.xsd" xmlns:date_time="http://gs2.esa.int/DICO/1.0/SY/date_time/" xmlns:item="http://gs2.esa.int/DICO/1.0/DataAccess/item/" xmlns:center="http://gs2.esa.int/DICO/1.0/PDGS/center/" targetNamespace="http://pdgs.s2.esa.int/PSD/Inventory_Metadata.xsd" elementFormDefault="qualified" version="9.0">
-	<xs:import namespace="http://gs2.esa.int/DICO/1.0/DataAccess/item/" schemaLocation="DICO/1.0/DataAccess/item/item.xsd"/>
-	<xs:import namespace="http://gs2.esa.int/DICO/1.0/PDGS/center/" schemaLocation="DICO/1.0/PDGS/center/center.xsd"/>
-	<xs:import namespace="http://gs2.esa.int/DICO/1.0/SY/date_time/" schemaLocation="DICO/1.0/SY/date_time/date_time.xsd"/>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns="https://psd-12.sentinel2.eo.esa.int/PSD/Inventory_Metadata.xsd" xmlns:date_time="https://psd-12.sentinel2.eo.esa.int/DICO/1.0/SY/date_time/" xmlns:item="https://psd-12.sentinel2.eo.esa.int/DICO/1.0/DataAccess/item/" xmlns:center="https://psd-12.sentinel2.eo.esa.int/DICO/1.0/PDGS/center/" targetNamespace="https://psd-12.sentinel2.eo.esa.int/PSD/Inventory_Metadata.xsd" elementFormDefault="qualified" version="12">
+	<xs:import namespace="https://psd-12.sentinel2.eo.esa.int/DICO/1.0/DataAccess/item/" schemaLocation="DICO/1.0/DataAccess/item/item.xsd"/>
+	<xs:import namespace="https://psd-12.sentinel2.eo.esa.int/DICO/1.0/PDGS/center/" schemaLocation="DICO/1.0/PDGS/center/center.xsd"/>
+	<xs:import namespace="https://psd-12.sentinel2.eo.esa.int/DICO/1.0/SY/date_time/" schemaLocation="DICO/1.0/SY/date_time/date_time.xsd"/>
 	<xs:element name="Inventory_Metadata">
 		<xs:complexType>
 			<xs:sequence>
 				<xs:element name="File_ID">
 					<xs:annotation>
-						<xs:documentation>PDI_ID (Applicable to Granule, Tile, DataStrip and SAD PDI)</xs:documentation>
+						<xs:documentation>PDI_ID (Applicable to Granule, Tile, Datastrip PDI)</xs:documentation>
 					</xs:annotation>
 					<xs:simpleType>
 						<xs:restriction base="xs:string">
 							<xs:pattern value="S2(A|B)_OPER_[\w{Lu}_]{10}_[\w{Lu}_]{4}_\d{8}T\d{6}_S\d{8}T\d{6}_D\d{2}_N\d{2}\.\d{2}"/>
 							<xs:pattern value="S2(A|B)_OPER_[\w{Lu}_]{10}_[\w{Lu}_]{4}_\d{8}T\d{6}_A\d{6}_T[\w{Lu}_]{5}_N\d{2}\.\d{2}"/>
 							<xs:pattern value="S2(A|B)_OPER_[\w{Lu}_]{10}_[\w{Lu}_]{4}_\d{8}T\d{6}_S\d{8}T\d{6}_N\d{2}\.\d{2}"/>
-							<xs:pattern value="S2(A|B)_OPER_AUX_SADATA_[\w{Lu}_]{4}_\d{8}T\d{6}_V\d{8}T\d{6}_\d{8}T\d{6}_A[\w{Lu}_]{6}_W[FP]_L[ND]"/>
 						</xs:restriction>
 					</xs:simpleType>
 				</xs:element>
 				<xs:element name="Parent_ID" minOccurs="0">
 					<xs:annotation>
-						<xs:documentation>DataStrip PDI_ID (Applicable to Granule and Tile PDI linked to a DataStrip PDI)</xs:documentation>
+						<xs:documentation>Datastrip PDI_ID (Applicable to Granule and Tile PDI linked to a Datastrip PDI)</xs:documentation>
 					</xs:annotation>
 					<xs:simpleType>
-						<xs:restriction base="item:DATASTRIP_ID"/>
+						<xs:restriction base="item:Datastrip_ID"/>
 					</xs:simpleType>
 				</xs:element>
-				<xs:element name="Group_ID" minOccurs="0">
+				<xs:element name="Group_ID">
 					<xs:annotation>
-						<xs:documentation>Label identifying all the PDIs that can be included in a User Product (Applicable to Granule, Tile and Datastrip PDI) (Applicable to Granule, Tile and DataStrip and PDI)</xs:documentation>
+						<xs:documentation>Label identifying all the PDIs that can be included in a User Product (Applicable to Granule, Tile and Datastrip PDI) (Applicable to Granule, Tile and Datastrip and PDI)</xs:documentation>
 					</xs:annotation>
 					<xs:simpleType>
 						<xs:restriction base="item:DATATAKE_ID"/>
@@ -37,20 +36,19 @@
 				</xs:element>
 				<xs:element name="File_Name">
 					<xs:annotation>
-						<xs:documentation>Equal to File_ID metadata (Applicable to Granule, Tile, DataStrip and SAD PDI)</xs:documentation>
+						<xs:documentation>Equal to File_ID metadata (Applicable to Granule, Tile, Datastrip PDI)</xs:documentation>
 					</xs:annotation>
 					<xs:simpleType>
 						<xs:restriction base="xs:string">
 							<xs:pattern value="S2(A|B)_OPER_[\w{Lu}_]{10}_[\w{Lu}_]{4}_\d{8}T\d{6}_S\d{8}T\d{6}_D\d{2}_N\d{2}\.\d{2}"/>
 							<xs:pattern value="S2(A|B)_OPER_[\w{Lu}_]{10}_[\w{Lu}_]{4}_\d{8}T\d{6}_A\d{6}_T[\w{Lu}_]{5}_N\d{2}\.\d{2}"/>
 							<xs:pattern value="S2(A|B)_OPER_[\w{Lu}_]{10}_[\w{Lu}_]{4}_\d{8}T\d{6}_S\d{8}T\d{6}_N\d{2}\.\d{2}"/>
-							<xs:pattern value="S2(A|B)_OPER_AUX_SADATA_[\w{Lu}_]{4}_\d{8}T\d{6}_V\d{8}T\d{6}_\d{8}T\d{6}_A[\w{Lu}_]{6}_W[FP]_L[ND]"/>
 						</xs:restriction>
 					</xs:simpleType>
 				</xs:element>
-				<xs:element name="File_Version" minOccurs="0">
+				<xs:element name="File_Version">
 					<xs:annotation>
-						<xs:documentation>Processing Baseline (Applicable to Granule, Tile and DataStrip PDI)</xs:documentation>
+						<xs:documentation>Processing Baseline (Applicable to Granule, Tile and Datastrip PDI)</xs:documentation>
 					</xs:annotation>
 					<xs:simpleType>
 						<xs:restriction base="xs:string">
@@ -60,7 +58,7 @@
 				</xs:element>
 				<xs:element name="System">
 					<xs:annotation>
-						<xs:documentation>System where the PDI is generated by DPC or MCC  (Applicable to Granule, Tile, DataStrip and SAD PDI)</xs:documentation>
+						<xs:documentation>System where the PDI is generated by DPC or MCC  (Applicable to Granule, Tile, Datastrip PDI)</xs:documentation>
 					</xs:annotation>
 					<xs:simpleType>
 						<xs:restriction base="xs:string">
@@ -71,7 +69,7 @@
 				</xs:element>
 				<xs:element name="Source">
 					<xs:annotation>
-						<xs:documentation>PDI generator processor name (Applicable to Granule, Tile, DataStrip and SAD PDI) </xs:documentation>
+						<xs:documentation>PDI generator processor name (Applicable to Granule, Tile, Datastrip PDI) </xs:documentation>
 					</xs:annotation>
 					<xs:simpleType>
 						<xs:restriction base="xs:string">
@@ -81,7 +79,7 @@
 				</xs:element>
 				<xs:element name="Source_Sw_Version">
 					<xs:annotation>
-						<xs:documentation>Version of the core component ie version of  DPC  (Applicable to Granule, Tile, DataStrip and SAD PDI)</xs:documentation>
+						<xs:documentation>Version of the core component ie version of  DPC  (Applicable to Granule, Tile, Datastrip PDI)</xs:documentation>
 					</xs:annotation>
 					<xs:simpleType>
 						<xs:restriction base="xs:string">
@@ -91,7 +89,7 @@
 				</xs:element>
 				<xs:element name="Generation_Time">
 					<xs:annotation>
-						<xs:documentation>PDI Generation Time  (Applicable to Granule, Tile, DataStrip and SAD PDI) Template: UTC=2013-01-01T,5:11:10</xs:documentation>
+						<xs:documentation>PDI Generation Time  (Applicable to Granule, Tile, Datastrip PDI) Template: UTC=2013-01-01T,5:11:10</xs:documentation>
 					</xs:annotation>
 					<xs:simpleType>
 						<xs:restriction base="xs:string">
@@ -101,7 +99,7 @@
 				</xs:element>
 				<xs:element name="Validity_Start">
 					<xs:annotation>
-						<xs:documentation>Sensing Start Time or Validity Start Time (Applicable to Granule, Tile, DataStrip and SAD PDI) Template: UTC=2013-01-01T,5:11:10</xs:documentation>
+						<xs:documentation>Sensing Start Time or Validity Start Time (Applicable to Granule, Tile, Datastrip PDI) Template: UTC=2013-01-01T,5:11:10</xs:documentation>
 					</xs:annotation>
 					<xs:simpleType>
 						<xs:restriction base="xs:string">
@@ -112,7 +110,7 @@
 				</xs:element>
 				<xs:element name="Validity_Stop">
 					<xs:annotation>
-						<xs:documentation>Sensing Start Time or Validity Stop Time  (Applicable to Granule, Tile, DataStrip and SAD PDI)      Template: UTC=2013-01-01T,5:11:10</xs:documentation>
+						<xs:documentation>Sensing Stop Time or Validity Stop Time  (Applicable to Granule, Tile, Datastrip PDI)      Template: UTC=2013-01-01T,5:11:10</xs:documentation>
 					</xs:annotation>
 					<xs:simpleType>
 						<xs:restriction base="xs:string">
@@ -123,7 +121,7 @@
 				</xs:element>
 				<xs:element name="Start_Orbit_Number">
 					<xs:annotation>
-						<xs:documentation>Start Absolute Orbit number (Applicable to Granule, Tile, DataStrip and SAD PDI)  </xs:documentation>
+						<xs:documentation>Start Absolute Orbit number (Applicable to Granule, Tile, Datastrip PDI)  </xs:documentation>
 					</xs:annotation>
 					<xs:simpleType>
 						<xs:restriction base="xs:string">
@@ -133,7 +131,7 @@
 				</xs:element>
 				<xs:element name="Stop_Orbit_Number">
 					<xs:annotation>
-						<xs:documentation>Stop Absolute Orbit number will be the same of Start Absolute Orbit number (Applicable to Granule, Tile, DataStrip and SAD PDI)  </xs:documentation>
+						<xs:documentation>Stop Absolute Orbit number will be the same of Start Absolute Orbit number (Applicable to Granule, Tile, Datastrip PDI)  </xs:documentation>
 					</xs:annotation>
 					<xs:simpleType>
 						<xs:restriction base="xs:string">
@@ -141,9 +139,9 @@
 						</xs:restriction>
 					</xs:simpleType>
 				</xs:element>
-				<xs:element name="Geographic_Localization" minOccurs="0">
+				<xs:element name="Geographic_Localization">
 					<xs:annotation>
-						<xs:documentation>Granule/Tile/DataStrip footprint (Applicable to Granule, Tile and DataStrip PDI) </xs:documentation>
+						<xs:documentation>Granule/Tile/Datastrip footprint (Applicable to Granule, Tile and Datastrip PDI) </xs:documentation>
 					</xs:annotation>
 					<xs:complexType>
 						<xs:sequence>
@@ -191,7 +189,7 @@
 				</xs:element>
 				<xs:element name="Quality_Info">
 					<xs:annotation>
-						<xs:documentation>Percentage for PDI Quality Indicator (Applicable to Granule, Tile, DataStrip and SAD PDI) </xs:documentation>
+						<xs:documentation>Percentage for PDI Quality Indicator (Applicable to Granule, Tile, Datastrip PDI) </xs:documentation>
 					</xs:annotation>
 					<xs:simpleType>
 						<xs:restriction base="xs:float">
@@ -202,12 +200,12 @@
 				</xs:element>
 				<xs:element name="Data_Size" type="xs:string">
 					<xs:annotation>
-						<xs:documentation>PDI Size defined in Mb (Applicable to Granule, Tile, DataStrip and SAD PDI)</xs:documentation>
+						<xs:documentation>PDI Size defined in Mb (Applicable to Granule, Tile, Datastrip PDI)</xs:documentation>
 					</xs:annotation>
 				</xs:element>
 				<xs:element name="File_Type">
 					<xs:annotation>
-						<xs:documentation>PDI File Type (Applicable to Granule, Tile, DataStrip and SAD PDI)</xs:documentation>
+						<xs:documentation>PDI File Type (Applicable to Granule, Tile, Datastrip PDI)</xs:documentation>
 					</xs:annotation>
 					<xs:simpleType>
 						<xs:restriction base="xs:string">
@@ -226,9 +224,9 @@
 						</xs:restriction>
 					</xs:simpleType>
 				</xs:element>
-				<xs:element name="File_Class" minOccurs="0">
+				<xs:element name="File_Class">
 					<xs:annotation>
-						<xs:documentation>Timeliness (Applicable to Granule, Tile and DataStrip PDI)</xs:documentation>
+						<xs:documentation>Timeliness (Applicable to Granule, Tile and Datastrip PDI)</xs:documentation>
 					</xs:annotation>
 					<xs:simpleType>
 						<xs:restriction base="xs:string">
@@ -244,15 +242,15 @@
 				</xs:element>
 				<xs:element name="Sensor_Code" fixed="MSI">
 					<xs:annotation>
-						<xs:documentation>MSI fixed string (Applicable to Granule, Tile, DataStrip and SAD PDI)</xs:documentation>
+						<xs:documentation>MSI fixed string (Applicable to Granule, Tile, Datastrip PDI)</xs:documentation>
 					</xs:annotation>
 					<xs:simpleType>
 						<xs:restriction base="xs:string"/>
 					</xs:simpleType>
 				</xs:element>
-				<xs:element name="Sensor_Mode" minOccurs="0">
+				<xs:element name="Sensor_Mode">
 					<xs:annotation>
-						<xs:documentation>MSI Image mode (Applicable to Granule, Tile and DataStrip PDI)</xs:documentation>
+						<xs:documentation>MSI Image mode (Applicable to Granule, Tile and Datastrip PDI)</xs:documentation>
 					</xs:annotation>
 					<xs:simpleType>
 						<xs:restriction base="xs:string">
@@ -269,7 +267,7 @@
 				</xs:element>
 				<xs:element name="Acquisition_Station">
 					<xs:annotation>
-						<xs:documentation>Acquisition Station Code  (Applicable to Granule, Tile, DataStrip and SAD PDI)</xs:documentation>
+						<xs:documentation>Acquisition Station Code  (Applicable to Granule, Tile, Datastrip PDI)</xs:documentation>
 					</xs:annotation>
 					<xs:simpleType>
 						<xs:restriction base="center:A_S2_ACQUISITION_CENTER"/>
@@ -277,7 +275,7 @@
 				</xs:element>
 				<xs:element name="Processing_Station">
 					<xs:annotation>
-						<xs:documentation>Processing Station Code, equal to System metadata  (Applicable to Granule, Tile, DataStrip and SAD PDI)</xs:documentation>
+						<xs:documentation>Processing Station Code, equal to System metadata  (Applicable to Granule, Tile, Datastrip PDI)</xs:documentation>
 					</xs:annotation>
 					<xs:simpleType>
 						<xs:restriction base="center:A_S2_PROCESSING_CENTRE"/>
@@ -295,9 +293,9 @@
 						</xs:restriction>
 					</xs:simpleType>
 				</xs:element>
-				<xs:element name="Ascending_Flag" minOccurs="0">
+				<xs:element name="Ascending_Flag">
 					<xs:annotation>
-						<xs:documentation>True if acquisition has been done during the ascending phase of the orbit. Field not applicable in case of SAD data</xs:documentation>
+						<xs:documentation>True if acquisition has been done during the ascending phase of the orbit (Applicable to Granule, Tile, Datastrip PDI)</xs:documentation>
 					</xs:annotation>
 					<xs:simpleType>
 						<xs:restriction base="xs:string">
@@ -306,9 +304,9 @@
 						</xs:restriction>
 					</xs:simpleType>
 				</xs:element>
-				<xs:element name="CloudPercentage" minOccurs="0">
+				<xs:element name="CloudPercentage">
 					<xs:annotation>
-						<xs:documentation>Cloud coverage percentage. Empty string in case of SAD </xs:documentation>
+						<xs:documentation>Cloud coverage percentage (Applicable to Granule, Tile, Datastrip PDI)</xs:documentation>
 					</xs:annotation>
 					<xs:simpleType>
 						<xs:restriction base="xs:float">
