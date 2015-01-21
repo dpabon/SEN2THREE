@@ -26,7 +26,8 @@ class L3_XmlParser(Borg):
             tileScheme3 = cs.Tile_Scheme_3.text            
             dsScheme1c = cs.DS_Scheme_1C.text
             dsScheme2a = cs.DS_Scheme_2A.text
-            dsScheme3 = cs.DS_Scheme_3.text            
+            dsScheme3 = cs.DS_Scheme_3.text
+            gippScheme = cs.GIPP_Scheme.text       
         except:
             config.logger.fatal('Error in parsing configuration file.')
             config.exitError();
@@ -58,10 +59,9 @@ class L3_XmlParser(Borg):
         elif(product == 'T03'):
             self._xmlFn = config.L3_TILE_MTD_XML
             self._scheme = tileScheme3
-            
         elif(product == 'GIPP'):
             self._xmlFn = config.configFn
-            self._scheme = None
+            self._scheme = gippScheme
         else:
             config.logger.fatal('wrong identifier for xml structure: ' + product)
             config.exitError()
@@ -166,7 +166,7 @@ class L3_XmlParser(Borg):
         outfile.write('<?xml version="1.0"  encoding="UTF-8"?>\n')
         objectify.deannotate(self._root, xsi_nil=True, cleanup_namespaces=True)
         outstr = etree.tostring(self._root, pretty_print=True)
-        outstr = outstr.replace('-2A', '-3')
+        outstr = outstr.replace('Level-2A', 'Level-3')
         outstr = outstr.replace('L2A_Product_Info>', 'L3_Product_Info>')
         outstr = outstr.replace('L2A_Product_Organisation>', 'L3_Product_Organisation>')
         outstr = outstr.replace('L2A_Product_Image_Characteristics>', 'L3_Product_Image_Characteristics>')

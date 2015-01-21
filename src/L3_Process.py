@@ -55,52 +55,9 @@ class L3_Process(object):
     config = property(get_config, set_config, del_config, "config's docstring")
     tables = property(get_tables, set_tables, del_tables, "tables's docstring")
 
-    def selectAndProcess(self, tile):
-        if(self.config.resolution == 10):
-            self.config.logger.info('selected resolution is 10m')
-            if(self._processed20 == False):
-                self.config.resolution = 20
-                stdoutWrite('20m resolution must be processed first ...\n')
-                self.config.tracer.info('20m resolution must be processed first')
-                self.config.logger.info('20m resolution must be processed first')
-                self.selectAndProcess(tile)
 
-            self.config.resolution = 10
-            self.config.readPreferences()
-            self.tables = L3_Tables(self.config, tile)
-            self._processed10 = self.process()
-            if(self._processed10 == False):
-                return False
-
-        elif(self.config.resolution == 20):
-            self.config.logger.info('selected resolution is 20m')
-            if(self._processed60 == False):
-                self.config.resolution = 60
-                stdoutWrite('60m resolution must be processed first ...\n')
-                self.config.tracer.info('60m resolution must be processed first')
-                self.config.logger.info('60m resolution must be processed first')
-                self.selectAndProcess(tile)
-
-            self.config.resolution = 20
-            self.config.readPreferences()
-            self.tables = L3_Tables(self.config, tile)
-            self._processed20 = self.process()
-            if(self._processed20 == False):
-                return False
-
-        elif(self.config.resolution == 60):
-            self.config.logger.info('selected resolution is 60m')
-            self.config.readPreferences()
-            self.tables = L3_Tables(self.config, tile)
-            #self.config.readTileMetadata()
-            self._processed60 = self.process()
-            if(self._processed60 == False):
-                return False
-        else:
-            self.config.logger.debug('wrong resolution for processing configured: ', str(self.config.resolution))
-            return False
-
-    def process(self):
+    def process(self, tile):
+        self.tables = L3_Tables(self.config, tile)
         astr = 'L3_Process: processing with resolution ' + str(self.config.resolution) + ' m'
         self.config.timestamp(astr)
         self.config.timestamp('L3_Process: start of Pre Processing')
@@ -137,8 +94,7 @@ class L3_Process(object):
         xp.export()
         xp = L3_XmlParser(self.config, 'DS2A')
         xp.validate()
-        xp.export()      
-        
+        xp.export()
         return self.tables.importTable()
 
     def postprocess(self):
@@ -148,13 +104,6 @@ class L3_Process(object):
             self.config.postprocess()
         return res
 
-
-    def resetProcessingStatus(self):
-        self._processed60 = False
-        self._processed20 = False
-        self._processed10 = False
-        return
-
 def main(args, config):
     
     if os.path.exists(args.directory) == False:
@@ -162,8 +111,6 @@ def main(args, config):
         return False
 
     processor = L3_Process(args.directory)
-    HelloWorld = config.processorName +', '+ config.processorVersion +', created: '+ config.processorDate
-    stdoutWrite('\n%s started ...\n' % HelloWorld)
     tStart = time()
     S2A_mask = 'S2A_*'
 
@@ -172,21 +119,12 @@ def main(args, config):
     for tile in tiles:
         if(fnmatch.fnmatch(tile, S2A_mask) == False):
             continue
-
-        processor.resetProcessingStatus()
-        config.initLogger()
-        config.logger.info(HelloWorld)
-        config.calcEarthSunDistance2(tile)
         if args.resolution == None:
             resolution = 60.0
         else:
             resolution = args.resolution
-
-        config.resolution = resolution
-        config.setTimeEstimation(resolution)
-        config.logger.debug('Module L3_Process initialized')
-
-        result = processor.selectAndProcess(tile)
+        config.initSelf(resolution, tile)
+        result = processor.process(tile)
         if(result == False):
             stderrWrite('Application terminated with errors, see log file and traces.\n')
             return False

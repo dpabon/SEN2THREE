@@ -16,6 +16,7 @@ from distutils.dir_util import copy_tree, mkpath
 from distutils.file_util import copy_file
 from L3_Config import L3_Config
 from L3_Library import showImage
+from lxml import etree, objectify
 from L3_XmlParser import L3_XmlParser
 from L3_Borg import Borg
 from PIL import *
@@ -189,10 +190,20 @@ class L3_Tables(Borg):
 
         #update tile and datastrip id in metadata file.
         tileId = self.config.L3_TILE_ID
-        dataStrip = L3_XmlParser(config, 'DS')
+        dataStrip = L3_XmlParser(config, 'DS03')
         if(self._resolution == 60):
-            dataStrip.root.Image_Data_Info.Tiles_Information.Tile_List.add_Tile(tileId)
-            dataStrip.export()
+            copy_file(L2A_TILE_MTD_XML, L3_TILE_MTD_XML)
+            xp = L3_XmlParser(self.config, 'T03')
+            if(xp.convert() == False):
+                self.logger.fatal('error in converting tile metadata to level 3')
+                self.exitError()
+            
+            #update tile id in ds metadata file.
+            xp = L3_XmlParser(self.config, 'DS03')
+            ti = xp.getTree('Image_Data_Info', 'Tiles_Information')
+            Tile = objectify.Element('Tile', tileId = self.config.L3_TILE_ID)
+            ti.Tile_List.append(Tile)
+            xp.export()
 
         L2A_ImgDataDir = L2A_TILE_ID + IMG_DATA
         self._L3_ImgDataDir = L3_TILE_ID + IMG_DATA
@@ -218,7 +229,7 @@ class L3_Tables(Borg):
         if(os.path.exists(self._L3_QualityDataDir) == False):
             mkpath(self._L3_QualityDataDir)
 
-        if(self.config.traceLevel == 'DEBUG'):
+        if(self.config.loglevel == 'DEBUG'):
             self._testdir = L3_TILE_ID + '/TESTS_' + str(self._resolution) + '/'
             if(os.path.exists(self._testdir) == False):
                 mkpath(self._testdir)
