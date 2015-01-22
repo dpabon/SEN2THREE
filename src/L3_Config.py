@@ -808,9 +808,8 @@ class L3_Config(Borg):
         self._logger.debug('Module L3_Process initialized')
         return True
 
-    def createL3_UserProduct(self):
+    def createL3_UserProduct(self, L2A_UP_DIR):
         L2A_UP_MASK = '*2A_*'
-        L2A_UP_DIR = self.workDir
         if os.path.exists(L2A_UP_DIR) == False:
             stderrWrite('directory "' + L2A_UP_DIR + '" does not exist.')
             self.exitError()
@@ -984,7 +983,52 @@ class L3_Config(Borg):
         xp = L3_XmlParser(self, 'DS03')
         ti = xp.getTree('Image_Data_Info', 'Tiles_Information')
         del ti.Tile_List.Tile[:]
-        xp.export()  
+        xp.export()
+        
+        return True
+    
+    def importL2A_UserProduct(self, L2A_UP_DIR):
+        L2A_UP_MASK = '*2A_*'
+        if os.path.exists(L2A_UP_DIR) == False:
+            stderrWrite('directory "' + L2A_UP_DIR + '" does not exist.')
+            self.exitError()
+            return False
+
+        # detect the filename for the datastrip metadata:
+        L2A_DS_DIR = L2A_UP_DIR + '/DATASTRIP/'
+        if os.path.exists(L2A_DS_DIR) == False:
+            stderrWrite('directory "%s" does not exist.\n' % L2A_DS_DIR)
+            self.exitError()
+            return False
+
+        L2A_DS_MASK = '*_L2A_*'
+        dirlist = sorted(os.listdir(L2A_DS_DIR))
+        found = False
+        
+        for dirname in dirlist:
+            if(fnmatch.fnmatch(dirname, L2A_DS_MASK) == True):
+                found = True
+                break
+        
+        if found == False:
+            stderrWrite('No metadata in datastrip\n.')
+            self.exitError()
+
+        L2A_DS_DIR += dirname
+        L2A_DS_MTD_XML = (dirname[:-7]+'.xml').replace('_MSI_', '_MTD_')
+        self.L2A_DS_MTD_XML = L2A_DS_DIR + '/' + L2A_DS_MTD_XML
+
+        dirname, basename = os.path.split(L2A_UP_DIR)
+        if(fnmatch.fnmatch(basename, L2A_UP_MASK) == False):
+            stderrWrite(basename + ': identifier "*2A_*" is missing')
+            self.exitError()
+            return False
+
+        GRANULE = L2A_UP_DIR + '/GRANULE'
+        if os.path.exists(GRANULE) == False:
+            stderrWrite('directory "' + GRANULE + '" does not exist.')
+            self.exitError()
+            return False       
 
         return sorted(os.listdir(L2A_UP_DIR + GRANULE))
 

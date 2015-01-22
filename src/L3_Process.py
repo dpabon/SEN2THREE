@@ -55,6 +55,15 @@ class L3_Process(object):
     config = property(get_config, set_config, del_config, "config's docstring")
     tables = property(get_tables, set_tables, del_tables, "tables's docstring")
 
+    def initTarget(self, l3_targetProduct):
+        self.tables = L3_Tables(self.config, l3_targetProduct)        
+        self.tables.initDatabase()
+        
+        if self.tables.importBandList('L3') == False:
+            stderrWrite('L2A User Products, generation times out of range\n.')
+            config.exitError()                              
+                
+        return True
 
     def process(self, tile):
         self.tables = L3_Tables(self.config, tile)
@@ -95,7 +104,8 @@ class L3_Process(object):
         xp = L3_XmlParser(self.config, 'DS2A')
         xp.validate()
         xp.export()
-        return self.tables.importTable()
+        self.tables.initDatabase()
+        return self.tables.importBandList('L3')
 
     def postprocess(self):
         self.config.logger.info('Post-processing with resolution %d m', self.config.resolution)
@@ -110,27 +120,41 @@ def main(args, config):
         stderrWrite('directory "%s" does not exist\n.' % args.directory)
         return False
 
-    processor = L3_Process(args.directory)
-    tStart = time()
+    workDir = args.directory
+    processor = L3_Process(workDir)
+    l3_targetProductExists = False
     S2A_mask = 'S2A_*'
+    tStart = time()
+    for l2A_userProduct in workDir:
+        # next statement creates L3 product Structure:
+        if l3_targetProductExists == False:
+            l3_targetProduct = config.createL3_TargetProduct(l2A_userProduct)
+            if l3_targetProduct == False:
+                stderrWrite('L2A User Products, generation times out of range\n.')
+                config.exitError()
 
-    # next statement creates L3 product Structure:
-    tiles = config.createL3_UserProduct()
-    for tile in tiles:
-        if(fnmatch.fnmatch(tile, S2A_mask) == False):
-            continue
-        if args.resolution == None:
-            resolution = 60.0
+            l3_targetProductExists = processor.initTarget(l3_targetProduct)
+            if l3_targetProductExists == False:
+                stderrWrite('Error in creation of L3 target product\n.')
+                config.exitError()
+            # else l3_targetProductExists == True
         else:
-            resolution = args.resolution
-        config.initSelf(resolution, tile)
-        result = processor.process(tile)
-        if(result == False):
-            stderrWrite('Application terminated with errors, see log file and traces.\n')
-            return False
+            tiles = config.importL2A_UserProduct(l2A_userProduct)
+            for tile in tiles:
+                if(fnmatch.fnmatch(tile, S2A_mask) == False):
+                    continue
+                if args.resolution == None:
+                    resolution = 60.0
+                else:
+                    resolution = args.resolution
+                config.initSelf(resolution, tile)
+                result = processor.process(tile)
+                if(result == False):
+                    stderrWrite('Application terminated with errors, see log file and traces.\n')
+                    return False
 
-        tMeasure = time() - tStart
-        config.writeTimeEstimation(resolution, tMeasure)
+                tMeasure = time() - tStart
+                config.writeTimeEstimation(resolution, tMeasure)
     
     stdoutWrite('\nApplication terminated successfully.\n')
     return True
