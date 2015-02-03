@@ -33,37 +33,37 @@ class L3_XmlParser(Borg):
             config.exitError();
 
         if(product == 'UP1C'):
-            self._xmlFn = config.L1C_UP_MTD_XML
+            self._xmlFn = config.product.L1C_UP_MTD_XML
             self._scheme = upScheme1c
         elif(product == 'UP2A'):
-            self._xmlFn = config.L2A_UP_MTD_XML
+            self._xmlFn = config.product.L2A_UP_MTD_XML
             self._scheme = upScheme2a
         elif(product == 'UP03'):
-            self._xmlFn = config.L3_UP_MTD_XML
+            self._xmlFn = config.product.L3_TARGET_MTD_XML
             self._scheme = upScheme3            
         elif(product == 'DS1C'):
-            self._xmlFn = config.L1C_DS_MTD_XML
+            self._xmlFn = config.product.L1C_DS_MTD_XML
             self._scheme = dsScheme1c
         elif(product == 'DS2A'):
-            self._xmlFn = config.L2A_DS_MTD_XML
+            self._xmlFn = config.product.L2A_DS_MTD_XML
             self._scheme = dsScheme2a
         elif(product == 'DS03'):
-            self._xmlFn = config.L3_DS_MTD_XML
+            self._xmlFn = config.product.L3_DS_MTD_XML
             self._scheme = dsScheme3            
         elif(product == 'T1C'):
-            self._xmlFn = config.L1C_TILE_MTD_XML
+            self._xmlFn = config.product.L1C_TILE_MTD_XML
             self._scheme = tileScheme1c
         elif(product == 'T2A'):
-            self._xmlFn = config.L2A_TILE_MTD_XML
+            self._xmlFn = config.product.L2A_TILE_MTD_XML
             self._scheme = tileScheme2a
         elif(product == 'T03'):
-            self._xmlFn = config.L3_TILE_MTD_XML
+            self._xmlFn = config.product.L3_TILE_MTD_XML
             self._scheme = tileScheme3
         elif(product == 'GIPP'):
             self._xmlFn = config.configFn
             self._scheme = gippScheme
         else:
-            config.logger.fatal('wrong identifier for xml structure: ' + product)
+            config.logger.fatal('wrong product identifier for xml structure: ' + product)
             config.exitError()
         
         self.setRoot();

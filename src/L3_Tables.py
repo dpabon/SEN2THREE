@@ -115,11 +115,6 @@ class gdalThreadWrite(threading.Thread):
 class L3_Tables(Borg):
     def __init__(self, config, L2A_TILE_ID):
         self.config = config
-        L2A_UP_MASK = '*2A_*'
-        if(fnmatch.fnmatch(config.workDir, L2A_UP_MASK) == False):
-            self.config.logger.fatal('identifier "*2A_*" is missing for the Level-2A_User_Product')
-            self.config.exitError()
-            return False
 
         AUX_DATA = '/AUX_DATA'
         IMG_DATA = '/IMG_DATA'
@@ -147,20 +142,17 @@ class L3_Tables(Borg):
             bandDir = '/R60m'
 
         BANDS = bandDir
-        Creation_Date = self.config.creationDate
         self._rows = None
         self._cols = None
         self._granuleType = None
         self._threads = []
         
         # generate new Tile ID:
-        L3_TILE_ID = L2A_TILE_ID[:4] + 'USER' + L2A_TILE_ID[8:]
-        L3_TILE_ID = L3_TILE_ID[:25] + Creation_Date + L3_TILE_ID[40:]
-        L3_TILE_ID = L3_TILE_ID.replace('L2A_', 'L03_')
-        self.config.L3_TILE_ID = L3_TILE_ID
+        L3_TILE_ID = L2A_TILE_ID.replace('L2A_', 'L03_')
+        self.config.product.L3_TILE_ID = L3_TILE_ID
         L3_TILE_ID_SHORT = '/' + L3_TILE_ID[:55]
-        L2A_TILE_ID = config.workDir + GRANULE + L2A_TILE_ID
-        L3_TILE_ID = config.L3_UP_DIR + GRANULE + L3_TILE_ID
+        L2A_TILE_ID = config.product.L2A_UP_ID + GRANULE + L2A_TILE_ID
+        L3_TILE_ID = config.product.L3_TARGET_DIR + GRANULE + L3_TILE_ID
 
         if(os.path.exists(L3_TILE_ID) == False):
             os.mkdir(L3_TILE_ID)
@@ -170,6 +162,7 @@ class L3_Tables(Borg):
 
         filelist = sorted(os.listdir(L2A_TILE_ID))
         found = False
+        L2A_UP_MASK = '*_L2A_*'
         for filename in filelist:
             if(fnmatch.fnmatch(filename, L2A_UP_MASK) == True):
                 found = True
@@ -180,17 +173,13 @@ class L3_Tables(Borg):
 
         L2A_TILE_MTD_XML = L2A_TILE_ID + '/' + filename
         L3_TILE_MTD_XML = filename
-        L3_TILE_MTD_XML = L3_TILE_MTD_XML[:4] + 'USER' + L3_TILE_MTD_XML[8:]
-        L3_TILE_MTD_XML = L3_TILE_MTD_XML[:25] + Creation_Date + L3_TILE_MTD_XML[40:]
         L3_TILE_MTD_XML = L3_TILE_MTD_XML.replace('L2A_', 'L03_')
         L3_TILE_MTD_XML = L3_TILE_ID + '/' + L3_TILE_MTD_XML
         copy_file(L2A_TILE_MTD_XML, L3_TILE_MTD_XML)
-        config.L2A_TILE_MTD_XML = L2A_TILE_MTD_XML
-        config.L3_TILE_MTD_XML = L3_TILE_MTD_XML
+        config.product.L2A_TILE_MTD_XML = L2A_TILE_MTD_XML
+        config.product.L3_TILE_MTD_XML = L3_TILE_MTD_XML
 
         #update tile and datastrip id in metadata file.
-        tileId = self.config.L3_TILE_ID
-        dataStrip = L3_XmlParser(config, 'DS03')
         if(self._resolution == 60):
             copy_file(L2A_TILE_MTD_XML, L3_TILE_MTD_XML)
             xp = L3_XmlParser(self.config, 'T03')
@@ -201,7 +190,7 @@ class L3_Tables(Borg):
             #update tile id in ds metadata file.
             xp = L3_XmlParser(self.config, 'DS03')
             ti = xp.getTree('Image_Data_Info', 'Tiles_Information')
-            Tile = objectify.Element('Tile', tileId = self.config.L3_TILE_ID)
+            Tile = objectify.Element('Tile', tileId = self.config.product.L3_TILE_ID)
             ti.Tile_List.append(Tile)
             xp.export()
 
@@ -221,7 +210,7 @@ class L3_Tables(Borg):
         if(os.path.exists(self._L3_AuxDataDir) == False):
             mkpath(self._L3_AuxDataDir)
             # copy configuration to AUX dir:
-            dummy, basename = os.path.split(config.L3_TILE_MTD_XML)
+            dummy, basename = os.path.split(config.product.L3_TILE_MTD_XML)
             fnAux = basename.replace('_MTD_', '_GIP_')
             target = self._L3_AuxDataDir + '/' + fnAux
             copy_file(config.configFn, target)
@@ -676,6 +665,15 @@ class L3_Tables(Borg):
             yarr.reverse()
         return ext
     
+    def init(self):
+        self._config.logger.info('Checking existence of L3 target database')
+        try:
+            openFile(self._imageDatabase)
+        except:
+            self.initDatabase()
+            self.importBandList('L03')
+        return
+    
     def initDatabase(self):
         # initialize H5 database for usage:
         try:
@@ -714,14 +712,15 @@ class L3_Tables(Borg):
         indataset = gdal.Open(filename, GA_ReadOnly)
         if(self._rows == None):
         # get the target resolution and metadata for the resampled bands below:
-            self._rows = indataset.RasterXSize
-            self._cols = indataset.RasterYSize
-            xmlParser = L3_XmlParser(self.config, 'TILE')
-            ulx = xmlParser.root.Geometric_Info.Tile_Geocoding.Geoposition[0].ULX
-            uly = xmlParser.root.Geometric_Info.Tile_Geocoding.Geoposition[0].ULY
+            rasterX = indataset.RasterXSize
+            rasterY = indataset.RasterYSize
+            xp = L3_XmlParser(self.config, 'T03')           
+            tg = xp.getTree('Geometric_Info', 'Tile_Geocoding')
+            ulx = tg.Geoposition[0].ULX
+            uly = tg.Geoposition[0].ULY
             res = float32(self.config.resolution)
             self._geoTransformation = [ulx,res,0.0,uly,0.0,-res]
-            extent = self.GetExtent(self._geoTransformation, self._rows, self._cols)
+            extent = self.GetExtent(self._geoTransformation, rasterX, rasterY)
             self._cornerCoordinates = asarray(extent)
             src_srs = osr.SpatialReference()
             src_srs.ImportFromWkt(indataset.GetProjection())
@@ -746,10 +745,10 @@ class L3_Tables(Borg):
             elif self._productLevel == 'L2A':
                 locator = h5file.root.L2A
             elif self._productLevel == 'L03':
-                locator = h5file.root.L2A
+                locator = h5file.root.L03
                 
             inband = indataset.GetRasterBand(1)
-            dtOut = self.setDataType(inband.DataType)
+            dtOut = self.mapDataType(inband.DataType)
             filters = Filters(complib="zlib", complevel=1)
             node = h5file.createEArray(locator, bandName, dtOut, (0,inband.XSize), bandName, filters=filters)
     
@@ -809,8 +808,8 @@ class L3_Tables(Borg):
 
         #prepare the xml export
         '''
-        granuleType.set_granuleIdentifier(self.config.L3_TILE_ID)
-        granuleType.set_datastripIdentifier(self.config.L3_DS_ID)
+        granuleType.set_granuleIdentifier(self.config.product.L3_TILE_ID)
+        granuleType.set_datastripIdentifier(self.config.product.L3_DS_ID)
         granuleType.set_imageFormat("JPEG2000")
         self.granuleType = granuleType
         '''
@@ -821,14 +820,14 @@ class L3_Tables(Borg):
         '''
         granuleList = L3_UserProduct.Granule_ListType()
         granuleList.add_Granule(granuleType)
-        xmlParser = L3_XmlParser(self.config, 'UP')
+        xmlParser = L3_XmlParser(self.config, 'UP03')
         productOrganisation = xmlParser.root.General_Info.Product_Info.Product_Organisation
         productOrganisation.add_Granule_List(granuleList)
         xmlParser.export()
         # update on tile level
-        xmlParser = L3_XmlParser(self.config, 'TILE')
-        xmlParser.root.General_Info.TILE_ID.valueOf_ = self.config.L3_TILE_ID
-        xmlParser.root.General_Info.DATASTRIP_ID.valueOf_ =self.config.L3_DS_ID
+        xmlParser = L3_XmlParser(self.config, 'T03')
+        xmlParser.root.General_Info.TILE_ID.valueOf_ = self.config.product.L3_TILE_ID
+        xmlParser.root.General_Info.DATASTRIP_ID.valueOf_ =self.config.product.L3_DS_ID
         '''
         # clean up and post processing actions:
         if(self._resolution == 60):
@@ -842,10 +841,10 @@ class L3_Tables(Borg):
             qiiL3.L3_Pixel_Level_QI = qiList
         xmlParser.export()
         '''
-        globdir = self.config.L3_UP_DIR + '/GRANULE/' + self.config.L3_TILE_ID + '/*/*.jp2.aux.xml'
+        globdir = self.config.product.L3_UP_DIR + '/GRANULE/' + self.config.product.L3_TILE_ID + '/*/*.jp2.aux.xml'
         for filename in glob.glob(globdir):
             os.remove(filename)
-        globdir = self.config.L3_UP_DIR + '/GRANULE/' + self.config.L3_TILE_ID + '/*/*/*.jp2.aux.xml'
+        globdir = self.config.product.L3_UP_DIR + '/GRANULE/' + self.config.product.L3_TILE_ID + '/*/*/*.jp2.aux.xml'
         for filename in glob.glob(globdir):
             os.remove(filename)
         self.config.timestamp(productLevel + '_Tables: stop export')
@@ -892,7 +891,7 @@ class L3_Tables(Borg):
             if(h5file.__contains__('/' + productLevel + '/' + bandName)):
                 node = h5file.getNode('/' + productLevel, bandName)
                 node.remove
-            dtIn = self.setDataType(array.dtype)
+            dtIn = self.mapDataType(array.dtype)
             filters = Filters(complib="zlib", complevel=1)
             # create new group and append node:
             if productLevel == 'L1C':

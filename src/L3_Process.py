@@ -1,29 +1,24 @@
 #!/usr/bin/env python
 # -*- coding: iso-8859-15 -*-
 
-from numpy import *
+#from numpy import *
 from tables import *
-import sys
 import os
 import fnmatch
 from time import time
 
 from L3_Config import L3_Config
 from L3_Tables import L3_Tables
+from L3_Product import L3_Product
 from L3_XmlParser import L3_XmlParser
 from L3_UnitTests import L3_UnitTests
 from L3_STP import L3_STP
-from L3_Library import stdoutWrite, stderrWrite, showImage
-from lxml import etree, objectify
+from L3_Library import stdoutWrite, stderrWrite
 
 class L3_Process(object):
-    def __init__(self, workdir):
-        self._config = L3_Config(workdir)
-        self._tables = False
-        self._processed60 = False
-        self._processed20 = False
-        self._processed10 = False
-
+    def __init__(self, config, tables):
+        self._config = config
+        self._tables = tables
 
     def get_tables(self):
         return self._tables
@@ -55,18 +50,7 @@ class L3_Process(object):
     config = property(get_config, set_config, del_config, "config's docstring")
     tables = property(get_tables, set_tables, del_tables, "tables's docstring")
 
-    def initTarget(self, l3_targetProduct):
-        self.tables = L3_Tables(self.config, l3_targetProduct)        
-        self.tables.initDatabase()
-        
-        if self.tables.importBandList('L3') == False:
-            stderrWrite('L2A User Products, generation times out of range\n.')
-            config.exitError()                              
-                
-        return True
-
-    def process(self, tile):
-        self.tables = L3_Tables(self.config, tile)
+    def process(self):
         astr = 'L3_Process: processing with resolution ' + str(self.config.resolution) + ' m'
         self.config.timestamp(astr)
         self.config.timestamp('L3_Process: start of Pre Processing')
@@ -104,8 +88,7 @@ class L3_Process(object):
         xp = L3_XmlParser(self.config, 'DS2A')
         xp.validate()
         xp.export()
-        self.tables.initDatabase()
-        return self.tables.importBandList('L3')
+        self.tables.init()
 
     def postprocess(self):
         self.config.logger.info('Post-processing with resolution %d m', self.config.resolution)
@@ -118,43 +101,39 @@ def main(args, config):
     
     if os.path.exists(args.directory) == False:
         stderrWrite('directory "%s" does not exist\n.' % args.directory)
-        return False
+        config.exitError()
 
     workDir = args.directory
-    processor = L3_Process(workDir)
-    l3_targetProductExists = False
-    S2A_mask = 'S2A_*'
-    tStart = time()
-    for l2A_userProduct in workDir:
-        # next statement creates L3 product Structure:
-        if l3_targetProductExists == False:
-            l3_targetProduct = config.createL3_TargetProduct(l2A_userProduct)
-            if l3_targetProduct == False:
-                stderrWrite('L2A User Products, generation times out of range\n.')
-                config.exitError()
+    L2A_mask = '*L2A_*'
+    HelloWorld = config.processorName +', '+ config.processorVersion +', created: '+ config.processorDate
+    stdoutWrite('\n%s started ...\n' % HelloWorld)    
 
-            l3_targetProductExists = processor.initTarget(l3_targetProduct)
-            if l3_targetProductExists == False:
-                stderrWrite('Error in creation of L3 target product\n.')
-                config.exitError()
-            # else l3_targetProductExists == True
-        else:
-            tiles = config.importL2A_UserProduct(l2A_userProduct)
-            for tile in tiles:
-                if(fnmatch.fnmatch(tile, S2A_mask) == False):
-                    continue
-                if args.resolution == None:
-                    resolution = 60.0
-                else:
-                    resolution = args.resolution
-                config.initSelf(resolution, tile)
-                result = processor.process(tile)
-                if(result == False):
-                    stderrWrite('Application terminated with errors, see log file and traces.\n')
-                    return False
+    uplist = sorted(os.listdir(workDir))
+    for L2A_UP_DIR in uplist:
+        if(fnmatch.fnmatch(L2A_UP_DIR, L2A_mask) == False):     
+            continue
+        GRANULE = workDir + '/' + L2A_UP_DIR + '/GRANULE'
+        tilelist = sorted(os.listdir(GRANULE))
+        for tile in tilelist:
+            if(fnmatch.fnmatch(tile, L2A_mask) == False):
+                continue
+            if args.resolution == None:
+                resolution = 60.0
+            else:
+                resolution = args.resolution
+            tStart = time()
+            config = L3_Config(workDir)
+            config.init(resolution, tile)
+            tables = L3_Tables(config, tile)
+            tables.init()
+            processor = L3_Process(config, tables)
+            result = processor.process()
+            if(result == False):
+                stderrWrite('Application terminated with errors, see log file and traces.\n')
+                return False
 
-                tMeasure = time() - tStart
-                config.writeTimeEstimation(resolution, tMeasure)
+            tMeasure = time() - tStart
+            config.writeTimeEstimation(resolution, tMeasure)
     
     stdoutWrite('\nApplication terminated successfully.\n')
     return True

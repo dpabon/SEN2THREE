@@ -16,8 +16,8 @@
     <GIPP_Scheme>L3_GIPP.xsd</GIPP_Scheme>
   </Common_Section>
   <L3_Synthesis>
-    <Min_Time>2014-01-01T00:00:00Z</Min_Time>
-    <Max_Time>2014-12-12T23:59:59Z</Max_Time>
+    <Min_Time>2009-01-01T00:00:00Z</Min_Time>
+    <Max_Time>2009-12-31T23:59:59Z</Max_Time>
     <Priority>MOST_RECENT</Priority>
     <!-- MOST_RECENT, TEMP_HOMOGENEITY, RADIOMETRIC_QUALITY -->
     <Algorithm>ONE_PASS</Algorithm>
