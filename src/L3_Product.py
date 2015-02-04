@@ -355,6 +355,7 @@ class L3_Product(Borg):
             if fnmatch.fnmatch(L2A_UP_DIR, L2A_UP_MASK) == True:
                 if self.checkTimeRange(L2A_UP_DIR) == True:
                     self._L2A_UP_ID = self._config.workDir + '/' + L2A_UP_DIR
+                    self._config.logger.info('L3 target will be created.')
                     return self.createL3_TargetProduct()
                 
             
@@ -387,8 +388,10 @@ class L3_Product(Borg):
             self._config.exitError()
 
         L2A_DS_DIR += dirname
-        L2A_DS_MTD_XML = (dirname[:-7]+'.xml')
+        L2A_DS_MTD_XML = (dirname[:-7]+'.xml').replace('_MSI_', '_MTD_')
         self.L2A_DS_MTD_XML = L2A_DS_DIR + '/' + L2A_DS_MTD_XML
+        xp = L3_XmlParser(self._config, 'DS2A')
+        xp.validate()
 
         dirname, basename = os.path.split(L2A_UP_DIR)
         if(fnmatch.fnmatch(basename, L2A_UP_MASK) == False):
@@ -455,7 +458,9 @@ class L3_Product(Borg):
         fn_L3 = filename[:4] + 'USER' + filename[8:]
         fn_L3 = fn_L3.replace('L2A_', 'L03_')
         fn_L3 = L3_TARGET_DIR + '/' + fn_L3
-        self.L2A_UP_MTD_XML = fn_L2A        
+        self.L2A_UP_MTD_XML = fn_L2A
+        xp = L3_XmlParser(self._config, 'UP2A')
+        xp.validate()
         self.L3_TARGET_MTD_XML = fn_L3
 
         # copy L2A schemes from config_dir into rep_info:    
@@ -473,6 +478,7 @@ class L3_Product(Borg):
         xp = L3_XmlParser(self._config, 'UP03')
         if(xp.convert() == False):
             self.logger.fatal('error in converting user product metadata to level 3')
+            stderrWrite('Error in converting user product metadata to level 3')
             self._config.exitError()
         xp = L3_XmlParser(self._config, 'UP03')
         pi = xp.getTree('General_Info', 'L3_Product_Info')        
@@ -523,7 +529,6 @@ class L3_Product(Borg):
         LXX_DS_MTD_XML = filename
         L3_DS_MTD_XML = LXX_DS_MTD_XML[:4] + 'USER' + LXX_DS_MTD_XML[8:]
         L3_DS_MTD_XML = L3_DS_MTD_XML.replace('L2A_', 'L03_')
-
         oldfile = L3_DS_DIR + '/' + LXX_DS_MTD_XML
         newfile = L3_DS_DIR + '/' + L3_DS_MTD_XML
         self.L3_DS_MTD_XML = newfile
@@ -531,7 +536,8 @@ class L3_Product(Borg):
         os.rename(oldfile, newfile)
         xp = L3_XmlParser(self._config, 'DS03')
         if(xp.convert() == False):
-            self.logger.fatal('error in converting datastrip metadata to level 3')
+            stderrWrite('Error in converting datastrip metadata to level 3.')
+            self.logger.fatal('error in converting datastrip metadata to level 3.')
             self._config.exitError()
         xp = L3_XmlParser(self._config, 'DS03')
         ti = xp.getTree('Image_Data_Info', 'Tiles_Information')
@@ -544,13 +550,13 @@ class L3_Product(Borg):
         report = basename.replace('.xml', '_Report.xml')
         report = dirname + '/QI_DATA/' + report
 
-        if((os.path.isfile(self._fnLog)) == False):
-            self.logger.fatal('Missing file: ' + self._fnLog)
+        if((os.path.isfile(self._config.fnLog)) == False):
+            self.logger.fatal('Missing file: ' + self._config.fnLog)
             self._config.exitError()
 
-        f = open(self._fnLog, 'a')
+        f = open(self._config.fnLog, 'a')
         f.write('</Sen2Cor_Level-3_Report_File>')
         f.close()
-        copy_file(self._fnLog, report)
+        copy_file(self._config.fnLog, report)
 
         return

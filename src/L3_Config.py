@@ -657,6 +657,19 @@ class L3_Config(Borg):
     def del_product(self):
         del self._product
 
+
+    def get_fn_log(self):
+        return self._fnLog
+
+
+    def set_fn_log(self, value):
+        self._fnLog = value
+
+
+    def del_fn_log(self):
+        del self._fnLog
+
+    fnLog = property(get_fn_log, set_fn_log, del_fn_log, "fnLog's docstring")
     product = property(get_product, set_product, del_product, "product's docstring")
     minTime = property(get_min_time, set_min_time, del_min_time, "minTime's docstring")
     maxTime = property(get_max_time, set_max_time, del_max_time, "maxTime's docstring")

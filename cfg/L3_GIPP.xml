@@ -1,7 +1,7 @@
 <?xml version="1.0"  encoding="UTF-8"?>
 <Level-03_Ground_Image_Processing_Parameter xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="L3_GIPP.xsd">
   <Common_Section>
-    <Log_Level>INFO</Log_Level>
+    <Log_Level>DEBUG</Log_Level>
     <!-- NOTSET, DEBUG, INFO, WARNING, ERROR, CRITICAL -->
     <DN_Scale>4000</DN_Scale>
     <UP_Scheme_1C>S2_User_Product_Level-1C_Metadata.xsd</UP_Scheme_1C>

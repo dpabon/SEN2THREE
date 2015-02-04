@@ -9,8 +9,6 @@ from time import time
 
 from L3_Config import L3_Config
 from L3_Tables import L3_Tables
-from L3_Product import L3_Product
-from L3_XmlParser import L3_XmlParser
 from L3_UnitTests import L3_UnitTests
 from L3_STP import L3_STP
 from L3_Library import stdoutWrite, stderrWrite
@@ -77,24 +75,14 @@ class L3_Process(object):
 
     def preprocess(self):
         self.config.logger.info('Pre-processing with resolution %d m', self.config.resolution)
-  
-        # validate the meta data:
-        xp = L3_XmlParser(self.config, 'UP2A')
-        xp.validate()
-        xp.export()
-        xp = L3_XmlParser(self.config, 'T2A')
-        xp.validate()
-        xp.export()
-        xp = L3_XmlParser(self.config, 'DS2A')
-        xp.validate()
-        xp.export()
         self.tables.init()
+        return
 
     def postprocess(self):
         self.config.logger.info('Post-processing with resolution %d m', self.config.resolution)
-        res = self.tables.exportTable()
+        res = self.tables.exportBandList('L03')
         if(self.config.resolution == 60):
-            self.config.postprocess()
+            self.config.product.postprocess()
         return res
 
 def main(args, config):
