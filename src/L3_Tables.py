@@ -110,7 +110,7 @@ class gdalThreadWrite(threading.Thread):
         
 
 class L3_Tables(Borg):
-    def __init__(self, config, L2A_TILE_ID):
+    def __init__(self, config, L2A_UP_ID, L2A_TILE_ID):
         self.config = config
 
         AUX_DATA = '/AUX_DATA'
@@ -124,7 +124,7 @@ class L3_Tables(Borg):
             self._DEV0 = ' > NUL'
 
         # Resolution:
-        self._resolution = int(self.config.resolution)
+        self._resolution = int(config.resolution)
         if(self._resolution == 10):
             self._bandIndex = [1,2,3,7]
             self._nBands = 4
@@ -146,17 +146,18 @@ class L3_Tables(Borg):
         
         # generate new Tile ID:
         L3_TILE_ID = L2A_TILE_ID.replace('L2A_', 'L03_')
-        self.config.product.L3_TILE_ID = L3_TILE_ID
-        L2A_TILE_ID_SHORT = '/' + L2A_TILE_ID[:55]        
+        config.product.L3_TILE_ID = L3_TILE_ID
+        L2A_TILE_ID_SHORT = '/' + L2A_TILE_ID[:55]
+        config.product.L2A_TILE_ID = L2A_TILE_ID[:55]  
         L3_TILE_ID_SHORT = '/' + L3_TILE_ID[:55]
-        L2A_TILE_ID = config.product.L2A_UP_ID + GRANULE + L2A_TILE_ID
-        L3_TILE_ID = config.product.L3_TARGET_DIR + GRANULE + L3_TILE_ID
+        L2A_TILE_ID = config.workDir + '/' + L2A_UP_ID + GRANULE + L2A_TILE_ID
+        L3_TILE_ID = config.workDir + '/' + config.product.L3_TARGET_ID + GRANULE + L3_TILE_ID
 
         if(os.path.exists(L3_TILE_ID) == False):
             os.mkdir(L3_TILE_ID)
             os.mkdir(L3_TILE_ID + QI_DATA)
 
-        self.config.logger.info('new working directory is: ' + L3_TILE_ID)
+        config.logger.info('new working directory is: ' + L3_TILE_ID)
 
         filelist = sorted(os.listdir(L2A_TILE_ID))
         found = False
@@ -166,8 +167,8 @@ class L3_Tables(Borg):
                 found = True
                 break
         if found == False:
-            self.config.logger.fatal('No metadata in tile')
-            self.config.exitError()
+            config.logger.fatal('No metadata in tile')
+            config.exitError()
 
         L2A_TILE_MTD_XML = L2A_TILE_ID + '/' + filename
         L3_TILE_MTD_XML = filename
@@ -175,22 +176,22 @@ class L3_Tables(Borg):
         L3_TILE_MTD_XML = L3_TILE_ID + '/' + L3_TILE_MTD_XML
         copy_file(L2A_TILE_MTD_XML, L3_TILE_MTD_XML)
         config.product.L2A_TILE_MTD_XML = L2A_TILE_MTD_XML
-        xp = L3_XmlParser(self.config, 'T2A')
+        xp = L3_XmlParser(config, 'T2A')
         xp.validate()
         config.product.L3_TILE_MTD_XML = L3_TILE_MTD_XML
 
         #update tile and datastrip id in metadata file.
         if(self._resolution == 60):
             copy_file(L2A_TILE_MTD_XML, L3_TILE_MTD_XML)
-            xp = L3_XmlParser(self.config, 'T03')
+            xp = L3_XmlParser(config, 'T03')
             if(xp.convert() == False):
                 self.logger.fatal('error in converting tile metadata to level 3')
                 self.exitError()
             
             #update tile id in ds metadata file.
-            xp = L3_XmlParser(self.config, 'DS03')
+            xp = L3_XmlParser(config, 'DS03')
             ti = xp.getTree('Image_Data_Info', 'Tiles_Information')
-            Tile = objectify.Element('Tile', tileId = self.config.product.L3_TILE_ID)
+            Tile = objectify.Element('Tile', tileId = config.product.L3_TILE_ID)
             ti.Tile_List.append(Tile)
             xp.export()
 
@@ -218,7 +219,7 @@ class L3_Tables(Borg):
         if(os.path.exists(self._L3_QualityDataDir) == False):
             mkpath(self._L3_QualityDataDir)
 
-        if(self.config.loglevel == 'DEBUG'):
+        if(config.loglevel == 'DEBUG'):
             self._testdir = L3_TILE_ID + '/TESTS_' + str(self._resolution) + '/'
             if(os.path.exists(self._testdir) == False):
                 mkpath(self._testdir)
@@ -300,7 +301,7 @@ class L3_Tables(Borg):
         self._HCW = 28
         self._ELE = 29
 
-        self.config.logger.debug('Module L3_Tables initialized with resolution %d' % self._resolution)
+        config.logger.debug('Module L3_Tables initialized with resolution %d' % self._resolution)
 
         return
 

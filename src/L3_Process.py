@@ -1,9 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: iso-8859-15 -*-
+processorName = 'Sentinel-2 Level 3 Prototype Processor (SEN2THREE)'
+processorVersion = '0.0.1'
+processorDate = '2015.01.01'
 
 #from numpy import *
 from tables import *
-import os
+import sys, os
 import fnmatch
 from time import time
 
@@ -12,6 +15,7 @@ from L3_Tables import L3_Tables
 from L3_UnitTests import L3_UnitTests
 from L3_STP import L3_STP
 from L3_Library import stdoutWrite, stderrWrite
+
 
 class L3_Process(object):
     def __init__(self, config, tables):
@@ -85,25 +89,38 @@ class L3_Process(object):
             self.config.product.postprocess()
         return res
 
-def main(args, config):
+def main(args):
     
     if os.path.exists(args.directory) == False:
         stderrWrite('directory "%s" does not exist\n.' % args.directory)
-        config.exitError()
+        sys.exit(-1)
 
     workDir = args.directory
+    # read list of tiles already processed
+    processedTiles = ''
+    processedFn = workDir + '/' + 'processed'
+    try:
+        f = open(processedFn)
+        processedTiles = f.read()
+    except:
+        pass
+
     L2A_mask = '*L2A_*'
-    HelloWorld = config.processorName +', '+ config.processorVersion +', created: '+ config.processorDate
+    HelloWorld = processorName +', '+ processorVersion +', created: '+ processorDate
     stdoutWrite('\n%s started ...\n' % HelloWorld)    
 
     uplist = sorted(os.listdir(workDir))
-    for L2A_UP_DIR in uplist:
-        if(fnmatch.fnmatch(L2A_UP_DIR, L2A_mask) == False):     
+    for L2A_UP_ID in uplist:
+        if(fnmatch.fnmatch(L2A_UP_ID, L2A_mask) == False):     
             continue
-        GRANULE = workDir + '/' + L2A_UP_DIR + '/GRANULE'
+        GRANULE = workDir + '/' + L2A_UP_ID + '/GRANULE'
         tilelist = sorted(os.listdir(GRANULE))
         for tile in tilelist:
-            if(fnmatch.fnmatch(tile, L2A_mask) == False):
+            # process only L2A tiles:
+            if fnmatch.fnmatch(tile, L2A_mask) == False:
+                continue
+            # ignore already processed tiles:
+            if tile[:-7] in processedTiles:
                 continue
             if args.resolution == None:
                 resolution = 60.0
@@ -112,7 +129,7 @@ def main(args, config):
             tStart = time()
             config = L3_Config(workDir)
             config.init(resolution, tile)
-            tables = L3_Tables(config, tile)
+            tables = L3_Tables(config, L2A_UP_ID, tile)
             tables.init()
             processor = L3_Process(config, tables)
             result = processor.process()
@@ -130,8 +147,7 @@ def main(args, config):
 if __name__ == "__main__":
     # Someone is launching this directly
     import argparse
-    config = L3_Config()
-    descr = config.processorName +', '+ config.processorVersion +', created: '+ config.processorDate
+    descr = processorName +', '+ processorVersion +', created: '+ processorDate
     parser = argparse.ArgumentParser(description=descr)
     parser.add_argument('directory', help='Directory where the Level-2A input files are located')
     parser.add_argument('--resolution', type=int, choices=[10, 20, 60], help='Target resolution, must be 10, 20 or 60 [m]')
@@ -144,9 +160,9 @@ if __name__ == "__main__":
         import pstats
         logdir = os.environ['S2L3APPHOME'] + '/log'
         profile = logdir + '/profile'
-        cProfile.run('main(args, config)', profile)
+        cProfile.run('main(args)', profile)
         p = pstats.Stats(profile)
         p.strip_dirs().sort_stats('cumulative').print_stats(.25, 'L3_')
     else:
-        main(args, config)
+        main(args)
         

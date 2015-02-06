@@ -15,10 +15,6 @@ from L3_XmlParser import L3_XmlParser
 class L3_Config(Borg):
     _shared = {}
     def __init__(self, workDir = None):
-        self._processorName = 'Sentinel-2 Level 3 Prototype Processor (SEN2THREE)'
-        self._processorVersion = '0.0.1'
-        self._processorDate = '2015.01.01'
-
         if(workDir):
             self._home = os.environ['S2L3APPHOME'] + '/'
             self._workDir = workDir
@@ -79,6 +75,7 @@ class L3_Config(Borg):
             self._maxSolarZenithAngle = None
             self._maxViewingAngle = None
             self._classifier = None
+            self._firstInit = True
     
     def set_logLevel(self, level):
         self.logger.info('Log level will be updated to: %s', level)
@@ -128,18 +125,6 @@ class L3_Config(Borg):
 
     def get_shared(self):
         return self._shared
-
-
-    def get_processor_name(self):
-        return self._processorName
-
-
-    def get_processor_version(self):
-        return self._processorVersion
-
-
-    def get_processor_date(self):
-        return self._processorDate
 
 
     def get_home(self):
@@ -246,18 +231,6 @@ class L3_Config(Borg):
         self._shared = value
 
 
-    def set_processor_name(self, value):
-        self._processorName = value
-
-
-    def set_processor_version(self, value):
-        self._processorVersion = value
-
-
-    def set_processor_date(self, value):
-        self._processorDate = value
-
-
     def set_home(self, value):
         self._home = value
 
@@ -360,18 +333,6 @@ class L3_Config(Borg):
 
     def del_shared(self):
         del self._shared
-
-
-    def del_processor_name(self):
-        del self._processorName
-
-
-    def del_processor_version(self):
-        del self._processorVersion
-
-
-    def del_processor_date(self):
-        del self._processorDate
 
 
     def del_home(self):
@@ -669,6 +630,19 @@ class L3_Config(Borg):
     def del_fn_log(self):
         del self._fnLog
 
+
+    def get_first_init(self):
+        return self._firstInit
+
+
+    def set_first_init(self, value):
+        self._firstInit = value
+
+
+    def del_first_init(self):
+        del self._firstInit
+
+    firstInit = property(get_first_init, set_first_init, del_first_init, "firstInit's docstring")
     fnLog = property(get_fn_log, set_fn_log, del_fn_log, "fnLog's docstring")
     product = property(get_product, set_product, del_product, "product's docstring")
     minTime = property(get_min_time, set_min_time, del_min_time, "minTime's docstring")
@@ -686,9 +660,6 @@ class L3_Config(Borg):
     resolution = property(get_resolution, set_resolution, del_resolution, "resolution's docstring")
     shared = property(get_shared, set_shared, del_shared, "shared's docstring")
     classifier = property(get_classifier, set_classifier, del_classifier, "classifier's docstring")
-    processorName = property(get_processor_name, set_processor_name, del_processor_name, "processorName's docstring")
-    processorVersion = property(get_processor_version, set_processor_version, del_processor_version, "processorVersion's docstring")
-    processorDate = property(get_processor_date, set_processor_date, del_processor_date, "processorDate's docstring")
     home = property(get_home, set_home, del_home, "home's docstring")
     workDir = property(get_work_dir, set_work_dir, del_work_dir, "workDir's docstring")
     configDir = property(get_config_dir, set_config_dir, del_config_dir, "configDir's docstring")
@@ -786,14 +757,16 @@ class L3_Config(Borg):
         return True
 
     def init(self, resolution, tile):
-        self.initLogger()
-        self.readGipp()
-        self._resolution = resolution
+        if self.firstInit == True:
+            self.initLogger()
+            self.readGipp()
+            self._resolution = resolution
+            
         self.setTimeEstimation(resolution)
         self.calcEarthSunDistance2(tile)
         self._logger.debug('Module L3_Process initialized')
-        if self.product.exists() == False:
-            stderrWrite('directory "%s" target product is missing\n.' % self.workDir)
+        if self.product.existL3_TargetProduct() == False:
+            stderrWrite('directory "%s" L3 target product is missing\n.' % self.workDir)
             self.exitError()   
         return True
 

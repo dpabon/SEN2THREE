@@ -341,23 +341,30 @@ class L3_Product(Borg):
         else:
             return True
 
-    def exists(self):
+    def existL3_TargetProduct(self):
         self._config.logger.info('Checking existence of L3 target product ...')
+        L2A_UP_MASK = '*L2A_*'
         L3_TARGET_MASK = '*L03_*'
         dirlist = sorted(os.listdir(self._config.workDir))
-        for L3_TARGET_PRODUCT in dirlist:     
-            if fnmatch.fnmatch(L3_TARGET_PRODUCT, L3_TARGET_MASK) == True:
-                self._config.logger.info('L3 target product already exists.')
-                return True
-            
-        L2A_UP_MASK = '*2A_*'
-        for L2A_UP_DIR in dirlist:
-            if fnmatch.fnmatch(L2A_UP_DIR, L2A_UP_MASK) == True:
-                if self.checkTimeRange(L2A_UP_DIR) == True:
-                    self._L2A_UP_ID = self._config.workDir + '/' + L2A_UP_DIR
-                    self._config.logger.info('L3 target will be created.')
-                    return self.createL3_TargetProduct()
-                
+        for L2A_UP_ID in dirlist:
+            if fnmatch.fnmatch(L2A_UP_ID, L2A_UP_MASK) == False:
+                continue
+            if self.checkTimeRange(L2A_UP_ID) == False:
+                continue
+            # suitable L2A user product found, now check whether L3 target already exist:
+            for L3_TARGET_ID in dirlist:
+                if fnmatch.fnmatch(L3_TARGET_ID, L3_TARGET_MASK) == True:
+                    self._config.logger.info('L3 target product already exists.')
+                    self._config.firstInit = False                             
+                    self._L2A_UP_ID = L2A_UP_ID
+                    self._L3_TARGET_ID = L3_TARGET_ID
+                    return self.reinitL3_TargetProduct()
+
+            # no L3 target exists up to now, will be created:
+            self._config.logger.info('L3 target will be created.')
+            self._config.firstInit = True
+            self._L2A_UP_ID = L2A_UP_ID
+            return self.createL3_TargetProduct()
             
         stderrWrite('L2A user products: all generation times out of bounds, check configuration.\n')
         self._config.exitError()
@@ -366,7 +373,7 @@ class L3_Product(Borg):
     def createL3_TargetProduct(self):
         self._config.logger.info('Creating L3 target product ...')
         L2A_UP_MASK = '*2A_*'
-        L2A_UP_DIR = self._L2A_UP_ID
+        L2A_UP_DIR = self._config.workDir + '/' + self._L2A_UP_ID
         # detect the filename for the datastrip metadata:
         L2A_DS_DIR = L2A_UP_DIR + '/DATASTRIP/'
         if os.path.exists(L2A_DS_DIR) == False:
@@ -543,20 +550,52 @@ class L3_Product(Borg):
         ti = xp.getTree('Image_Data_Info', 'Tiles_Information')
         del ti.Tile_List.Tile[:]
         xp.export()
+        return True
+
+    def reinitL3_TargetProduct(self):
+        L3_DS_ID = None
+        L3_TARGET_MASK = '*L03_*'
+        dirlist = sorted(os.listdir(self._config.workDir))
+        for L3_TARGET_ID in dirlist:
+            if fnmatch.fnmatch(L3_TARGET_ID, L3_TARGET_MASK) == True:
+                self._L3_TARGET_ID = L3_TARGET_ID
+                break
+        
+        L3_DS_MASK = '*_L03_DS_*'
+        L3_DS_DIR = self._config.workDir + '/' + L3_TARGET_ID + '/DATASTRIP'
+        dirlist = sorted(os.listdir(L3_DS_DIR))
+        for L3_DS_ID in dirlist:
+            if fnmatch.fnmatch(L3_DS_ID, L3_DS_MASK) == True:
+                self._L3_DS_ID = L3_DS_ID
+                break
+        
+        if L3_DS_ID != None:
+            L3_DS_MTD_XML = (L3_DS_ID[:-7]+'.xml').replace('_MSI_', '_MTD_')
+            self._L3_DS_MTD_XML = L3_DS_DIR + '/' + L3_DS_ID + '/' + L3_DS_MTD_XML
+            return True
+        
+        return False
 
     def postprocess(self):
         # copy log to QI data as a report:
         dirname, basename = os.path.split(self.L3_TILE_MTD_XML)
         report = basename.replace('.xml', '_Report.xml')
         report = dirname + '/QI_DATA/' + report
-
+        
         if((os.path.isfile(self._config.fnLog)) == False):
             self.logger.fatal('Missing file: ' + self._config.fnLog)
             self._config.exitError()
 
         f = open(self._config.fnLog, 'a')
         f.write('</Sen2Cor_Level-3_Report_File>')
+        f.flush()
         f.close()
         copy_file(self._config.fnLog, report)
-
+        # append processed tile to list
+        processedTile = self._L2A_TILE_ID + '\n'
+        processedFn = self._config.workDir + '/' + 'processed'
+        f = open(processedFn, 'a')
+        f.write(processedTile)
+        f.flush()
+        f.close()
         return
