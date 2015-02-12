@@ -69,7 +69,7 @@ def main(args):
     
     workDir = args.directory
     stdoutWrite('\nApplication started ...\n')    
-    month = -1
+    month = 0
     products = sorted(os.listdir(workDir))
     for f in products:
         if(fnmatch.fnmatch(f, USR_MSK) == False):
@@ -90,12 +90,12 @@ def main(args):
         for f in files:        
             if(fnmatch.fnmatch(f, DIR_MSK) == False):
                 continue
-            changeTimeAndDate(DATASTRIP, DATASTRIP_ID, f, monthFmt)
-            files = sorted(os.listdir(DATASTRIP))
+            DATASTRIP_NEW = changeTimeAndDate(DATASTRIP, DATASTRIP_ID, f, monthFmt)
+            files = sorted(os.listdir(DATASTRIP_NEW))
             for f in files:        
-                if(fnmatch.fnmatch(f, DIR_MSK) == False):
+                if(fnmatch.fnmatch(f, MTD_MSK) == False):
                     continue
-                changeTimeAndDate(DATASTRIP, DATASTRIP_MTD, f, monthFmt)
+                changeTimeAndDate(DATASTRIP_NEW, DATASTRIP_MTD, f, monthFmt)
                 break
             break
 

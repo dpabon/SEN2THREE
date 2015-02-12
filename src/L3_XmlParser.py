@@ -124,7 +124,7 @@ class L3_XmlParser(Borg):
         dummy, fn = os.path.split(self._xmlFn)
         stdoutWrite('Validating metadata %s against scheme ...\n' % fn)       
         try:
-            schema = etree.XMLSchema(file = self._config.configDir + '/' + self._scheme)
+            schema = etree.XMLSchema(file = self._config.configDir + self._scheme)
             parser = etree.XMLParser(schema = schema)
             objectify.parse(self._xmlFn, parser)
             stdoutWrite('Metadata is valid.\n')                

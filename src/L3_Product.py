@@ -8,6 +8,7 @@ from time import strftime
 from datetime import datetime
 from distutils.dir_util import copy_tree
 from distutils.file_util import copy_file
+from lxml import objectify
 
 from L3_Borg import Borg
 from L3_XmlParser import L3_XmlParser
@@ -559,6 +560,7 @@ class L3_Product(Borg):
         for L3_TARGET_ID in dirlist:
             if fnmatch.fnmatch(L3_TARGET_ID, L3_TARGET_MASK) == True:
                 self._L3_TARGET_ID = L3_TARGET_ID
+                self._L3_TARGET_DIR = self._config.workDir + '/' + L3_TARGET_ID
                 break
         
         L3_DS_MASK = '*_L03_DS_*'
@@ -575,6 +577,79 @@ class L3_Product(Borg):
             return True
         
         return False
+
+    def createL3_Tile(self, tileId):
+        L2A_TILE_ID = tileId
+        L3_TILE_ID = L2A_TILE_ID.replace('L2A_', 'L03_')
+        self._L3_TILE_ID = L3_TILE_ID
+        workDir = self._config.workDir + '/'
+        L2A_UP_ID = self._L2A_UP_ID + '/'
+        L3_TARGET_DIR = self._L3_TARGET_DIR
+        GRANULE = '/GRANULE/'
+        QI_DATA = '/QI_DATA/'
+        
+        L2A_TILE_ID = workDir + L2A_UP_ID + GRANULE + L2A_TILE_ID
+        L3_TILE_ID = L3_TARGET_DIR + GRANULE + L3_TILE_ID
+        self._L3_TILE_ID = L3_TILE_ID
+
+        os.mkdir(L3_TILE_ID)
+        os.mkdir(L3_TILE_ID + QI_DATA)
+        self._config.logger.info('new working directory is: ' + L3_TILE_ID)
+
+        filelist = sorted(os.listdir(L2A_TILE_ID))
+        found = False
+        L2A_UP_MASK = '*_L2A_*'
+        for filename in filelist:
+            if(fnmatch.fnmatch(filename, L2A_UP_MASK) == True):
+                found = True
+                break
+        if found == False:
+            self._config.logger.fatal('No metadata in tile')
+            self._config.exitError()
+
+        L2A_TILE_MTD_XML = L2A_TILE_ID + '/' + filename
+        L3_TILE_MTD_XML = filename
+        L3_TILE_MTD_XML = L3_TILE_MTD_XML.replace('L2A_', 'L03_')
+        L3_TILE_MTD_XML = L3_TILE_ID + '/' + L3_TILE_MTD_XML
+        copy_file(L2A_TILE_MTD_XML, L3_TILE_MTD_XML)
+        self._L2A_TILE_MTD_XML = L2A_TILE_MTD_XML
+        xp = L3_XmlParser(self._config, 'T2A')
+        xp.validate()
+        self._L3_TILE_MTD_XML = L3_TILE_MTD_XML
+
+        #update tile and datastrip id in metadata file.
+        if(self._config.resolution == 60):
+            copy_file(L2A_TILE_MTD_XML, L3_TILE_MTD_XML)
+            xp = L3_XmlParser(self._config, 'T03')
+            if(xp.convert() == False):
+                self.logger.fatal('error in converting tile metadata to level 3')
+                self.exitError()
+            
+            #update tile id in ds metadata file.
+            xp = L3_XmlParser(self._config, 'DS03')
+            ti = xp.getTree('Image_Data_Info', 'Tiles_Information')
+            Tile = objectify.Element('Tile', tileId = L3_TILE_ID)
+            ti.Tile_List.append(Tile)
+            xp.export()
+
+        return
+    
+    def reinitL3_Tile(self, tileId):
+        L3_MTD_MASK = 'S2A_*_MTD_L03_TL_*.xml'
+        L3_TARGET_DIR = self._L3_TARGET_DIR + '/'
+        GRANULE = '/GRANULE/'
+        L3_TILE_ID = L3_TARGET_DIR + GRANULE + tileId
+        self._L3_TILE_ID = L3_TILE_ID
+        dirlist = sorted(os.listdir(L3_TILE_ID))
+        for L3_TILE_MTD_XML in dirlist:
+            if fnmatch.fnmatch(L3_TILE_MTD_XML, L3_MTD_MASK) == True:
+                self._L3_TILE_MTD_XML = L3_TARGET_DIR + GRANULE + L3_TILE_MTD_XML
+                break
+
+        #To Do:
+        #xp = L3_XmlParser(self._config, 'T03')
+        #xp.validate()
+        return
 
     def postprocess(self):
         # copy log to QI data as a report:

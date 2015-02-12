@@ -84,7 +84,7 @@ class L3_Process(object):
 
     def postprocess(self):
         self.config.logger.info('Post-processing with resolution %d m', self.config.resolution)
-        res = self.tables.exportBandList('L03')
+        res = self.tables.exportBandList('L3')
         if(self.config.resolution == 60):
             self.config.product.postprocess()
         return res
@@ -99,11 +99,6 @@ def main(args):
     # read list of tiles already processed
     processedTiles = ''
     processedFn = workDir + '/' + 'processed'
-    try:
-        f = open(processedFn)
-        processedTiles = f.read()
-    except:
-        pass
 
     L2A_mask = '*L2A_*'
     HelloWorld = processorName +', '+ processorVersion +', created: '+ processorDate
@@ -120,6 +115,11 @@ def main(args):
             if fnmatch.fnmatch(tile, L2A_mask) == False:
                 continue
             # ignore already processed tiles:
+            try:
+                f = open(processedFn)
+                processedTiles = f.read()
+            except:
+                pass
             if tile[:-7] in processedTiles:
                 continue
             if args.resolution == None:

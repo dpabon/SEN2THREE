@@ -13,7 +13,6 @@ from tables import *
 from tables.description import *
 from distutils.dir_util import mkpath
 from distutils.file_util import copy_file
-from lxml import objectify
 from L3_XmlParser import L3_XmlParser
 from L3_Borg import Borg
 from PIL import *
@@ -116,7 +115,7 @@ class L3_Tables(Borg):
         AUX_DATA = '/AUX_DATA'
         IMG_DATA = '/IMG_DATA'
         QI_DATA = '/QI_DATA'
-        GRANULE = '/GRANULE/'
+        GRANULE = '/GRANULE'
 
         if os.name == 'posix':
             self._DEV0 = ' > /dev/null'
@@ -143,61 +142,30 @@ class L3_Tables(Borg):
         self._cols = None
         self._granuleType = None
         self._threads = []
-        
         # generate new Tile ID:
-        L3_TILE_ID = L2A_TILE_ID.replace('L2A_', 'L03_')
-        config.product.L3_TILE_ID = L3_TILE_ID
+        # check whether a tile with same ORBIT ID already exists, if yes use this folder.
+        # else create a new tile folder with corresponding orbit ID
+        config.product.L2A_TILE_ID = config.workDir + '/' + config.product.L2A_UP_ID + GRANULE + '/' + L2A_TILE_ID
+        L3_TILE_MSK = 'S2A_*_TL_*'
+        ORBIT_ID = L2A_TILE_ID[-13:-7]
+        L3_TILE_ID = ''
+        tiles = config.workDir + '/' + config.product.L3_TARGET_ID + GRANULE
+        files = sorted(os.listdir(tiles))
+        for L3_TILE_ID in files:        
+            if fnmatch.fnmatch(L3_TILE_ID, L3_TILE_MSK) == False:
+                continue
+        if ORBIT_ID in L3_TILE_ID:
+        # target exists, will be used:
+            config.product.reinitL3_Tile(L3_TILE_ID)
+        else:
+            config.product.createL3_Tile(L2A_TILE_ID)
+
         L2A_TILE_ID_SHORT = '/' + L2A_TILE_ID[:55]
-        config.product.L2A_TILE_ID = L2A_TILE_ID[:55]  
-        L3_TILE_ID_SHORT = '/' + L3_TILE_ID[:55]
-        L2A_TILE_ID = config.workDir + '/' + L2A_UP_ID + GRANULE + L2A_TILE_ID
-        L3_TILE_ID = config.workDir + '/' + config.product.L3_TARGET_ID + GRANULE + L3_TILE_ID
-
-        if(os.path.exists(L3_TILE_ID) == False):
-            os.mkdir(L3_TILE_ID)
-            os.mkdir(L3_TILE_ID + QI_DATA)
-
-        config.logger.info('new working directory is: ' + L3_TILE_ID)
-
-        filelist = sorted(os.listdir(L2A_TILE_ID))
-        found = False
-        L2A_UP_MASK = '*_L2A_*'
-        for filename in filelist:
-            if(fnmatch.fnmatch(filename, L2A_UP_MASK) == True):
-                found = True
-                break
-        if found == False:
-            config.logger.fatal('No metadata in tile')
-            config.exitError()
-
-        L2A_TILE_MTD_XML = L2A_TILE_ID + '/' + filename
-        L3_TILE_MTD_XML = filename
-        L3_TILE_MTD_XML = L3_TILE_MTD_XML.replace('L2A_', 'L03_')
-        L3_TILE_MTD_XML = L3_TILE_ID + '/' + L3_TILE_MTD_XML
-        copy_file(L2A_TILE_MTD_XML, L3_TILE_MTD_XML)
-        config.product.L2A_TILE_MTD_XML = L2A_TILE_MTD_XML
-        xp = L3_XmlParser(config, 'T2A')
-        xp.validate()
-        config.product.L3_TILE_MTD_XML = L3_TILE_MTD_XML
-
-        #update tile and datastrip id in metadata file.
-        if(self._resolution == 60):
-            copy_file(L2A_TILE_MTD_XML, L3_TILE_MTD_XML)
-            xp = L3_XmlParser(config, 'T03')
-            if(xp.convert() == False):
-                self.logger.fatal('error in converting tile metadata to level 3')
-                self.exitError()
-            
-            #update tile id in ds metadata file.
-            xp = L3_XmlParser(config, 'DS03')
-            ti = xp.getTree('Image_Data_Info', 'Tiles_Information')
-            Tile = objectify.Element('Tile', tileId = config.product.L3_TILE_ID)
-            ti.Tile_List.append(Tile)
-            xp.export()
-
+        L3_TILE_ID_SHORT = '/' + L3_TILE_ID[:55]            
+        L2A_TILE_ID = config.product.L2A_TILE_ID
+        L3_TILE_ID = config.product.L3_TILE_ID
         self._L2A_ImgDataDir = L2A_TILE_ID + IMG_DATA
         self._L3_ImgDataDir = L3_TILE_ID + IMG_DATA
-
         self._L2A_bandDir = self._L2A_ImgDataDir + BANDS
         self._L3_bandDir = self._L3_ImgDataDir + BANDS
 
@@ -219,10 +187,6 @@ class L3_Tables(Borg):
         if(os.path.exists(self._L3_QualityDataDir) == False):
             mkpath(self._L3_QualityDataDir)
 
-        if(config.loglevel == 'DEBUG'):
-            self._testdir = L3_TILE_ID + '/TESTS_' + str(self._resolution) + '/'
-            if(os.path.exists(self._testdir) == False):
-                mkpath(self._testdir)
         #
         # the File structure:
         #-------------------------------------------------------
@@ -256,7 +220,7 @@ class L3_Tables(Borg):
         self._projectionRef = None
 
         # Product Levels:
-        self._productLevel = ['L1C','L2A','L03']
+        self._productLevel = ['L1C','L2A','L3']
         
         # the mapping of the product levels
         self._L1C = 0
@@ -685,7 +649,7 @@ class L3_Tables(Borg):
             h5file.close()
         except:
             self.initDatabase()
-            self.importBandList('L03')
+            self.importBandList('L3')
         return
     
     def initDatabase(self):
@@ -695,7 +659,7 @@ class L3_Tables(Borg):
             # remove all existing L2A tables as they will be replaced by the new data set
             h5file.createGroup('/', 'L1C', 'bands L1C')
             h5file.createGroup('/', 'L2A', 'bands L2A')
-            h5file.createGroup('/', 'L03', 'bands L03')
+            h5file.createGroup('/', 'L3', 'bands L3')
             result = True
         except:
             self.config.logger.fatal('error in initialization of database: %s:' % self._imageDatabase)
@@ -763,8 +727,8 @@ class L3_Tables(Borg):
                 locator = h5file.root.L1C
             elif self._productLevel == 'L2A':
                 locator = h5file.root.L2A
-            elif self._productLevel == 'L03':
-                locator = h5file.root.L03
+            elif self._productLevel == 'L3':
+                locator = h5file.root.L3
                 
             inband = indataset.GetRasterBand(1)
             dtOut = self.mapDataType(inband.DataType)
@@ -929,8 +893,8 @@ class L3_Tables(Borg):
                 locator = h5file.root.L1C
             elif productLevel == 'L2A':
                 locator = h5file.root.L2A
-            elif productLevel == 'L03':
-                locator = h5file.root.L03
+            elif productLevel == 'L3':
+                locator = h5file.root.L3
 
             node = h5file.createEArray(locator, bandName, dtIn, (0,array.shape[1]), bandName, filters=filters)
             self.config.logger.debug('%s: Band %02d %s added to table', productLevel, bandIndex, self.getBandNameFromIndex(bandIndex))
@@ -989,9 +953,9 @@ class L3_Tables(Borg):
 
         filename = self._L3_Tile_PVI_File
         tmpfile = '.tmpfile.JPEG'
-        b = self.getBand('L03', self.B02)
-        g = self.getBand('L03', self.B03)
-        r = self.getBand('L03', self.B04)
+        b = self.getBand('L3', self.B02)
+        g = self.getBand('L3', self.B03)
+        r = self.getBand('L3', self.B04)
 
         b = self.scaleImgArray(b)
         g = self.scaleImgArray(g)
@@ -1037,9 +1001,9 @@ class L3_Tables(Borg):
         result = False
         try:
             h5file = open_file(self._imageDatabase)
-            h5file.getNode('/L03', 'B02')
-            h5file.getNode('/L03', 'B03')
-            h5file.getNode('/L03', 'B04')
+            h5file.getNode('/L3', 'B02')
+            h5file.getNode('/L3', 'B03')
+            h5file.getNode('/L3', 'B04')
             status = 'Database ' + self._imageDatabase + ' exists and can be used'
             result = True
         except:
@@ -1051,7 +1015,7 @@ class L3_Tables(Borg):
         return result
     
     def verifyProductId(self, productLevel):
-        if productLevel != 'L1C' and productLevel != 'L2A' and productLevel != 'L03':
+        if productLevel != 'L1C' and productLevel != 'L2A' and productLevel != 'L3':
             self.config.logger.fatal('Wrong product ID %s', productLevel)
             self.config.exitError()
         return True

@@ -11,3 +11,4 @@ src/L2A_AtmCorr.*
 .spyderproject
 .DS_Store
 .settings
+.database.*
