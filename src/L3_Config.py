@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from numpy import *
-import sys, os
+import sys, os, time
 import logging
 import ConfigParser
 from lxml import objectify
@@ -14,7 +14,7 @@ from L3_XmlParser import L3_XmlParser
 
 class L3_Config(Borg):
     _shared = {}
-    def __init__(self, workDir = None):
+    def __init__(self, resolution, workDir = None):
         if(workDir):
             self._home = os.environ['S2L3APPHOME'] + '/'
             self._workDir = workDir
@@ -42,7 +42,7 @@ class L3_Config(Borg):
                 config.set('time estimation','t_est_10', self._tEst10)
                 with open(self._processingEstimationFn, 'a') as configFile:
                     config.write(configFile)
-            self._resolution = 60
+            self._resolution = resolution
             self._ncols = -1
             self._nrows = -1
             self._nbnds = -1
@@ -75,7 +75,6 @@ class L3_Config(Borg):
             self._maxSolarZenithAngle = None
             self._maxViewingAngle = None
             self._classifier = None
-            self._firstInit = True
     
     def set_logLevel(self, level):
         self.logger.info('Log level will be updated to: %s', level)
@@ -631,18 +630,6 @@ class L3_Config(Borg):
         del self._fnLog
 
 
-    def get_first_init(self):
-        return self._firstInit
-
-
-    def set_first_init(self, value):
-        self._firstInit = value
-
-
-    def del_first_init(self):
-        del self._firstInit
-
-    firstInit = property(get_first_init, set_first_init, del_first_init, "firstInit's docstring")
     fnLog = property(get_fn_log, set_fn_log, del_fn_log, "fnLog's docstring")
     product = property(get_product, set_product, del_product, "product's docstring")
     minTime = property(get_min_time, set_min_time, del_min_time, "minTime's docstring")
@@ -756,19 +743,22 @@ class L3_Config(Borg):
             self.exitError();
         return True
 
-    def init(self, resolution, tile):
-        if self.firstInit == True:
+    def init(self):
             self.initLogger()
             self.readGipp()
-            self._resolution = resolution
-            
-        self.setTimeEstimation(resolution)
-        self.calcEarthSunDistance2(tile)
-        self._logger.debug('Module L3_Process initialized')
+            self.setTimeEstimation(self.resolution)
+
+    def updateUserProduct(self, userProduct):
+        self.product.L2A_UP_ID = userProduct
         if self.product.existL3_TargetProduct() == False:
             stderrWrite('directory "%s" L3 target product is missing\n.' % self.workDir)
             self.exitError()   
         return True
+
+    def updateTile(self, tile):
+        self.product.L2A_TILE_ID = tile       
+        self.calcEarthSunDistance2(tile)
+        return
 
     def setTimeEstimation(self, resolution):
         config = ConfigParser.RawConfigParser(allow_no_value=True)
@@ -819,6 +809,34 @@ class L3_Config(Borg):
         f.write(str(tTotalPercentage) + '\n')
         f.close()
         return
+
+    def checkTimeRange(self, userProduct):       
+        def replace(string):
+            for ch in ['-',':', 'Z']:
+                if ch in string:
+                    string=string.replace(ch, '')
+            return string
+        
+        cfgMinTimeS = replace(self.minTime)
+        cfgMaxTimeS = replace(self.maxTime)
+        prdMinTimeS = userProduct[47:62]
+        prdMaxTimeS = userProduct[63:78]
+        cfgMinTime = time.mktime(datetime.strptime(cfgMinTimeS,'%Y%m%dT%H%M%S').timetuple())
+        cfgMaxTime = time.mktime(datetime.strptime(cfgMaxTimeS,'%Y%m%dT%H%M%S').timetuple())        
+        prdMinTime = time.mktime(datetime.strptime(prdMinTimeS,'%Y%m%dT%H%M%S').timetuple())
+        prdMaxTime = time.mktime(datetime.strptime(prdMaxTimeS,'%Y%m%dT%H%M%S').timetuple())        
+        self.minTime = cfgMinTimeS
+        self.maxTime = cfgMaxTimeS
+      
+        if prdMinTime < cfgMinTime:
+            return False
+        elif prdMaxTime > cfgMaxTime:
+            return False
+        else:
+            return True
+
+
+
 
     def calcEarthSunDistance2(self, tile):
         year =  int(tile[25:29])

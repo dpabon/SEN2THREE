@@ -96,18 +96,26 @@ def main(args):
         sys.exit(-1)
 
     workDir = args.directory
+    if args.resolution == None:
+        resolution = 60.0
+    else:
+        resolution = args.resolution
+
+    config = L3_Config(resolution, workDir)
+    config.init()
     # read list of tiles already processed
     processedTiles = ''
     processedFn = workDir + '/' + 'processed'
-
     L2A_mask = '*L2A_*'
     HelloWorld = processorName +', '+ processorVersion +', created: '+ processorDate
     stdoutWrite('\n%s started ...\n' % HelloWorld)    
-
     uplist = sorted(os.listdir(workDir))
     for L2A_UP_ID in uplist:
         if(fnmatch.fnmatch(L2A_UP_ID, L2A_mask) == False):     
             continue
+        if config.checkTimeRange(L2A_UP_ID) == False:
+            continue
+        config.updateUserProduct(L2A_UP_ID)
         GRANULE = workDir + '/' + L2A_UP_ID + '/GRANULE'
         tilelist = sorted(os.listdir(GRANULE))
         for tile in tilelist:
@@ -122,14 +130,10 @@ def main(args):
                 pass
             if tile[:-7] in processedTiles:
                 continue
-            if args.resolution == None:
-                resolution = 60.0
-            else:
-                resolution = args.resolution
+
             tStart = time()
-            config = L3_Config(workDir)
-            config.init(resolution, tile)
-            tables = L3_Tables(config, L2A_UP_ID, tile)
+            config.updateTile(tile)
+            tables = L3_Tables(config)
             tables.init()
             processor = L3_Process(config, tables)
             result = processor.process()
@@ -150,9 +154,11 @@ if __name__ == "__main__":
     descr = processorName +', '+ processorVersion +', created: '+ processorDate
     parser = argparse.ArgumentParser(description=descr)
     parser.add_argument('directory', help='Directory where the Level-2A input files are located')
-    parser.add_argument('--resolution', type=int, choices=[10, 20, 60], help='Target resolution, must be 10, 20 or 60 [m]')
+    parser.add_argument('--clean', action='store_true', help='Cleans the history of processed files and starts from scratch')
     parser.add_argument('--profile', action='store_true', help='Performs a processor performance profile and displays the results')
+    parser.add_argument('--resolution', type=int, choices=[10, 20, 60], help='Target resolution, must be 10, 20 or 60 [m]')
     parser.add_argument('--tests', action='store_true', help='Performs a series of unit tests on all modules and displays the results')
+    
     args = parser.parse_args()
 
     if(args.profile == True):

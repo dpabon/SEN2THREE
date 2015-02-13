@@ -109,7 +109,7 @@ class gdalThreadWrite(threading.Thread):
         
 
 class L3_Tables(Borg):
-    def __init__(self, config, L2A_UP_ID, L2A_TILE_ID):
+    def __init__(self, config):
         self.config = config
 
         AUX_DATA = '/AUX_DATA'
@@ -145,25 +145,27 @@ class L3_Tables(Borg):
         # generate new Tile ID:
         # check whether a tile with same ORBIT ID already exists, if yes use this folder.
         # else create a new tile folder with corresponding orbit ID
-        config.product.L2A_TILE_ID = config.workDir + '/' + config.product.L2A_UP_ID + GRANULE + '/' + L2A_TILE_ID
+        L2A_TILE_ID = config.product.L2A_TILE_ID
         L3_TILE_MSK = 'S2A_*_TL_*'
         ORBIT_ID = L2A_TILE_ID[-13:-7]
         L3_TILE_ID = ''
-        tiles = config.workDir + '/' + config.product.L3_TARGET_ID + GRANULE
+        L3_TARGET_ID = config.product.L3_TARGET_ID
+        tiles = config.workDir + '/' + L3_TARGET_ID + GRANULE
         files = sorted(os.listdir(tiles))
         for L3_TILE_ID in files:        
-            if fnmatch.fnmatch(L3_TILE_ID, L3_TILE_MSK) == False:
-                continue
+            if fnmatch.fnmatch(L3_TILE_ID, L3_TILE_MSK) == True:
+                break
         if ORBIT_ID in L3_TILE_ID:
         # target exists, will be used:
             config.product.reinitL3_Tile(L3_TILE_ID)
         else:
             config.product.createL3_Tile(L2A_TILE_ID)
-
-        L2A_TILE_ID_SHORT = '/' + L2A_TILE_ID[:55]
-        L3_TILE_ID_SHORT = '/' + L3_TILE_ID[:55]            
-        L2A_TILE_ID = config.product.L2A_TILE_ID
+        L2A_UP_ID = config.product.L2A_UP_ID
         L3_TILE_ID = config.product.L3_TILE_ID
+        L2A_TILE_ID_SHORT = '/' + L2A_TILE_ID[:55]
+        L3_TILE_ID_SHORT = '/' + config.product.L3_TILE_ID[:55]            
+        L2A_TILE_ID = config.workDir + '/' + L2A_UP_ID + GRANULE + '/' + L2A_TILE_ID
+        L3_TILE_ID = config.workDir + '/' + L3_TARGET_ID + GRANULE + '/' + L3_TILE_ID
         self._L2A_ImgDataDir = L2A_TILE_ID + IMG_DATA
         self._L3_ImgDataDir = L3_TILE_ID + IMG_DATA
         self._L2A_bandDir = self._L2A_ImgDataDir + BANDS
@@ -880,12 +882,10 @@ class L3_Tables(Borg):
     def setBand(self, productLevel, bandIndex, array):
         self.verifyProductId(productLevel)
         try:
+            if self.testBand(productLevel, bandIndex) == True:
+                self.delBand(productLevel, bandIndex)
             h5file = open_file(self._imageDatabase, mode='a')
             bandName = self.getBandNameFromIndex(bandIndex)
-            # remove old entries:
-            if(h5file.__contains__('/' + productLevel + '/' + bandName)):
-                node = h5file.getNode('/' + productLevel, bandName)
-                node.remove
             dtIn = self.mapDataType(array.dtype)
             filters = Filters(complib="zlib", complevel=1)
             # create new group and append node:
