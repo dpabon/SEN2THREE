@@ -13,7 +13,7 @@ from time import time
 from L3_Config import L3_Config
 from L3_Tables import L3_Tables
 from L3_UnitTests import L3_UnitTests
-from L3_STP import L3_STP
+from L3_Synthesis import L3_Synthesis
 from L3_Library import stdoutWrite, stderrWrite
 
 
@@ -68,25 +68,41 @@ class L3_Process(object):
         else:
             self.config.timestamp('L3_Process: start of Spatio Temporal Processing')
             self.config.logger.info('Performing Spatio Temporal Processing with resolution %d m', self.config.resolution)
-            stp = L3_STP(self.config, self.tables)
-            if(stp.process() == False):
+            l3Synthesis = L3_Synthesis(self.config, self.tables)
+            if(l3Synthesis.process() == False):
                 return False
-            
-        self.config.timestamp('L3_Process: start of Post Processing')
-        if(self.postprocess() == False):
+
+        # append processed tile to list
+        processedTile = self.config.product.L2A_TILE_ID + '\n'
+        processedFn = self.config.workDir + '/' + 'processed'
+        try:
+            f = open(processedFn, 'a')
+            f.write(processedTile)
+            f.flush()
+            f.close()
+        except:
+            stderrWrite('Could not update processed tile history.\n')
+            self.config.exitError()
             return False
         return True
 
     def preprocess(self):
         self.config.logger.info('Pre-processing with resolution %d m', self.config.resolution)
-        self.tables.init()
         return
 
     def postprocess(self):
+        self.config.timestamp('L3_Process: start of Post Processing')
         self.config.logger.info('Post-processing with resolution %d m', self.config.resolution)
-        res = self.tables.exportBandList('L3')
-        if(self.config.resolution == 60):
-            self.config.product.postprocess()
+        GRANULE = self.config.workDir + '/' + self.config.product.L3_TARGET_ID + '/GRANULE'
+        tilelist = sorted(os.listdir(GRANULE))
+        L3_TILE_MSK = 'S2A_*_TL_*'
+        res = False
+        for tile in tilelist:
+            if fnmatch.fnmatch(tile, L3_TILE_MSK) == False:
+                continue
+            res = self.tables.exportTile(tile)
+            if(self.config.resolution == 60):
+                self.config.product.postprocess()
         return res
 
 def main(args):
@@ -103,8 +119,8 @@ def main(args):
 
     config = L3_Config(resolution, workDir)
     config.init()
-    # read list of tiles already processed
     processedTiles = ''
+    result = False
     processedFn = workDir + '/' + 'processed'
     L2A_mask = '*L2A_*'
     HelloWorld = processorName +', '+ processorVersion +', created: '+ processorDate
@@ -124,6 +140,7 @@ def main(args):
                 continue
             # ignore already processed tiles:
             try:
+                # read list of tiles already processed
                 f = open(processedFn)
                 processedTiles = f.read()
             except:
@@ -135,6 +152,21 @@ def main(args):
             config.updateTile(tile)
             tables = L3_Tables(config)
             tables.init()
+            # no processing if first initialisation:
+            if tables.testBand('L2A', 1) == False:
+                # append processed tile to list
+                processedTile = tile + '\n'
+                processedFn = config.workDir + '/' + 'processed'
+                try:
+                    f = open(processedFn, 'a')
+                    f.write(processedTile)
+                    f.flush()
+                    f.close()
+                except:
+                    stderrWrite('Could not update processed tile history.\n')
+                    config.exitError()
+                    return False
+                continue
             processor = L3_Process(config, tables)
             result = processor.process()
             if(result == False):
@@ -143,9 +175,15 @@ def main(args):
 
             tMeasure = time() - tStart
             config.writeTimeEstimation(resolution, tMeasure)
-    
+
+    if result == True:
+        result = processor.postprocess()
+        if(result == False):
+            stderrWrite('Application terminated with errors, see log file and traces.\n')
+            return False
+                
     stdoutWrite('\nApplication terminated successfully.\n')
-    return True
+    return result
 
 
 if __name__ == "__main__":

@@ -152,7 +152,7 @@ class L3_Tables(Borg):
         L3_TARGET_ID = config.product.L3_TARGET_ID
         tiles = config.workDir + '/' + L3_TARGET_ID + GRANULE
         files = sorted(os.listdir(tiles))
-        for L3_TILE_ID in files:        
+        for L3_TILE_ID in files:       
             if fnmatch.fnmatch(L3_TILE_ID, L3_TILE_MSK) == True:
                 break
         if ORBIT_ID in L3_TILE_ID:
@@ -649,9 +649,49 @@ class L3_Tables(Borg):
         try:
             h5file = open_file(self._imageDatabase)
             h5file.close()
+            self.importBandList('L2A')
         except:
             self.initDatabase()
             self.importBandList('L3')
+        return
+    
+    def exportTile(self, L3_TILE_ID):
+        AUX_DATA = '/AUX_DATA'
+        IMG_DATA = '/IMG_DATA'
+        QI_DATA = '/QI_DATA'
+        GRANULE = '/GRANULE'
+        # Resolution:
+        self._resolution = int(self.config.resolution)
+        if(self._resolution == 10):
+            bandDir = '/R10m'
+        elif(self._resolution == 20):
+            bandDir = '/R20m'
+        elif(self._resolution == 60):
+            bandDir = '/R60m'
+        BANDS = bandDir
+        L3_TARGET_ID = self.config.product.L3_TARGET_ID
+        L3_TILE_ID_SHORT = '/' + L3_TILE_ID[:55]            
+        L3_TILE_ID = self.config.workDir + '/' + L3_TARGET_ID + GRANULE + '/' + L3_TILE_ID
+        self._L3_ImgDataDir = L3_TILE_ID + IMG_DATA
+        self._L3_bandDir = self._L3_ImgDataDir + BANDS
+        self._L3_QualityDataDir = L3_TILE_ID + QI_DATA
+        self._L3_AuxDataDir = L3_TILE_ID + AUX_DATA
+        #
+        # the File structure:
+        #-------------------------------------------------------
+        pre = L3_TILE_ID_SHORT[:9]
+        post = L3_TILE_ID_SHORT[13:]
+        self._L3_Tile_BND_File = self._L3_bandDir + L3_TILE_ID_SHORT + '_BXX_' + str(self._resolution) + 'm.jp2'
+        self._L3_Tile_AOT_File = self._L3_bandDir        + pre + '_AOT' + post + '_' + str(self._resolution) + 'm.jp2'
+        self._L3_Tile_WVP_File = self._L3_bandDir        + pre + '_WVP' + post + '_' + str(self._resolution) + 'm.jp2'
+        self._L3_Tile_CLD_File = self._L3_QualityDataDir + pre + '_CLD' + post + '_' + str(self._resolution) + 'm.jp2'
+        self._L3_Tile_SNW_File = self._L3_QualityDataDir + pre + '_SNW' + post + '_' + str(self._resolution) + 'm.jp2'
+        self._L3_Tile_PVI_File = self._L3_QualityDataDir + pre + '_PVI' + post + '.jp2'
+        self._L3_Tile_SCL_File = self._L3_ImgDataDir     + pre + '_SCL' + post + '_' + str(self._resolution) + 'm.jp2'
+
+        self._imageDatabase = self._L3_bandDir + '/.database.h5'
+        self.config.logger.debug('Module L3_Tables reinitialized with resolution %d' % self._resolution)
+        self.exportBandList('L3')
         return
     
     def initDatabase(self):
@@ -693,6 +733,7 @@ class L3_Tables(Borg):
     
     def importBand(self, bandIndex, filename):
         # convert JPEG-2000 input file to H5 file format
+        self.verifyProductId(self._productLevel)
         indataset = gdal.Open(filename, GA_ReadOnly)
         if(self._rows == None):
         # get the target resolution and metadata for the resampled bands below:
@@ -719,6 +760,8 @@ class L3_Tables(Borg):
         nodeStr = self._productLevel
         bandName = self.getBandNameFromIndex(bandIndex)
         try:
+            if self.testBand(self._productLevel, bandIndex) == True:
+                self.delBand(self._productLevel, bandIndex)
             h5file = open_file(database, mode='a')
             if(h5file.__contains__('/' + nodeStr)) == False:
                 self.config.logger.fatal('table initialization, wrong node %s:' % nodeStr)
@@ -800,7 +843,10 @@ class L3_Tables(Borg):
         for bandIndex in bandIndex:
             filename = self._L3_Tile_BND_File
             self.exportBand(bandIndex, filename)
-
+        
+        self.exportBand(self._CLD, self._L3_Tile_CLD_File)
+        self.exportBand(self._SNW, self._L3_Tile_SNW_File)
+        self.exportBand(self._SCL, self._L3_Tile_SCL_File)
         '''
         granuleList = L3_UserProduct.Granule_ListType()
         granuleList.add_Granule(granuleType)
@@ -859,9 +905,13 @@ class L3_Tables(Borg):
             outband = outdataset.GetRasterBand(1)
             outband.WriteArray(array)
             outdataset = None
-            
+            if (bandName == 'SCL'):
+            # SCL is Byte Type:
+                option = ' -ot Byte '
+            else:
+                option = ' -ot UInt16 '            
             if os.name == 'posix':
-                callstr = 'gdal_translate -of JPEG2000 -ot Byte ' + tmpfile + ' ' + filename + self._DEV0
+                callstr = 'gdal_translate -of JPEG2000' + option + tmpfile + ' ' + filename + self._DEV0
             else: # windows
                 callstr = 'geojasper -f ' + tmpfile + ' -F ' + filename + ' -T jp2 > NUL'
 

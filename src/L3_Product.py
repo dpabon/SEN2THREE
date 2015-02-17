@@ -41,6 +41,19 @@ class L3_Product(Borg):
         self._L3_TARGET_ID = None        
         self._L3_DS_ID = None
         self._L3_TILE_ID = None
+        self._nrTilesProcessed = 0
+
+    def get_nr_tiles_processed(self):
+        return self._nrTilesProcessed
+
+
+    def set_nr_tiles_processed(self, value):
+        self._nrTilesProcessed = value
+
+
+    def del_nr_tiles_processed(self):
+        del self._nrTilesProcessed
+
 
     def get_config(self):
         return self._config
@@ -306,6 +319,7 @@ class L3_Product(Borg):
         del self._L3_TARGET_DIR
 
     config = property(get_config, set_config, del_config, "config's docstring")
+    nrTilesProcessed = property(get_nr_tiles_processed, set_nr_tiles_processed, del_nr_tiles_processed, "nrTilesProcessed's docstring")
     L2A_INSPIRE_XML = property(get_l_2_a_inspire_xml, set_l_2_a_inspire_xml, del_l_2_a_inspire_xml, "L2A_INSPIRE_XML's docstring")
     L2A_MANIFEST_SAFE = property(get_l_2_a_manifest_safe, set_l_2_a_manifest_safe, del_l_2_a_manifest_safe, "L2A_MANIFEST_SAFE's docstring")
     L1C_UP_MTD_XML = property(get_l_1_c_up_mtd_xml, set_l_1_c_up_mtd_xml, del_l_1_c_up_mtd_xml, "L1C_UP_MTD_XML's docstring")
@@ -560,6 +574,7 @@ class L3_Product(Borg):
         L3_TARGET_DIR = self.L3_TARGET_DIR
         GRANULE = '/GRANULE/'
         QI_DATA = '/QI_DATA/'
+        self.nrTilesProcessed = 1
         
         L2A_TILE_ID = workDir + L2A_UP_ID + GRANULE + L2A_TILE_ID
         L3_TILE_ID = L3_TARGET_DIR + GRANULE + L3_TILE_ID
@@ -603,6 +618,7 @@ class L3_Product(Borg):
             Tile = objectify.Element('Tile', tileId = L3_TILE_ID)
             ti.Tile_List.append(Tile)
             xp.export()
+            
 
         return
     
@@ -610,6 +626,7 @@ class L3_Product(Borg):
         L3_MTD_MASK = 'S2A_*_MTD_L03_TL_*.xml'
         L3_TARGET_DIR = self.L3_TARGET_DIR + '/'
         GRANULE = '/GRANULE/'
+        self.nrTilesProcessed += 1
         self.L3_TILE_ID = tileId
         L3_TILE_ID = L3_TARGET_DIR + GRANULE + tileId
         dirlist = sorted(os.listdir(L3_TILE_ID))
@@ -619,6 +636,7 @@ class L3_Product(Borg):
                 break
         #To Do:
         #xp = L3_XmlParser(self.config, 'T03')
+        
         #xp.validate()
         return
 
@@ -637,12 +655,5 @@ class L3_Product(Borg):
         f.flush()
         f.close()
         copy_file(self.config.fnLog, report)
-        # append processed tile to list
-        processedTile = self.L2A_TILE_ID + '\n'
-        processedFn = self.config.workDir + '/' + 'processed'
-        f = open(processedFn, 'a')
-        f.write(processedTile)
-        f.flush()
-        f.close()
         return
-
+ 

@@ -25,6 +25,7 @@
     <Cirrus_Removal>true</Cirrus_Removal>
     <Shadow_Removal>true</Shadow_Removal>
     <Snow_Removal>true</Snow_Removal>
+    <Max_Tiles_Processed>5</Max_Tiles_Processed>
     <Max_Cloud_Probability>30</Max_Cloud_Probability>
     <Max_Invalid_Pixels_Percentage>2</Max_Invalid_Pixels_Percentage>
     <Max_Aerosol_Optical_Thickness>45</Max_Aerosol_Optical_Thickness>

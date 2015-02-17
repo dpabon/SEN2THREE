@@ -139,6 +139,7 @@
 				<xs:element ref="Cirrus_Removal"/>
 				<xs:element ref="Shadow_Removal"/>
 				<xs:element ref="Snow_Removal"/>
+				<xs:element ref="Max_Tiles_Processed"/>				
 				<xs:element ref="Max_Cloud_Probability"/>
 				<xs:element ref="Max_Invalid_Pixels_Percentage"/>
 				<xs:element ref="Max_Aerosol_Optical_Thickness"/>
@@ -264,6 +265,14 @@
 		<xs:simpleType>
 			<xs:restriction base="xs:unsignedByte">
 				<xs:enumeration value="1"/>
+			</xs:restriction>
+		</xs:simpleType>
+	</xs:element>
+	<xs:element name="Max_Tiles_Processed">
+		<xs:simpleType>
+			<xs:restriction base="xs:unsignedByte">
+				<xs:minInclusive value="0"/>
+				<xs:maxInclusive value="255"/>
 			</xs:restriction>
 		</xs:simpleType>
 	</xs:element>

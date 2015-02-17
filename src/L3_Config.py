@@ -47,8 +47,10 @@ class L3_Config(Borg):
             self._nrows = -1
             self._nbnds = -1
             self._tTotal = 0.0
-            self._zenith_angle = -1
-            self._azimuth_angle = -1
+            self._sza = -1
+            self._saa = -1
+            self._szaArray = None
+            self._saaArray = None
             self._GIPP = ''
             self._ECMWF = ''
             self._DEM = ''
@@ -69,9 +71,10 @@ class L3_Config(Borg):
             self._cirrusRemoval = None
             self._shadowRemoval = None
             self._snowRemoval = None
+            self._maxTilesProcessed = None
             self._maxCloudProbability = None
             self._maxInvalidPixelsPercentage = None
-            self._maxAerosolOptical_hickness = None
+            self._maxAerosolOptical_thickness = None
             self._maxSolarZenithAngle = None
             self._maxViewingAngle = None
             self._classifier = None
@@ -179,11 +182,11 @@ class L3_Config(Borg):
 
 
     def get_zenith_angle(self):
-        return self._zenith_angle
+        return self._sza
 
 
     def get_azimuth_angle(self):
-        return self._azimuth_angle
+        return self._saa
 
 
     def get_gipp(self):
@@ -283,11 +286,11 @@ class L3_Config(Borg):
 
 
     def set_zenith_angle(self, value):
-        self._zenith_angle = value
+        self._sza = value
 
 
     def set_azimuth_angle(self, value):
-        self._azimuth_angle = value
+        self._saa = value
 
 
     def set_gipp(self, value):
@@ -387,11 +390,11 @@ class L3_Config(Borg):
 
 
     def del_zenith_angle(self):
-        del self._zenith_angle
+        del self._sza
 
 
     def del_azimuth_angle(self):
-        del self._azimuth_angle
+        del self._saa
 
 
     def del_gipp(self):
@@ -490,6 +493,18 @@ class L3_Config(Borg):
         return self._snowRemoval
 
 
+    def get_max_tiles_processed(self):
+        return self._maxTilesProcessed
+
+
+    def set_max_tiles_processed(self, value):
+        self._maxTilesProcessed = value
+
+
+    def del_max_tiles_processed(self):
+        del self._maxTilesProcessed
+
+
     def get_max_cloud_probability(self):
         return self._maxCloudProbability
 
@@ -498,8 +513,8 @@ class L3_Config(Borg):
         return self._maxInvalidPixelsPercentage
 
 
-    def get_max_aerosol_optical_hickness(self):
-        return self._maxAerosolOptical_hickness
+    def get_max_aerosol_optical_thickness(self):
+        return self._maxAerosolOptical_thickness
 
 
     def get_max_solar_zenith_angle(self):
@@ -546,8 +561,8 @@ class L3_Config(Borg):
         self._maxInvalidPixelsPercentage = value
 
 
-    def set_max_aerosol_optical_hickness(self, value):
-        self._maxAerosolOptical_hickness = value
+    def set_max_aerosol_optical_thickness(self, value):
+        self._maxAerosolOptical_thickness = value
 
 
     def set_max_solar_zenith_angle(self, value):
@@ -594,8 +609,8 @@ class L3_Config(Borg):
         del self._maxInvalidPixelsPercentage
 
 
-    def del_max_aerosol_optical_hickness(self):
-        del self._maxAerosolOptical_hickness
+    def del_max_aerosol_optical_thickness(self):
+        del self._maxAerosolOptical_thickness
 
 
     def del_max_solar_zenith_angle(self):
@@ -630,6 +645,30 @@ class L3_Config(Borg):
         del self._fnLog
 
 
+    def get_sza_array(self):
+        return self._szaArray
+
+
+    def get_saa_array(self):
+        return self._saaArray
+
+
+    def set_sza_array(self, value):
+        self._szaArray = value
+
+
+    def set_saa_array(self, value):
+        self._saaArray = value
+
+
+    def del_sza_array(self):
+        del self._szaArray
+
+
+    def del_saa_array(self):
+        del self._saaArray
+
+
     fnLog = property(get_fn_log, set_fn_log, del_fn_log, "fnLog's docstring")
     product = property(get_product, set_product, del_product, "product's docstring")
     minTime = property(get_min_time, set_min_time, del_min_time, "minTime's docstring")
@@ -639,9 +678,10 @@ class L3_Config(Borg):
     cirrusRemoval = property(get_cirrus_removal, set_cirrus_removal, del_cirrus_removal, "cirrusRemoval's docstring")
     shadowRemoval = property(get_shadow_removal, set_shadow_removal, del_shadow_removal, "shadowRemoval's docstring")
     snowRemoval = property(get_snow_removal, set_snow_removal, del_snow_removal, "snowRemoval's docstring")
+    maxTilesProcessed = property(get_max_tiles_processed, set_max_tiles_processed, del_max_tiles_processed, "maxTilesProcessed's docstring")
     maxCloudProbability = property(get_max_cloud_probability, set_max_cloud_probability, del_max_cloud_probability, "maxCloudProbability's docstring")
     maxInvalidPixelsPercentage = property(get_max_invalid_pixels_percentage, set_max_invalid_pixels_percentage, del_max_invalid_pixels_percentage, "maxInvalidPixelsPercentage's docstring")
-    maxAerosolOptical_hickness = property(get_max_aerosol_optical_hickness, set_max_aerosol_optical_hickness, del_max_aerosol_optical_hickness, "maxAerosolOptical_hickness's docstring")
+    maxAerosolOptical_thickness = property(get_max_aerosol_optical_thickness, set_max_aerosol_optical_thickness, del_max_aerosol_optical_thickness, "maxAerosolOptical_thickness's docstring")
     maxSolarZenithAngle = property(get_max_solar_zenith_angle, set_max_solar_zenith_angle, del_max_solar_zenith_angle, "maxSolarZenithAngle's docstring")
     maxViewingAngle = property(get_max_viewing_angle, set_max_viewing_angle, del_max_viewing_angle, "maxViewingAngle's docstring")
     resolution = property(get_resolution, set_resolution, del_resolution, "resolution's docstring")
@@ -660,8 +700,11 @@ class L3_Config(Borg):
     nrows = property(get_nrows, set_nrows, del_nrows, "nrows's docstring")
     nbnds = property(get_nbnds, set_nbnds, del_nbnds, "nbnds's docstring")
     tTotal = property(get_t_total, set_t_total, del_t_total, "tTotal's docstring")
-    zenith_angle = property(get_zenith_angle, set_zenith_angle, del_zenith_angle, "zenith_angle's docstring")
-    azimuth_angle = property(get_azimuth_angle, set_azimuth_angle, del_azimuth_angle, "azimuth_angle's docstring")
+    sza = property(get_zenith_angle, set_zenith_angle, del_zenith_angle, "zenith_angle's docstring")
+    saa = property(get_azimuth_angle, set_azimuth_angle, del_azimuth_angle, "azimuth_angle's docstring")
+    szaArray = property(get_sza_array, set_sza_array, del_sza_array, "szaArray's docstring")
+    saaArray = property(get_saa_array, set_saa_array, del_saa_array, "saaArray's docstring")    
+    
     GIPP = property(get_gipp, set_gipp, del_gipp, "GIPP's docstring")
     ECMWF = property(get_ecmwf, set_ecmwf, del_ecmwf, "ECMWF's docstring")
     DEM = property(get_dem, set_dem, del_dem, "DEM's docstring")
@@ -717,9 +760,10 @@ class L3_Config(Borg):
             self._cirrusRemoval = l3s.Cirrus_Removal.pyval
             self._shadowRemoval = l3s.Shadow_Removal.pyval
             self._snowRemoval = l3s.Snow_Removal.pyval
+            self._maxTilesProcessed = l3s.Max_Tiles_Processed.pyval
             self._maxCloudProbability = l3s.Max_Cloud_Probability.pyval
             self._maxInvalidPixelsPercentage = l3s.Max_Invalid_Pixels_Percentage.pyval
-            self._maxAerosolOptical_hickness = l3s.Max_Aerosol_Optical_Thickness.pyval
+            self._maxAerosolOptical_thickness = l3s.Max_Aerosol_Optical_Thickness.pyval
             self._maxSolarZenithAngle = l3s.Max_Solar_Zenith_Angle.pyval
             self._maxViewingAngle = l3s.Max_Viewing_Angle.pyval
             
@@ -834,9 +878,6 @@ class L3_Config(Borg):
             return False
         else:
             return True
-
-
-
 
     def calcEarthSunDistance2(self, tile):
         year =  int(tile[25:29])
@@ -956,4 +997,4 @@ class L3_Config(Borg):
             a[i,:] = array(node[i].split(),dtype(str))
 
         return a
-
+    

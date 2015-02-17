@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from numpy import *
-from PIL import Image
+import Image
 from scipy import ndimage
 from scipy import stats
 from scipy.signal import medfilt2d
@@ -62,3 +62,9 @@ def showImage(arr):
 def reverse(a): return a[::-1]
 
 
+def rectBivariateSpline(xIn, yIn, zIn):
+    x = arange(zIn.shape[0], dtype=float32)
+    y = arange(zIn.shape[1], dtype=float32)
+
+    f = sp.RectBivariateSpline(x,y,zIn)
+    return f(xIn,yIn)
