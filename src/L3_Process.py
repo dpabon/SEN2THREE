@@ -122,7 +122,7 @@ def main(args):
     processedTiles = ''
     result = False
     processedFn = workDir + '/' + 'processed'
-    L2A_mask = '*L2A_*'
+    L2A_mask = 'S2?_*L2A_*'
     HelloWorld = processorName +', '+ processorVersion +', created: '+ processorDate
     stdoutWrite('\n%s started ...\n' % HelloWorld)    
     uplist = sorted(os.listdir(workDir))

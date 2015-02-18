@@ -271,6 +271,17 @@ class L3_Tables(Borg):
 
         return
 
+    def get_aot(self):
+        return self._AOT
+
+
+    def set_aot(self, value):
+        self._AOT = value
+
+
+    def del_aot(self):
+        del self._AOT
+
 
     def get_corner_coordinates(self):
         return self._cornerCoordinates
@@ -577,7 +588,7 @@ class L3_Tables(Borg):
     def del_prv(self):
         del self._PRV
 
-
+    AOT = property(get_aot, set_aot, del_aot, "AOT's docstring")
     B01 = property(get_b01, set_b01, del_b01, "B01's docstring")
     B02 = property(get_b02, set_b02, del_b02, "B02's docstring")
     B03 = property(get_b03, set_b03, del_b03, "B03's docstring")
@@ -798,10 +809,14 @@ class L3_Tables(Borg):
     def getBand(self, productLevel, bandIndex, dataType=uint16):
         self.verifyProductId(productLevel)
         bandName = self.getBandNameFromIndex(bandIndex)
+        if (bandName == 'SCL') | (bandName == 'CLD') | \
+           (bandName == 'SNW') | (bandName == 'PRV'):
+            dataType = uint8 
         try:
             h5file = open_file(self._imageDatabase)
             node = h5file.getNode('/' + productLevel, bandName)
             if (node.dtype != dataType):
+                print bandName, dataType, node.dtype
                 self.config.logger.fatal('Wrong data type, must be: ' + str(node.dtype))
                 result = False
                 self.config.exitError()
@@ -881,7 +896,6 @@ class L3_Tables(Borg):
         return True
     
     def exportBand(self, bandIndex, filename):
-        # converts all bands from hdf5 to JPEG 2000
         tmpfile = self._TmpFile + '%02d.tif' % bandIndex
         os.chdir(self._L3_bandDir)
         database = self._imageDatabase
@@ -1144,3 +1158,4 @@ class L3_Tables(Borg):
             dtOut = Float64Atom()
 
         return dtOut
+
