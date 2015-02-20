@@ -147,9 +147,9 @@ def main(args):
                 pass
             if tile[:-7] in processedTiles:
                 continue
-
             tStart = time()
-            config.updateTile(tile)
+            nrTilesProcessed = len(processedTiles.split())
+            config.updateTile(tile, nrTilesProcessed)
             tables = L3_Tables(config)
             tables.init()
             # no processing if first initialisation:

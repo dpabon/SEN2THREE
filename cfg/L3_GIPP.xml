@@ -18,7 +18,7 @@
   <L3_Synthesis>
     <Min_Time>2014-01-01T00:00:00Z</Min_Time>
     <Max_Time>2014-12-31T23:59:59Z</Max_Time>
-    <Priority>RADIOMETRIC_QUALITY</Priority>
+    <Priority>TEMP_HOMOGENEITY</Priority>
     <!-- MOST_RECENT, TEMP_HOMOGENEITY, RADIOMETRIC_QUALITY -->
     <Algorithm>ONE_PASS</Algorithm>
     <!-- ONE_PASS, TWO_PASS -->

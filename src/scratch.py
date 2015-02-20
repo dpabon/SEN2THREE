@@ -1,21 +1,17 @@
-'''
-Created on Feb 17, 2015
-
-@author: umwilm
-'''
-
-import Image
+"""
+Simple demo of a horizontal bar chart.
+"""
 import numpy as np
+import pylab as plt
 
-if __name__ == '__main__':
-    pass
+# Example data
+classes = ('Sat','Dark','Soil','Snow','Veg','Water','LPC','MPC','HPC','Cirr','ClS')
+x_pos = np.arange(len(classes))
+performance = 100 * np.random.rand(len(classes))
 
-a = np.ones([100,100], dtype=np.byte)
-print a.shape
+plt.bar(x_pos, performance, align='center', alpha=0.4)
+plt.xticks(x_pos, classes)
+plt.ylabel('Percentage')
+plt.title('Classification')
 
-i = Image.fromarray(a.astype(np.byte))
-#i.show()
-i2 = i.resize((80,120), Image.NEAREST)
-#i2.show()
-a2 = np.array(i2).astype(np.byte)
-print a2.shape
+plt.show()

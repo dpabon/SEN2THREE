@@ -71,7 +71,7 @@ class L3_Config(Borg):
             self._cirrusRemoval = None
             self._shadowRemoval = None
             self._snowRemoval = None
-            self._maxTilesProcessed = None
+            self._nrTilesProcessed = 0
             self._maxCloudProbability = None
             self._maxInvalidPixelsPercentage = None
             self._maxAerosolOptical_thickness = None
@@ -493,16 +493,16 @@ class L3_Config(Borg):
         return self._snowRemoval
 
 
-    def get_max_tiles_processed(self):
-        return self._maxTilesProcessed
+    def get_nr_tiles_processed(self):
+        return self._nrTilesProcessed
 
 
-    def set_max_tiles_processed(self, value):
-        self._maxTilesProcessed = value
+    def set_nr_tiles_processed(self, value):
+        self._nrTilesProcessed = value
 
 
-    def del_max_tiles_processed(self):
-        del self._maxTilesProcessed
+    def del_nr_tiles_processed(self):
+        del self._nrTilesProcessed
 
 
     def get_max_cloud_probability(self):
@@ -678,7 +678,7 @@ class L3_Config(Borg):
     cirrusRemoval = property(get_cirrus_removal, set_cirrus_removal, del_cirrus_removal, "cirrusRemoval's docstring")
     shadowRemoval = property(get_shadow_removal, set_shadow_removal, del_shadow_removal, "shadowRemoval's docstring")
     snowRemoval = property(get_snow_removal, set_snow_removal, del_snow_removal, "snowRemoval's docstring")
-    maxTilesProcessed = property(get_max_tiles_processed, set_max_tiles_processed, del_max_tiles_processed, "maxTilesProcessed's docstring")
+    nrTilesProcessed = property(get_nr_tiles_processed, set_nr_tiles_processed, del_nr_tiles_processed, "maxTilesProcessed's docstring")
     maxCloudProbability = property(get_max_cloud_probability, set_max_cloud_probability, del_max_cloud_probability, "maxCloudProbability's docstring")
     maxInvalidPixelsPercentage = property(get_max_invalid_pixels_percentage, set_max_invalid_pixels_percentage, del_max_invalid_pixels_percentage, "maxInvalidPixelsPercentage's docstring")
     maxAerosolOptical_thickness = property(get_max_aerosol_optical_thickness, set_max_aerosol_optical_thickness, del_max_aerosol_optical_thickness, "maxAerosolOptical_thickness's docstring")
@@ -760,7 +760,6 @@ class L3_Config(Borg):
             self._cirrusRemoval = l3s.Cirrus_Removal.pyval
             self._shadowRemoval = l3s.Shadow_Removal.pyval
             self._snowRemoval = l3s.Snow_Removal.pyval
-            self._maxTilesProcessed = l3s.Max_Tiles_Processed.pyval
             self._maxCloudProbability = l3s.Max_Cloud_Probability.pyval
             self._maxInvalidPixelsPercentage = l3s.Max_Invalid_Pixels_Percentage.pyval
             self._maxAerosolOptical_thickness = l3s.Max_Aerosol_Optical_Thickness.pyval
@@ -799,7 +798,8 @@ class L3_Config(Borg):
             self.exitError()   
         return True
 
-    def updateTile(self, tile):
+    def updateTile(self, tile, nrTilesProcessed):
+        self.nrTilesProcessed = nrTilesProcessed
         self.product.L2A_TILE_ID = tile       
         self.calcEarthSunDistance2(tile)
         return

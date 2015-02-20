@@ -209,6 +209,7 @@ class L3_Tables(Borg):
         self._L3_Tile_WVP_File = self._L3_bandDir        + pre + '_WVP' + post + '_' + str(self._resolution) + 'm.jp2'
         self._L3_Tile_CLD_File = self._L3_QualityDataDir + pre + '_CLD' + post + '_' + str(self._resolution) + 'm.jp2'
         self._L3_Tile_SNW_File = self._L3_QualityDataDir + pre + '_SNW' + post + '_' + str(self._resolution) + 'm.jp2'
+        self._L3_Tile_MSC_File = self._L3_QualityDataDir + pre + '_MSC' + post + '_' + str(self._resolution) + 'm.jp2'
         self._L3_Tile_PVI_File = self._L3_QualityDataDir + pre + '_PVI' + post + '.jp2'
         self._L3_Tile_SCL_File = self._L3_ImgDataDir     + pre + '_SCL' + post + '_' + str(self._resolution) + 'm.jp2'
 
@@ -233,7 +234,7 @@ class L3_Tables(Borg):
         self._bandNames = ['B01','B02','B03','B04','B05','B06','B07','B08','B8A',\
                         'B09','B10','B11','B12','DEM','SCL','SNW','CLD','AOT',\
                         'WVP','VIS','SCM','PRV','ILU','SLP','ASP','HAZ','SDW',\
-                        'DDV','HCW','ELE']
+                        'DDV','HCW','ELE', 'MSC']
         
         # the mapping of the bands
         self._B01 = 0
@@ -266,10 +267,23 @@ class L3_Tables(Borg):
         self._DDV = 27
         self._HCW = 28
         self._ELE = 29
+        self._MSC = 30
 
         config.logger.debug('Module L3_Tables initialized with resolution %d' % self._resolution)
 
         return
+
+    def get_msc(self):
+        return self._MSC
+
+
+    def set_msc(self, value):
+        self._MSC = value
+
+
+    def del_msc(self):
+        del self._MSC
+
 
     def get_aot(self):
         return self._AOT
@@ -605,6 +619,7 @@ class L3_Tables(Borg):
     SCL = property(get_scl, set_scl, del_scl, "SCL's docstring")
     SNW = property(get_qsn, set_qsn, del_qsn, "SNW's docstring")
     CLD = property(get_qcl, set_qcl, del_qcl, "CLD's docstring")
+    MSC = property(get_msc, set_msc, del_msc, "MSC's docstring")
     PRV = property(get_prv, set_prv, del_prv, "PRV's docstring")
     config = property(get_config, set_config, del_config, "config's docstring")
     bandIndex = property(get_band_bandIndex, set_band_bandIndex, del_band_bandIndex, "bandIndex's docstring")
@@ -697,6 +712,7 @@ class L3_Tables(Borg):
         self._L3_Tile_WVP_File = self._L3_bandDir        + pre + '_WVP' + post + '_' + str(self._resolution) + 'm.jp2'
         self._L3_Tile_CLD_File = self._L3_QualityDataDir + pre + '_CLD' + post + '_' + str(self._resolution) + 'm.jp2'
         self._L3_Tile_SNW_File = self._L3_QualityDataDir + pre + '_SNW' + post + '_' + str(self._resolution) + 'm.jp2'
+        self._L3_Tile_MSC_File = self._L3_QualityDataDir + pre + '_MSC' + post + '_' + str(self._resolution) + 'm.jp2'
         self._L3_Tile_PVI_File = self._L3_QualityDataDir + pre + '_PVI' + post + '.jp2'
         self._L3_Tile_SCL_File = self._L3_ImgDataDir     + pre + '_SCL' + post + '_' + str(self._resolution) + 'm.jp2'
 
@@ -810,8 +826,8 @@ class L3_Tables(Borg):
         self.verifyProductId(productLevel)
         bandName = self.getBandNameFromIndex(bandIndex)
         if (bandName == 'SCL') | (bandName == 'CLD') | \
-           (bandName == 'SNW') | (bandName == 'PRV'):
-            dataType = uint8 
+           (bandName == 'SNW') | (bandName == 'PRV') | (bandName == 'MSC'):
+            dataType = uint8  
         try:
             h5file = open_file(self._imageDatabase)
             node = h5file.getNode('/' + productLevel, bandName)
@@ -862,6 +878,7 @@ class L3_Tables(Borg):
         self.exportBand(self._CLD, self._L3_Tile_CLD_File)
         self.exportBand(self._SNW, self._L3_Tile_SNW_File)
         self.exportBand(self._SCL, self._L3_Tile_SCL_File)
+        self.exportBand(self._MSC, self._L3_Tile_MSC_File)
         '''
         granuleList = L3_UserProduct.Granule_ListType()
         granuleList.add_Granule(granuleType)
@@ -919,9 +936,9 @@ class L3_Tables(Borg):
             outband = outdataset.GetRasterBand(1)
             outband.WriteArray(array)
             outdataset = None
-            if (bandName == 'SCL'):
+            if(bandName == 'SCL' | bandName == 'MSC'):
             # SCL is Byte Type:
-                option = ' -ot Byte '
+                option = ' -ot Byte '              
             else:
                 option = ' -ot UInt16 '            
             if os.name == 'posix':
@@ -1158,4 +1175,5 @@ class L3_Tables(Borg):
             dtOut = Float64Atom()
 
         return dtOut
+
 
