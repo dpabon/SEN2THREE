@@ -12,15 +12,15 @@ from time import time
 
 from L3_Config import L3_Config
 from L3_Tables import L3_Tables
-from L3_UnitTests import L3_UnitTests
 from L3_Synthesis import L3_Synthesis
 from L3_Library import stdoutWrite, stderrWrite
 
 
 class L3_Process(object):
-    def __init__(self, config, tables):
+    def __init__(self, config):
         self._config = config
-        self._tables = tables
+
+        self._l3Synthesis = L3_Synthesis(config)
 
     def get_tables(self):
         return self._tables
@@ -52,25 +52,18 @@ class L3_Process(object):
     config = property(get_config, set_config, del_config, "config's docstring")
     tables = property(get_tables, set_tables, del_tables, "tables's docstring")
 
-    def process(self):
+    def process(self, tables):
+        self._tables = tables
         astr = 'L3_Process: processing with resolution ' + str(self.config.resolution) + ' m'
         self.config.timestamp(astr)
         self.config.timestamp('L3_Process: start of Pre Processing')
         if(self.preprocess() == False):
             return False
         
-        if(args.tests == True):
-            self.config.timestamp('L3_Process: perform a series of Unit Tests')
-            self.config.logger.info('Performing unit tests with resolution %d m', self.config.resolution)
-            tests = L3_UnitTests(self.config, self.tables)           
-            if(tests.process() == False):
-                return False
-        else:
-            self.config.timestamp('L3_Process: start of Spatio Temporal Processing')
-            self.config.logger.info('Performing Spatio Temporal Processing with resolution %d m', self.config.resolution)
-            l3Synthesis = L3_Synthesis(self.config, self.tables)
-            if(l3Synthesis.process() == False):
-                return False
+        self.config.timestamp('L3_Process: start of Spatio Temporal Processing')
+        self.config.logger.info('Performing Spatio Temporal Processing with resolution %d m', self.config.resolution)
+        if(self._l3Synthesis.process(self._tables) == False):
+            return False
 
         # append processed tile to list
         processedTile = self.config.product.L2A_TILE_ID + '\n'
@@ -93,6 +86,7 @@ class L3_Process(object):
     def postprocess(self):
         self.config.timestamp('L3_Process: start of Post Processing')
         self.config.logger.info('Post-processing with resolution %d m', self.config.resolution)
+
         GRANULE = self.config.workDir + '/' + self.config.product.L3_TARGET_ID + '/GRANULE'
         tilelist = sorted(os.listdir(GRANULE))
         L3_TILE_MSK = 'S2A_*_TL_*'
@@ -103,7 +97,9 @@ class L3_Process(object):
             res = self.tables.exportTile(tile)
             if(self.config.resolution == 60):
                 self.config.product.postprocess()
-        return res
+        if res == False:
+            return res
+        return self._l3Synthesis.postProcessing()
 
 def main(args):
     
@@ -126,6 +122,7 @@ def main(args):
     HelloWorld = processorName +', '+ processorVersion +', created: '+ processorDate
     stdoutWrite('\n%s started ...\n' % HelloWorld)    
     uplist = sorted(os.listdir(workDir))
+    processor = L3_Process(config)
     for L2A_UP_ID in uplist:
         if(fnmatch.fnmatch(L2A_UP_ID, L2A_mask) == False):     
             continue
@@ -167,8 +164,7 @@ def main(args):
                     config.exitError()
                     return False
                 continue
-            processor = L3_Process(config, tables)
-            result = processor.process()
+            result = processor.process(tables)
             if(result == False):
                 stderrWrite('Application terminated with errors, see log file and traces.\n')
                 return False
@@ -184,7 +180,6 @@ def main(args):
                 
     stdoutWrite('\nApplication terminated successfully.\n')
     return result
-
 
 if __name__ == "__main__":
     # Someone is launching this directly
