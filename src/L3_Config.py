@@ -61,16 +61,18 @@ class L3_Config(Borg):
             self._timestamp = datetime.now()
             self._logger = None
             self._fnLog = None
+            self._displayData = False
             self._creationDate = None
             self._acquisitionDate = None
             self._classifier = None
             self._minTime = None
             self._maxTime = None
-            self._priority = None
-            self._algorithm = None
-            self._cirrusRemoval = None
-            self._shadowRemoval = None
-            self._snowRemoval = None
+            self._priority = 'MOST_RECENT'
+            self._radiometricPreference = 'AOT'
+            self._algorithm = 'ONE_PASS'
+            self._cirrusRemoval = True
+            self._shadowRemoval = True
+            self._snowRemoval = True
             self._nrTilesProcessed = 0
             self._maxCloudProbability = None
             self._maxInvalidPixelsPercentage = None
@@ -78,6 +80,7 @@ class L3_Config(Borg):
             self._maxSolarZenithAngle = None
             self._maxViewingAngle = None
             self._classifier = None
+
     
     def set_logLevel(self, level):
         self.logger.info('Log level will be updated to: %s', level)
@@ -669,6 +672,31 @@ class L3_Config(Borg):
         del self._saaArray
 
 
+
+    def get_display_data(self):
+        return self._displayData
+
+
+    def get_radiometric_preference(self):
+        return self._radiometricPreference
+
+
+    def set_display_data(self, value):
+        self._displayData = value
+
+
+    def set_radiometric_preference(self, value):
+        self._radiometricPreference = value
+
+
+    def del_display_data(self):
+        del self._displayData
+
+
+    def del_radiometric_preference(self):
+        del self._radiometricPreference
+
+
     fnLog = property(get_fn_log, set_fn_log, del_fn_log, "fnLog's docstring")
     product = property(get_product, set_product, del_product, "product's docstring")
     minTime = property(get_min_time, set_min_time, del_min_time, "minTime's docstring")
@@ -704,7 +732,8 @@ class L3_Config(Borg):
     saa = property(get_azimuth_angle, set_azimuth_angle, del_azimuth_angle, "azimuth_angle's docstring")
     szaArray = property(get_sza_array, set_sza_array, del_sza_array, "szaArray's docstring")
     saaArray = property(get_saa_array, set_saa_array, del_saa_array, "saaArray's docstring")    
-    
+    displayData = property(get_display_data, set_display_data, del_display_data, "displayData's docstring")
+    radiometricPreference = property(get_radiometric_preference, set_radiometric_preference, del_radiometric_preference, "radiometricPreference's docstring")
     GIPP = property(get_gipp, set_gipp, del_gipp, "GIPP's docstring")
     ECMWF = property(get_ecmwf, set_ecmwf, del_ecmwf, "ECMWF's docstring")
     DEM = property(get_dem, set_dem, del_dem, "DEM's docstring")
@@ -750,12 +779,14 @@ class L3_Config(Borg):
             root = doc.getroot()
             cs = root.Common_Section
             self.loglevel = cs.Log_Level.text
+            self._displayData = cs.Display_Data
             self._dnScale = cs.DN_Scale.pyval
             
             l3s = root.L3_Synthesis
             self._minTime = l3s.Min_Time.text
             self._maxTime = l3s.Max_Time.text
             self._priority = l3s.Priority.text
+            self._radiometricPreference = l3s.Radiometric_Preference.text
             self._algorithm = l3s.Algorithm.text
             self._cirrusRemoval = l3s.Cirrus_Removal.pyval
             self._shadowRemoval = l3s.Shadow_Removal.pyval

@@ -41,9 +41,18 @@
 				<xs:enumeration value="MOST_RECENT"/>
 				<xs:enumeration value="TEMP_HOMOGENEITY"/>
 				<xs:enumeration value="RADIOMETRIC_QUALITY"/>
+				<xs:enumeration value="AVERAGE"/>				
 			</xs:restriction>
 		</xs:simpleType>
-	</xs:element>
+	</xs:element>	
+	<xs:element name="Radiometric_Preference">
+		<xs:simpleType>
+			<xs:restriction base="xs:string">
+				<xs:enumeration value="AOT"/>
+				<xs:enumeration value="SOLAR_ZENITH"/>
+			</xs:restriction>
+		</xs:simpleType>
+	</xs:element>	
 	<xs:element name="SNOW_ICE">
 		<xs:simpleType>
 			<xs:restriction base="xs:unsignedByte">
@@ -98,6 +107,7 @@
 			</xs:restriction>
 		</xs:simpleType>
 	</xs:element>
+	<xs:element name="Display_Data" type="xs:boolean"/>
 	<xs:element name="UP_Scheme_3">
 		<xs:simpleType>
 			<xs:restriction base="xs:string">
@@ -135,11 +145,11 @@
 				<xs:element ref="Min_Time"/>
 				<xs:element ref="Max_Time"/>
 				<xs:element ref="Priority"/>
+				<xs:element ref="Radiometric_Preference"/>
 				<xs:element ref="Algorithm"/>
 				<xs:element ref="Cirrus_Removal"/>
 				<xs:element ref="Shadow_Removal"/>
-				<xs:element ref="Snow_Removal"/>
-				<xs:element ref="Max_Tiles_Processed"/>				
+				<xs:element ref="Snow_Removal"/>		
 				<xs:element ref="Max_Cloud_Probability"/>
 				<xs:element ref="Max_Invalid_Pixels_Percentage"/>
 				<xs:element ref="Max_Aerosol_Optical_Thickness"/>
@@ -205,6 +215,7 @@
 		<xs:complexType>
 			<xs:sequence>
 				<xs:element ref="Log_Level"/>
+				<xs:element ref="Display_Data"/>
 				<xs:element ref="DN_Scale"/>
 				<xs:element ref="UP_Scheme_1C"/>
 				<xs:element ref="UP_Scheme_2A"/>
@@ -265,14 +276,6 @@
 		<xs:simpleType>
 			<xs:restriction base="xs:unsignedByte">
 				<xs:enumeration value="1"/>
-			</xs:restriction>
-		</xs:simpleType>
-	</xs:element>
-	<xs:element name="Max_Tiles_Processed">
-		<xs:simpleType>
-			<xs:restriction base="xs:unsignedByte">
-				<xs:minInclusive value="0"/>
-				<xs:maxInclusive value="255"/>
 			</xs:restriction>
 		</xs:simpleType>
 	</xs:element>

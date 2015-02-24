@@ -936,7 +936,7 @@ class L3_Tables(Borg):
             outband = outdataset.GetRasterBand(1)
             outband.WriteArray(array)
             outdataset = None
-            if(bandName == 'SCL' | bandName == 'MSC'):
+            if((bandName == 'SCL') | (bandName == 'MSC')):
             # SCL is Byte Type:
                 option = ' -ot Byte '              
             else:

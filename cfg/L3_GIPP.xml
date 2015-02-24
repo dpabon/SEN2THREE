@@ -3,6 +3,7 @@
   <Common_Section>
     <Log_Level>DEBUG</Log_Level>
     <!-- NOTSET, DEBUG, INFO, WARNING, ERROR, CRITICAL -->
+    <Display_Data>true</Display_Data>
     <DN_Scale>4000</DN_Scale>
     <UP_Scheme_1C>S2_User_Product_Level-1C_Metadata.xsd</UP_Scheme_1C>
     <UP_Scheme_2A>S2_User_Product_Level-2A_Metadata.xsd</UP_Scheme_2A>
@@ -18,14 +19,15 @@
   <L3_Synthesis>
     <Min_Time>2014-01-01T00:00:00Z</Min_Time>
     <Max_Time>2014-12-31T23:59:59Z</Max_Time>
-    <Priority>TEMP_HOMOGENEITY</Priority>
-    <!-- MOST_RECENT, TEMP_HOMOGENEITY, RADIOMETRIC_QUALITY -->
+    <Priority>RADIOMETRIC_QUALITY</Priority>
+    <!-- MOST_RECENT, TEMP_HOMOGENEITY, RADIOMETRIC_QUALITY, AVERAGE -->
+    <Radiometric_Preference>AOT</Radiometric_Preference>
+    <!-- AOT, SOLAR_ZENITH -->
     <Algorithm>ONE_PASS</Algorithm>
     <!-- ONE_PASS, TWO_PASS -->
     <Cirrus_Removal>true</Cirrus_Removal>
     <Shadow_Removal>true</Shadow_Removal>
     <Snow_Removal>true</Snow_Removal>
-    <Max_Tiles_Processed>5</Max_Tiles_Processed>
     <Max_Cloud_Probability>30</Max_Cloud_Probability>
     <Max_Invalid_Pixels_Percentage>2</Max_Invalid_Pixels_Percentage>
     <Max_Aerosol_Optical_Thickness>45</Max_Aerosol_Optical_Thickness>
