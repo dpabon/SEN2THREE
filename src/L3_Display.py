@@ -28,7 +28,8 @@ class L3_Display(object):
         nr, nc = scenec.shape
         ratio = float(nr)/float(nc)
         fig = self._plot.figure()
-        fig.patch.set_facecolor('white')
+        fig.canvas.set_window_title(self._config.product.L2A_TILE_ID)   
+        #fig.patch.set_facecolor('white')
         if ratio > 2.5:
             ax1 = self._plot.subplot2grid((2,3), (0,0), rowspan=2) 
             ax2 = self._plot.subplot2grid((2,3), (0,1), rowspan=2) 
@@ -41,7 +42,7 @@ class L3_Display(object):
             ax4 = self._plot.subplot2grid((2,2), (1,1))            
         
         mosaicData = [mosaic != self._noData]
-        tiles = self._config.nrTilesProcessed+1
+        tiles = self._config.nrTilesProcessed+1 
         xMoif = arange(tiles)
         yMoif = zeros(tiles, dtype=float32)
         moif = itemfreq(mosaic[mosaicData])
@@ -58,24 +59,30 @@ class L3_Display(object):
             yScif[scif[i,0]] = scif[i,1]
         yScif = yScif.astype(float32)/scif[:,1].sum() * 100.0
         xScif = arange(len(classes))                
-        
-        ax1.imshow(mosaic, cmap='jet', interpolation='nearest')
-        ax1.get_xaxis().set_visible(False)
-        ax1.get_yaxis().set_visible(False)
-        ax2.imshow(scenec, cmap='jet', interpolation='nearest')
-        ax2.get_xaxis().set_visible(False)
-        ax2.get_yaxis().set_visible(False)
-        if len(xMoif) < 2:
+        if len(xMoif) < 3:
             xticks = [1,2]
-            xmax = 2
+            xmax = 3
         else:
             xticks = xMoif
             xmax = xMoif.max()+1
+        ax1.imshow(mosaic, cmap='jet', interpolation='nearest')
+        ax1.set_xticks([0,mosaic.shape[1]])
+        ax1.set_yticks([0,mosaic.shape[0]])
+        ax1.set_xlabel('Tile Map')
+        ax2.imshow(scenec, cmap='jet', interpolation='nearest')
+        ax2.set_xticks([0,scenec.shape[1]])
+        ax2.set_yticks([0,scenec.shape[0]])
+        ax2.set_xlabel('Class Map')
         ax3.set_xlim([0, xmax])            
         ax3.set_xticks(xticks)
         ax3.bar(xMoif, yMoif, align='center', alpha=0.4)
+        ax3.set_xlabel('Tile [#]')
+        ax3.set_ylabel('Frequency [%]')
         ax4.set_xlim([0, 12])
         ax4.set_color_cycle(['r','g','b','y'])
         ax4.bar(xScif, yScif, align='center', alpha=0.4)
+        ax4.set_xlabel('Class [#]')
+        ax4.set_ylabel('Frequency [%]')
+        self._plot.tight_layout()
         self._plot.show(block=False)
         return
