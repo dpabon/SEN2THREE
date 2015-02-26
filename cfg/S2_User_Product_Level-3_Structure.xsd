@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
-	xmlns="https://psd-12.sentinel2.eo.esa.int/PSD/S2_User_Product_Level-2A_Structure.xsd"
-	targetNamespace="https://psd-12.sentinel2.eo.esa.int/PSD/S2_User_Product_Level-2A_Structure.xsd"
+	xmlns="https://psd-12.sentinel2.eo.esa.int/PSD/S2_User_Product_Level-3_Structure.xsd"
+	targetNamespace="https://psd-12.sentinel2.eo.esa.int/PSD/S2_User_Product_Level-3_Structure.xsd"
 	elementFormDefault="qualified"
 	version="12">
-	<xs:element name="Level-2A_User_Product_Structure"
-	            type="Level-2A_User_Product_Structure"/>
-	<xs:complexType name="Level-2A_User_Product_Structure">
+	<xs:element name="Level-3_User_Product_Structure"
+	            type="Level-3_User_Product_Structure"/>
+	<xs:complexType name="Level-3_User_Product_Structure">
 		<xs:sequence>
 			<xs:element name="Product_Metadata_File">
 				<xs:annotation>
@@ -23,7 +23,7 @@
 						<xs:element name="Tiles" maxOccurs="unbounded">
 							<xs:complexType>
 								<xs:sequence>
-									<xs:element name="Level-2A_Tile_Metadata_File"/>
+									<xs:element name="Level-3_Tile_Metadata_File"/>
 									<xs:element name="IMG_DATA"/>
 									<xs:element name="QI_DATA"/>
 									<xs:element name="AUX_DATA">
@@ -46,7 +46,7 @@
 			</xs:element>
 			<xs:element name="AUX_DATA">
 				<xs:annotation>
-					<xs:documentation>Folder containing all Auxiliary Data used for Level-2A processing</xs:documentation>
+					<xs:documentation>Folder containing all Auxiliary Data used for Level-3 processing</xs:documentation>
 				</xs:annotation>
 				<xs:complexType>
 					<xs:sequence>

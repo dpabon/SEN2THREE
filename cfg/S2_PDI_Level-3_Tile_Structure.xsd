@@ -1,18 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
-	xmlns="http://pdgs.s2.esa.int/PSD/S2_PDI_Level-2A_Tile_Structure.xsd"
-	targetNamespace="http://pdgs.s2.esa.int/PSD/S2_PDI_Level-2A_Tile_Structure.xsd"
+	xmlns="http://pdgs.s2.esa.int/PSD/S2_PDI_Level-3_Tile_Structure.xsd"
+	targetNamespace="http://pdgs.s2.esa.int/PSD/S2_PDI_Level-3_Tile_Structure.xsd"
 	elementFormDefault="qualified" version="10">
-	<xs:element name="Level-2A_Tile"
-				type="Level-2A_Tile"/>
-	<xs:complexType name="Level-2A_Tile">
+	<xs:element name="Level-3_Tile"
+				type="Level-3_Tile"/>
+	<xs:complexType name="Level-3_Tile">
 		<xs:annotation>
 			<xs:documentation>Folder</xs:documentation>
 		</xs:annotation>
 		<xs:sequence>
-			<xs:element name="Level-2A_Tile_Metadata_File">
+			<xs:element name="Level-3_Tile_Metadata_File">
 				<xs:annotation>
-					<xs:documentation>XML Main Metadata File (DIMAP_S2_Level-2A_Tile.xsd)</xs:documentation>
+					<xs:documentation>XML Main Metadata File (DIMAP_S2_Level-3_Tile.xsd)</xs:documentation>
 				</xs:annotation>
 				<xs:complexType>
 					<xs:sequence>

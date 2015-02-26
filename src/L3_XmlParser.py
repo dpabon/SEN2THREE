@@ -173,10 +173,9 @@ class L3_XmlParser(Borg):
         outstr = outstr.replace('L2A_Pixel_Level_QI', 'L3_Pixel_Level_QI')
         outstr = outstr.replace('TILE_ID_2A>', 'TILE_ID_3>')
         outstr = outstr.replace('DATASTRIP_ID_2A>', 'DATASTRIP_ID_3>')
-        if self._product == 'T03':
-            outstr = outstr.replace('L2A_Image_Content_QI>', 'L3_Image_Content_QI>')
         if self._product == 'UP03':
-            outstr = outstr.replace('L1C_L2A_Quantification_Values_List', 'L2A_L3_Quantification_Values_List')
+            outstr = outstr.replace('</n1:L2A_Quality_Indicators_Info>', '</n1:L2A_Quality_Indicators_Info>\n'\
+                                '<n1:L3_Quality_Indicators_Info/>')
         outfile.write(outstr)
         outfile.close()
         return self.setRoot()

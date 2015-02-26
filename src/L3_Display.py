@@ -5,6 +5,7 @@ Created on Feb 19, 2015
 '''
 from numpy import *
 import pylab as P
+import matplotlib.cm as cm
 from scipy.stats import itemfreq
 
 from L3_Config import L3_Config
@@ -65,11 +66,11 @@ class L3_Display(object):
         else:
             xticks = xMoif
             xmax = xMoif.max()+1
-        ax1.imshow(mosaic, cmap='jet', interpolation='nearest')
+        ax1.imshow(mosaic, interpolation='nearest')
         ax1.set_xticks([0,mosaic.shape[1]])
         ax1.set_yticks([0,mosaic.shape[0]])
         ax1.set_xlabel('Tile Map')
-        ax2.imshow(scenec, cmap='jet', interpolation='nearest')
+        ax2.imshow(scenec, interpolation='nearest')
         ax2.set_xticks([0,scenec.shape[1]])
         ax2.set_yticks([0,scenec.shape[0]])
         ax2.set_xlabel('Class Map')
@@ -79,7 +80,6 @@ class L3_Display(object):
         ax3.set_xlabel('Tile [#]')
         ax3.set_ylabel('Frequency [%]')
         ax4.set_xlim([0, 12])
-        ax4.set_color_cycle(['r','g','b','y'])
         ax4.bar(xScif, yScif, align='center', alpha=0.4)
         ax4.set_xlabel('Class [#]')
         ax4.set_ylabel('Frequency [%]')
