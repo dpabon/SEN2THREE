@@ -619,13 +619,20 @@ class L3_Product(Borg):
             if fnmatch.fnmatch(L3_TILE_MTD_XML, L3_MTD_MASK) == True:
                 self.L3_TILE_MTD_XML = L3_TILE_ID + '/' + L3_TILE_MTD_XML
                 break
-        #To Do:
-        #xp = L3_XmlParser(self.config, 'T03')
-        
-        #xp.validate()
+
+        xp = L3_XmlParser(self.config, 'T03')       
+        xp.validate()
         return
 
     def postprocess(self):
+        # validate the meta data:
+        xp = L3_XmlParser(self.config, 'UP03')
+        xp.validate()
+        xp = L3_XmlParser(self.config, 'T03')
+        xp.validate()
+        xp = L3_XmlParser(self.config, 'DS03')
+        xp.validate()
+        
         # copy log to QI data as a report:
         dirname, basename = os.path.split(self.L3_TILE_MTD_XML)
         report = basename.replace('.xml', '_Report.xml')

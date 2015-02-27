@@ -12,11 +12,9 @@ def stdoutWrite(s):
     sys.stdout.write(s)
     sys.stdout.flush()
     
-
 def stderrWrite(s):
     sys.stderr.write(s)
     sys.stderr.flush() 
-
 
 def changeTimeAndDate(parentDir, ID, fn, monthFmt):
     if 'A$$' in ID:
@@ -33,7 +31,6 @@ def changeTimeAndDate(parentDir, ID, fn, monthFmt):
     #print fNew
     os.rename(fOld, fNew)
     return fNew
-
 
 def main(args):
     
