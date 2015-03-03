@@ -67,9 +67,8 @@ class L3_Config(Borg):
             self._classifier = None
             self._minTime = None
             self._maxTime = None
-            self._priority = 'MOST_RECENT'
+            self._algorithm = 'MOST_RECENT'
             self._radiometricPreference = 'AOT'
-            self._algorithm = 'ONE_PASS'
             self._cirrusRemoval = True
             self._shadowRemoval = True
             self._snowRemoval = True
@@ -476,10 +475,6 @@ class L3_Config(Borg):
         return self._maxTime
 
 
-    def get_priority(self):
-        return self._priority
-
-
     def get_algorithm(self):
         return self._algorithm
 
@@ -536,10 +531,6 @@ class L3_Config(Borg):
         self._maxTime = value
 
 
-    def set_priority(self, value):
-        self._priority = value
-
-
     def set_algorithm(self, value):
         self._algorithm = value
 
@@ -582,10 +573,6 @@ class L3_Config(Borg):
 
     def del_max_time(self):
         del self._maxTime
-
-
-    def del_priority(self):
-        del self._priority
 
 
     def del_algorithm(self):
@@ -701,7 +688,6 @@ class L3_Config(Borg):
     product = property(get_product, set_product, del_product, "product's docstring")
     minTime = property(get_min_time, set_min_time, del_min_time, "minTime's docstring")
     maxTime = property(get_max_time, set_max_time, del_max_time, "maxTime's docstring")
-    priority = property(get_priority, set_priority, del_priority, "priority's docstring")
     algorithm = property(get_algorithm, set_algorithm, del_algorithm, "algorithm's docstring")
     cirrusRemoval = property(get_cirrus_removal, set_cirrus_removal, del_cirrus_removal, "cirrusRemoval's docstring")
     shadowRemoval = property(get_shadow_removal, set_shadow_removal, del_shadow_removal, "shadowRemoval's docstring")
@@ -771,9 +757,8 @@ class L3_Config(Borg):
 
     def readGipp(self):
         xp = L3_XmlParser(self, 'GIPP')
-        xp.validate()
         xp.export()
-        
+        xp.validate()
         try:
             doc = objectify.parse(self._configFn)
             root = doc.getroot()
@@ -785,9 +770,8 @@ class L3_Config(Borg):
             l3s = root.L3_Synthesis
             self._minTime = l3s.Min_Time.text
             self._maxTime = l3s.Max_Time.text
-            self._priority = l3s.Priority.text
-            self._radiometricPreference = l3s.Radiometric_Preference.text
             self._algorithm = l3s.Algorithm.text
+            self._radiometricPreference = l3s.Radiometric_Preference.text
             self._cirrusRemoval = l3s.Cirrus_Removal.pyval
             self._shadowRemoval = l3s.Shadow_Removal.pyval
             self._snowRemoval = l3s.Snow_Removal.pyval

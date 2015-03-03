@@ -44,22 +44,20 @@ class L3_Display(object):
         
         mosaicData = [mosaic != self._noData]
         tiles = self._config.nrTilesProcessed+1 
-        xMoif = arange(tiles)
+        xMoif = arange(1,tiles+1)
         yMoif = zeros(tiles, dtype=float32)
-        moif = itemfreq(mosaic[mosaicData])
-        for i in range(len(moif)):
-            xMoif[i] = moif[i,0]
-            yMoif[i] = moif[i,1]
-
-        yMoif = yMoif.astype(float32)/moif[:,1].sum() * 100.0
+        idxMoif = itemfreq(mosaic[mosaicData])[:,0]
+        yMoif[idxMoif-1] = itemfreq(mosaic[mosaicData])[:,1]
+        yMoifCount = float32(yMoif.sum())
+        yMoif = yMoif.astype(float32)/yMoifCount * 100.0
         scenecData = [scenec != self._noData]
-        classes = ('Sat','Dark','Soil','Snow','Veg','Water','LPC','MPC','HPC','Cirr','ClS')
+        classes = ('Sat','Dark','Cls','Soil','Veg','Water','LPC','MPC','HPC','Cir','Snw')
         yScif = zeros(len(classes), dtype=float32)
-        scif = itemfreq(scenec[scenecData])
-        for i in range(len(scif)):
-            yScif[scif[i,0]] = scif[i,1]
-        yScif = yScif.astype(float32)/scif[:,1].sum() * 100.0
-        xScif = arange(len(classes))                
+        idxScif = itemfreq(scenec[scenecData])[:,0]
+        yScif[idxScif] = itemfreq(scenec[scenecData])[:,1]
+        yScifCount = float32(yScif.sum())
+        yScif = yScif.astype(float32)/yScifCount * 100.0
+        xScif = arange(1,12)                
         if len(xMoif) < 3:
             xticks = [1,2]
             xmax = 3

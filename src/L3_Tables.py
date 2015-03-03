@@ -10,6 +10,7 @@ import os
 import glob
 from numpy import *
 from tables import *
+from lxml import objectify
 from tables.description import *
 from distutils.dir_util import mkpath
 from distutils.file_util import copy_file
@@ -864,13 +865,6 @@ class L3_Tables(Borg):
         elif(self._resolution == 60):
             bandIndex = [0,1,2,3,4,5,6,8,9,11,12]
 
-        #prepare the xml export
-        '''
-        granuleType.set_granuleIdentifier(self.config.product.L3_TILE_ID)
-        granuleType.set_datastripIdentifier(self.config.product.L3_DS_ID)
-        granuleType.set_imageFormat("JPEG2000")
-        self.granuleType = granuleType
-        '''
         for bandIndex in bandIndex:
             filename = self._L3_Tile_BND_File
             self.exportBand(bandIndex, filename)
@@ -879,15 +873,24 @@ class L3_Tables(Borg):
         self.exportBand(self._SNW, self._L3_Tile_SNW_File)
         self.exportBand(self._SCL, self._L3_Tile_SCL_File)
         self.exportBand(self._MSC, self._L3_Tile_MSC_File)
-        '''
-        granuleList = L3_UserProduct.Granule_ListType()
-        granuleList.add_Granule(granuleType)
-        xmlParser = L3_XmlParser(self.config, 'UP03')
-        productOrganisation = xmlParser.root.General_Info.Product_Info.Product_Organisation
-        productOrganisation.add_Granule_List(granuleList)
-        xmlParser.export()
+
+        #prepare the xml export
+        Granules = objectify.Element('Granules')
+        Granules.attrib['granuleIdentifier'] = self.config.product.L3_TILE_ID
+        Granules.attrib['datastripIdentifier'] = self.config.product.L3_DS_ID
+        Granules.attrib['imageFormat'] = 'JPEG2000'
+        gl = objectify.Element('Granule_List')
+        gl.append(Granules)
+        xp = L3_XmlParser(self.config, 'UP03')
+        pi = xp.getTree('General_Info', 'L3_Product_Info')
+        po = pi.L3_Product_Organisation
+        po.append(gl)
+        xp.export()
+        
         # update on tile level
-        xmlParser = L3_XmlParser(self.config, 'T03')
+        '''
+        xp = L3_XmlParser(self.config, 'T03')
+        ti = xp.getTree()
         xmlParser.root.General_Info.TILE_ID.valueOf_ = self.config.product.L3_TILE_ID
         xmlParser.root.General_Info.DATASTRIP_ID.valueOf_ =self.config.product.L3_DS_ID
         '''

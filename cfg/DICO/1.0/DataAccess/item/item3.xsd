@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:item="https://psd-12.sentinel2.eo.esa.int/DICO/1.0/DataAccess/item/" targetNamespace="https://psd-12.sentinel2.eo.esa.int/DICO/1.0/DataAccess/item/" elementFormDefault="unqualified" attributeFormDefault="unqualified" version="1.0">
-<xs:include schemaLocation="../item/item.xsd"/>
+<xs:include schemaLocation="../item/item2A.xsd"/>
 	<!--Granule ID (3)-->
 	<xs:simpleType name="GRANULE_ID_3">
 		<xs:annotation>

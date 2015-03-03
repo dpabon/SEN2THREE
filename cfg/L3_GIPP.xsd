@@ -35,7 +35,7 @@
 			</xs:restriction>
 		</xs:simpleType>
 	</xs:element>
-	<xs:element name="Priority">
+	<xs:element name="Algorithm">
 		<xs:simpleType>
 			<xs:restriction base="xs:string">
 				<xs:enumeration value="MOST_RECENT"/>
@@ -48,8 +48,8 @@
 	<xs:element name="Radiometric_Preference">
 		<xs:simpleType>
 			<xs:restriction base="xs:string">
-				<xs:enumeration value="AOT"/>
-				<xs:enumeration value="SOLAR_ZENITH"/>
+				<xs:enumeration value="AEROSOL_OPTICAL_THICKNESS"/>
+				<xs:enumeration value="SOLAR_ZENITH_ANGLE"/>
 			</xs:restriction>
 		</xs:simpleType>
 	</xs:element>	
@@ -57,14 +57,6 @@
 		<xs:simpleType>
 			<xs:restriction base="xs:unsignedByte">
 				<xs:enumeration value="11"/>
-			</xs:restriction>
-		</xs:simpleType>
-	</xs:element>
-	<xs:element name="Algorithm">
-		<xs:simpleType>
-			<xs:restriction base="xs:string">
-				<xs:enumeration value="ONE_PASS"/>
-				<xs:enumeration value="TWO_PASS"/>
 			</xs:restriction>
 		</xs:simpleType>
 	</xs:element>
@@ -144,9 +136,8 @@
 			<xs:sequence>
 				<xs:element ref="Min_Time"/>
 				<xs:element ref="Max_Time"/>
-				<xs:element ref="Priority"/>
-				<xs:element ref="Radiometric_Preference"/>
 				<xs:element ref="Algorithm"/>
+				<xs:element ref="Radiometric_Preference"/>
 				<xs:element ref="Cirrus_Removal"/>
 				<xs:element ref="Shadow_Removal"/>
 				<xs:element ref="Snow_Removal"/>		

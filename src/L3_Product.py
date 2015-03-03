@@ -375,6 +375,7 @@ class L3_Product(Borg):
         L2A_DS_MTD_XML = (dirname[:-7]+'.xml').replace('_MSI_', '_MTD_')
         self.L2A_DS_MTD_XML = L2A_DS_DIR + '/' + L2A_DS_MTD_XML
         xp = L3_XmlParser(self.config, 'DS2A')
+        xp.export()
         xp.validate()
 
         dirname, basename = os.path.split(L2A_UP_DIR)
@@ -442,6 +443,7 @@ class L3_Product(Borg):
         fn_L3 = L3_TARGET_DIR + '/' + fn_L3
         self.L2A_UP_MTD_XML = fn_L2A
         xp = L3_XmlParser(self.config, 'UP2A')
+        xp.export()
         xp.validate()
         self.L3_TARGET_MTD_XML = fn_L3
 
@@ -456,6 +458,7 @@ class L3_Product(Borg):
         copy_file(self.config.get_config_dir() + dsScheme2a, L3_TARGET_DIR + REP_INFO + '/' + dsScheme2a)
         # copy L3 User Product metadata file:
         copy_file(fn_L2A, fn_L3)
+        
         # remove old L2A entries from L3_TARGET_MTD_XML:
         xp = L3_XmlParser(self.config, 'UP03')
         if(xp.convert() == False):
@@ -467,12 +470,15 @@ class L3_Product(Borg):
         # update L2A entries from L2A_UP_MTD_XML:
         pi.PRODUCT_URI = 'http://www.telespazio-vega.de'
         pi.PROCESSING_LEVEL = 'Level-3p'
-        pi.PRODUCT_TYPE = 'S2MSI03p'
+        pi.PRODUCT_TYPE = 'S2MSI3p'
+        pi.PROCESSING_ALGORITHM = self.config.algorithm
+        pi.RADIOMETRIC_PREFERENCE = self.config.radiometricPreference
         dt = datetime.utcnow()
         pi.GENERATION_TIME = strftime('%Y-%m-%dT%H:%M:%SZ', dt.timetuple())
         pi.PREVIEW_IMAGE_URL = 'http://www.telespazio-vega.de'
         qo = pi.Query_Options
-        qo.Aux_List.attrib['productLevel'] = 'Level-3p'
+        del qo[:]
+        del pi.L3_Product_Organisation.Granule_List[:]  
         xp.export()
 
         #create datastrip ID:
@@ -587,6 +593,7 @@ class L3_Product(Borg):
         copy_file(L2A_TILE_MTD_XML, L3_TILE_MTD_XML)
         self.L2A_TILE_MTD_XML = L2A_TILE_MTD_XML
         xp = L3_XmlParser(self.config, 'T2A')
+        xp.export()
         xp.validate()
         self.L3_TILE_MTD_XML = L3_TILE_MTD_XML
 
@@ -597,15 +604,106 @@ class L3_Product(Borg):
             if(xp.convert() == False):
                 self.logger.fatal('error in converting tile metadata to level 3')
                 self.exitError()
+            xp = L3_XmlParser(self.config, 'T03')
+            try:
+                # remove all QI items from the past, as they will be calculated
+                # directly from contents of images
+                tree = xp.getTree('Quality_Indicators_Info', 'L1C_Image_Content_QI')
+                del tree[:]
+                tree = xp.getTree('Quality_Indicators_Info', 'L2A_Image_Content_QI')
+                del tree[:]
+                tree = xp.getTree('Quality_Indicators_Info', 'L1C_Pixel_Level_QI')
+                del tree[:]
+                tree = xp.getTree('Quality_Indicators_Info', 'L2A_Pixel_Level_QI')
+                del tree[:]
+                tree = xp.getTree('Quality_Indicators_Info', 'PVI_FILENAME')
+                del tree[:]
+            except:
+                pass
+            xp.export()
+            # read updated file and append new items:
+            xp = L3_XmlParser(self.config, 'T03')
+            root = xp.getRoot('Quality_Indicators_Info')
+            root.append(objectify.Element('L3_Pixel_Level_QI'))
+            tree = xp.getTree('Quality_Indicators_Info', 'L3_Pixel_Level_QI')
+            tree.append(objectify.Element('PVI_FILENAME'))     
+            tree.append(objectify.Element('L3_TILE_MOSAIC_MASK'))                 
+            tree.append(objectify.Element('L3_TILE_CLASSIFICATION_MASK'))
             
+            root.append(objectify.Element('L3_Classification_QI'))         
+            tree = xp.getTree('Quality_Indicators_Info', 'L3_Classification_QI')
+            tree.append(objectify.Element('TOTAL_PIXEL_COUNT'))
+            tree.append(objectify.Element('DATA_PIXEL_COUNT'))
+            tree.append(objectify.Element('DATA_PIXEL_PERCENTAGE'))
+            tree.append(objectify.Element('NODATA_PIXEL_COUNT'))
+            tree.append(objectify.Element('NODATA_PIXEL_PERCENTAGE'))
+            tree.append(objectify.Element('GOOD_PIXEL_COUNT'))
+            tree.append(objectify.Element('GOOD_PIXEL_PERCENTAGE'))
+            tree.append(objectify.Element('BAD_PIXEL_COUNT'))
+            tree.append(objectify.Element('BAD_PIXEL_PERCENTAGE'))
+            tree.append(objectify.Element('SATURATED_DEFECTIVE_PIXEL_COUNT'))
+            tree.append(objectify.Element('SATURATED_DEFECTIVE_PIXEL_PERCENTAGE'))
+            tree.append(objectify.Element('DARK_FEATURES_COUNT'))
+            tree.append(objectify.Element('DARK_FEATURES_PERCENTAGE'))
+            tree.append(objectify.Element('CLOUD_SHADOWS_COUNT'))
+            tree.append(objectify.Element('CLOUD_SHADOW_PERCENTAGE'))
+            tree.append(objectify.Element('VEGETATION_COUNT'))
+            tree.append(objectify.Element('VEGETATION_PERCENTAGE'))
+            tree.append(objectify.Element('BARE_SOILS_COUNT'))
+            tree.append(objectify.Element('BARE_SOILS_PERCENTAGE'))
+            tree.append(objectify.Element('WATER_COUNT'))
+            tree.append(objectify.Element('WATER_PERCENTAGE'))
+            tree.append(objectify.Element('LOW_PROBA_CLOUDS_COUNT'))
+            tree.append(objectify.Element('LOW_PROBA_CLOUDS_PERCENTAGE'))
+            tree.append(objectify.Element('MEDIUM_PROBA_CLOUDS_COUNT'))
+            tree.append(objectify.Element('MEDIUM_PROBA_CLOUDS_PERCENTAGE'))
+            tree.append(objectify.Element('HIGH_PROBA_CLOUDS_COUNT'))
+            tree.append(objectify.Element('HIGH_PROBA_CLOUDS_PERCENTAGE'))
+            tree.append(objectify.Element('THIN_CIRRUS_COUNT'))
+            tree.append(objectify.Element('THIN_CIRRUS_PERCENTAGE'))
+            tree.append(objectify.Element('SNOW_ICE_COUNT'))
+            tree.append(objectify.Element('SNOW_ICE_PERCENTAGE'))
+
+            tree.TOTAL_PIXEL_COUNT = 0
+            tree.DATA_PIXEL_COUNT = 0
+            tree.DATA_PIXEL_PERCENTAGE = 0.0
+            tree.NODATA_PIXEL_COUNT = 0
+            tree.NODATA_PIXEL_PERCENTAGE = 0.0
+            tree.GOOD_PIXEL_COUNT = 0
+            tree.GOOD_PIXEL_PERCENTAGE = 0.0
+            tree.BAD_PIXEL_COUNT = 0
+            tree.BAD_PIXEL_PERCENTAGE = 0.0
+            tree.SATURATED_DEFECTIVE_PIXEL_COUNT = 0
+            tree.SATURATED_DEFECTIVE_PIXEL_PERCENTAGE = 0.0
+            tree.DARK_FEATURES_COUNT = 0
+            tree.DARK_FEATURES_PERCENTAGE = 0.0
+            tree.CLOUD_SHADOWS_COUNT = 0
+            tree.CLOUD_SHADOW_PERCENTAGE = 0.0
+            tree.VEGETATION_COUNT = 0
+            tree.VEGETATION_PERCENTAGE = 0.0
+            tree.BARE_SOILS_COUNT = 0
+            tree.BARE_SOILS_PERCENTAGE = 0.0
+            tree.WATER_COUNT = 0
+            tree.WATER_PERCENTAGE = 0.0
+            tree.LOW_PROBA_CLOUDS_COUNT = 0
+            tree.LOW_PROBA_CLOUDS_PERCENTAGE = 0.0
+            tree.MEDIUM_PROBA_CLOUDS_COUNT = 0
+            tree.MEDIUM_PROBA_CLOUDS_PERCENTAGE = 0.0
+            tree.HIGH_PROBA_CLOUDS_COUNT = 0
+            tree.HIGH_PROBA_CLOUDS_PERCENTAGE = 0.0
+            tree.THIN_CIRRUS_COUNT = 0
+            tree.THIN_CIRRUS_PERCENTAGE = 0.0
+            tree.SNOW_ICE_COUNT = 0
+            tree.SNOW_ICE_PERCENTAGE = 0.0
+            
+            root.append(objectify.Element('L3_Mosaic_QI_List'))
+            xp.export()
+
             #update tile id in ds metadata file.
             xp = L3_XmlParser(self.config, 'DS03')
             ti = xp.getTree('Image_Data_Info', 'Tiles_Information')
-            Tile = objectify.Element('Tile', tileId = L3_TILE_ID)
-            ti.Tile_List.append(Tile)
+            ti.Tile_List.append(objectify.Element('Tile', tileId = L3_TILE_ID))
             xp.export()
-            
-
         return
     
     def reinitL3_Tile(self, tileId):
@@ -619,20 +717,9 @@ class L3_Product(Borg):
             if fnmatch.fnmatch(L3_TILE_MTD_XML, L3_MTD_MASK) == True:
                 self.L3_TILE_MTD_XML = L3_TILE_ID + '/' + L3_TILE_MTD_XML
                 break
-
-        xp = L3_XmlParser(self.config, 'T03')       
-        xp.validate()
         return
 
     def postprocess(self):
-        # validate the meta data:
-        xp = L3_XmlParser(self.config, 'UP03')
-        xp.validate()
-        xp = L3_XmlParser(self.config, 'T03')
-        xp.validate()
-        xp = L3_XmlParser(self.config, 'DS03')
-        xp.validate()
-        
         # copy log to QI data as a report:
         dirname, basename = os.path.split(self.L3_TILE_MTD_XML)
         report = basename.replace('.xml', '_Report.xml')
