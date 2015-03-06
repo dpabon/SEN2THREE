@@ -8,6 +8,8 @@ import subprocess
 import threading
 import os
 import glob
+import Image
+
 from numpy import *
 from tables import *
 from lxml import objectify
@@ -16,7 +18,6 @@ from distutils.dir_util import mkpath
 from distutils.file_util import copy_file
 from L3_XmlParser import L3_XmlParser
 from L3_Borg import Borg
-from PIL import *
 
 try:
     from osgeo import gdal,osr
@@ -25,6 +26,10 @@ try:
 except ImportError:
     import gdal,osr
     from gdalconst import *
+# SIITBX-47: to suppress user warning due to the fact that 
+# http://trac.osgeo.org/gdal/ticket/5480 is not implemented
+# in the current openJPEG driver for windows used by ANACONDA:
+gdal.PushErrorHandler('CPLQuietErrorHandler')
 
 threadLock = threading.Lock()
 
@@ -1026,6 +1031,7 @@ class L3_Tables(Borg):
             os.remove(database)
         return
 
+
     def createPreviewImage(self):
         self.config.logger.debug('Creating Preview Image')
         os.chdir(self._L3_QualityDataDir)
@@ -1035,11 +1041,10 @@ class L3_Tables(Borg):
             self.config.exitError()
             return False
 
-        filename = self._L3_Tile_PVI_File
-        tmpfile = '.tmpfile.JPEG'
-        b = self.getBand('L3', self.B02)
-        g = self.getBand('L3', self.B03)
-        r = self.getBand('L3', self.B04)
+        filename = self._L2A_Tile_PVI_File
+        b = self.getBand(self.B02)
+        g = self.getBand(self.B03)
+        r = self.getBand(self.B04)
 
         b = self.scaleImgArray(b)
         g = self.scaleImgArray(g)
@@ -1049,37 +1054,31 @@ class L3_Tables(Borg):
         g = Image.fromarray(g)
         r = Image.fromarray(r)
 
-        out = Image.merge('RGB', (r,g,b))
-        out.save(tmpfile, 'JPEG')
-
-        if os.name == 'posix':
-            callstr = 'gdal_translate -of JPEG2000 -ot Byte ' + tmpfile + ' ' + filename + self._DEV0
-        else: # windows
-            callstr = 'geojasper -f ' + tmpfile + ' -F ' + filename + ' -T jp2 > NUL'
-
-        if(subprocess.call(callstr, shell=True) != 0):
-            self.config.logger.fatal('shell execution error using gdal_translate')
+        try:
+            out = Image.merge('RGB', (r,g,b))
+            out.save(filename, 'PNG')
+            self.config.tracer.debug('Preview Image created')
+            return True
+        except:
+            self.config.tracer.fatal('Preview Image creation failed')
             self.config.exitError()
             return False
 
-        self.config.logger.debug('Preview Image created')
-        if os.path.isfile(tmpfile):
-            os.remove(tmpfile)
-        return True
 
     def scaleImgArray(self, arr):
         if(arr.ndim) != 2:
-            self.config.logger.fatal('must be a 2 dimensional array')
+            self.config.tracer.fatal('must be a 2 dimensional array')
             self.config.exitError()
             return False
 
         arrclip = arr.copy()
-        min_ = 0
-        max_ = int(self.config.dnScale * 0.125)
-        arr = clip(arrclip, min_, max_)
-        arrFlt = arr.astype(float32) / self.config.dnScale * 255 + 0.5
-        arrByte = arrFlt.astype(uint8)
-        return arrByte
+        _min = 0.0
+        _max = 0.125
+        scale = 255.0
+        arr = clip(arrclip, _min, _max)
+        scaledArr = uint8(arr*scale/max)
+        return scaledArr
+
 
     def testDb(self):
         result = False

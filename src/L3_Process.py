@@ -4,7 +4,6 @@ processorName = 'Sentinel-2 Level 3 Prototype Processor (SEN2THREE)'
 processorVersion = '0.0.1'
 processorDate = '2015.01.01'
 
-#from numpy import *
 from tables import *
 import sys, os
 import fnmatch
