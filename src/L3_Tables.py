@@ -18,6 +18,7 @@ from distutils.dir_util import mkpath
 from distutils.file_util import copy_file
 from L3_XmlParser import L3_XmlParser
 from L3_Borg import Borg
+from L3_Library import showImage
 
 try:
     from osgeo import gdal,osr
@@ -205,7 +206,7 @@ class L3_Tables(Borg):
         self._L2A_Tile_WVP_File = self._L2A_bandDir        + pre + '_WVP' + post + '_' + str(self._resolution) + 'm.jp2'
         self._L2A_Tile_CLD_File = self._L2A_QualityDataDir + pre + '_CLD' + post + '_' + str(self._resolution) + 'm.jp2'
         self._L2A_Tile_SNW_File = self._L2A_QualityDataDir + pre + '_SNW' + post + '_' + str(self._resolution) + 'm.jp2'
-        self._L2A_Tile_PVI_File = self._L2A_QualityDataDir + pre + '_PVI' + post + '.jp2'
+        self._L2A_Tile_PVI_File = self._L2A_QualityDataDir + pre + '_PVI' + post + '.png'
         self._L2A_Tile_SCL_File = self._L2A_ImgDataDir     + pre + '_SCL' + post + '_' + str(self._resolution) + 'm.jp2'        
 
         pre = L3_TILE_ID_SHORT[:9]
@@ -216,7 +217,7 @@ class L3_Tables(Borg):
         self._L3_Tile_CLD_File = self._L3_QualityDataDir + pre + '_CLD' + post + '_' + str(self._resolution) + 'm.jp2'
         self._L3_Tile_SNW_File = self._L3_QualityDataDir + pre + '_SNW' + post + '_' + str(self._resolution) + 'm.jp2'
         self._L3_Tile_MSC_File = self._L3_QualityDataDir + pre + '_MSC' + post + '_' + str(self._resolution) + 'm.jp2'
-        self._L3_Tile_PVI_File = self._L3_QualityDataDir + pre + '_PVI' + post + '.jp2'
+        self._L3_Tile_PVI_File = self._L3_QualityDataDir + pre + '_PVI' + post + '_' + str(self.config.nrTilesProcessed) + '.png'
         self._L3_Tile_SCL_File = self._L3_ImgDataDir     + pre + '_SCL' + post + '_' + str(self._resolution) + 'm.jp2'
 
         self._imageDatabase = self._L3_bandDir + '/.database.h5'
@@ -682,6 +683,10 @@ class L3_Tables(Borg):
             h5file = open_file(self._imageDatabase)
             h5file.close()
             self.importBandList('L2A')
+            if(self.config.resolution == 60):            
+                self.createPreviewImage('L3')
+            #if(self.config.resolution == 60):
+            #    self.createPreviewImage('L2A')
         except:
             self.initDatabase()
             self.importBandList('L3')
@@ -886,6 +891,7 @@ class L3_Tables(Borg):
         Granules.attrib['imageFormat'] = 'JPEG2000'
         gl = objectify.Element('Granule_List')
         gl.append(Granules)
+        '''
         xp = L3_XmlParser(self.config, 'UP03')
         pi = xp.getTree('General_Info', 'L3_Product_Info')
         po = pi.L3_Product_Organisation
@@ -893,17 +899,12 @@ class L3_Tables(Borg):
         xp.export()
         
         # update on tile level
-        '''
         xp = L3_XmlParser(self.config, 'T03')
         ti = xp.getTree()
         xmlParser.root.General_Info.TILE_ID.valueOf_ = self.config.product.L3_TILE_ID
         xmlParser.root.General_Info.DATASTRIP_ID.valueOf_ =self.config.product.L3_DS_ID
-        '''
+
         # clean up and post processing actions:
-        if(self._resolution == 60):
-            self.createPreviewImage()
-            self.config.timestamp(productLevel + '_Tables: preview image exported')
-            '''
             qiiL3 = xmlParser.root.Quality_Indicators_Info
             qiiL3.PVI_FILENAME = os.path.basename(self._L3_Tile_PVI_File)
             qiiL3 = xmlParser.root.Quality_Indicators_Info
@@ -911,6 +912,7 @@ class L3_Tables(Borg):
             qiiL3.L3_Pixel_Level_QI = qiList
         xmlParser.export()
         '''
+
         globdir = self.config.product.L3_TARGET_ID + '/GRANULE/' + self.config.product.L3_TILE_ID + '/*/*.jp2.aux.xml'
         for filename in glob.glob(globdir):
             os.remove(filename)
@@ -1032,19 +1034,20 @@ class L3_Tables(Borg):
         return
 
 
-    def createPreviewImage(self):
+    def createPreviewImage(self, productLevel):
         self.config.logger.debug('Creating Preview Image')
-        os.chdir(self._L3_QualityDataDir)
-
         if(self._resolution != 60):
             self.config.logger.fatal('wrong resolution for this procedure, must be 60m')
             self.config.exitError()
             return False
-
-        filename = self._L2A_Tile_PVI_File
-        b = self.getBand(self.B02)
-        g = self.getBand(self.B03)
-        r = self.getBand(self.B04)
+        if productLevel == 'L2A':
+            filename = self._L2A_Tile_PVI_File            
+        else:
+            filename = self._L3_Tile_PVI_File
+            
+        b = self.getBand(productLevel, self.B02)
+        g = self.getBand(productLevel, self.B03)
+        r = self.getBand(productLevel, self.B04)
 
         b = self.scaleImgArray(b)
         g = self.scaleImgArray(g)
@@ -1057,26 +1060,26 @@ class L3_Tables(Borg):
         try:
             out = Image.merge('RGB', (r,g,b))
             out.save(filename, 'PNG')
-            self.config.tracer.debug('Preview Image created')
+            self.config.logger.debug('Preview Image created')
             return True
         except:
-            self.config.tracer.fatal('Preview Image creation failed')
+            self.config.logger.fatal('Preview Image creation failed')
             self.config.exitError()
             return False
 
 
     def scaleImgArray(self, arr):
         if(arr.ndim) != 2:
-            self.config.tracer.fatal('must be a 2 dimensional array')
+            self.config.logger.fatal('must be a 2 dimensional array')
             self.config.exitError()
             return False
 
         arrclip = arr.copy()
         _min = 0.0
-        _max = 0.125
+        _max = 500
         scale = 255.0
         arr = clip(arrclip, _min, _max)
-        scaledArr = uint8(arr*scale/max)
+        scaledArr = uint8(arr*scale/_max)
         return scaledArr
 
 

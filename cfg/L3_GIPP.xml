@@ -19,7 +19,7 @@
   <L3_Synthesis>
     <Min_Time>2014-01-01T00:00:00Z</Min_Time>
     <Max_Time>2014-12-31T23:59:59Z</Max_Time>
-    <Algorithm>AVERAGE</Algorithm>
+    <Algorithm>TEMP_HOMOGENEITY</Algorithm>
     <!-- MOST_RECENT, TEMP_HOMOGENEITY, RADIOMETRIC_QUALITY, AVERAGE -->
     <Radiometric_Preference>AEROSOL_OPTICAL_THICKNESS</Radiometric_Preference>
     <!-- AEROSOL_OPTICAL_THICKNESS, SOLAR_ZENITH_ANGLE -->

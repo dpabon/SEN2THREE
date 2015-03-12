@@ -75,7 +75,7 @@ class L3_Process(object):
         except:
             stderrWrite('Could not update processed tile history.\n')
             self.config.exitError()
-            return False
+            return False                 
         return True
 
     def preprocess(self):
