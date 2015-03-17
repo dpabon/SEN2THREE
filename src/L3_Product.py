@@ -27,13 +27,15 @@ class L3_Product(Borg):
         self._L1C_UP_ID = None
         self._L1C_DS_ID = None
         self._L1C_TILE_ID = None
-
+        self._L1C_UP_DIR = None
+        
         self._L2A_UP_MTD_XML = None
         self._L2A_DS_MTD_XML = None
         self._L2A_TILE_MTD_XML = None
         self._L2A_UP_ID = None        
         self._L2A_DS_ID = None
         self._L2A_TILE_ID = None
+        self._L2A_UP_DIR = None
 
         self._L3_TARGET_MTD_XML = None
         self._L3_DS_MTD_XML = None
@@ -41,6 +43,30 @@ class L3_Product(Borg):
         self._L3_TARGET_ID = None        
         self._L3_DS_ID = None
         self._L3_TILE_ID = None
+
+    def get_l_2_a_up_dir(self):
+        return self._L2A_UP_DIR
+
+
+    def get_l_1_c_up_dir(self):
+        return self._L1C_UP_DIR
+
+
+    def set_l_2_a_up_dir(self, value):
+        self._L2A_UP_DIR = value
+
+
+    def set_l_1_c_up_dir(self, value):
+        self._L1C_UP_DIR = value
+
+
+    def del_l_2_a_up_dir(self):
+        del self._L2A_UP_DIR
+
+
+    def del_l_1_c_up_dir(self):
+        del self._L1C_UP_DIR
+
 
 
     def get_config(self):
@@ -328,6 +354,287 @@ class L3_Product(Borg):
     L3_DS_ID = property(get_l_3_ds_id, set_l_3_ds_id, del_l_3_ds_id, "L3_DS_ID's docstring")
     L3_TILE_ID = property(get_l_3_tile_id, set_l_3_tile_id, del_l_3_tile_id, "L3_TILE_ID's docstring")
     L3_TARGET_DIR = property(get_l_3_target_dir, set_l_3_target_dir, del_l_3_target_dir, "L3_TARGET_DIR's docstring")
+    L2A_UP_DIR = property(get_l_2_a_up_dir, set_l_2_a_up_dir, del_l_2_a_up_dir, "L2A_UP_DIR's docstring")
+    L1C_UP_DIR = property(get_l_1_c_up_dir, set_l_1_c_up_dir, del_l_1_c_up_dir, "L1C_UP_DIR's docstring")
+
+    def createL2A_UserProduct(self, L1C_PRODUCT_ID):        
+        L1C_UP_MASK = '*1C_*'
+        L1C_UP_DIR = self.config.workDir + '/' + L1C_PRODUCT_ID
+        self._L1C_UP_DIR = L1C_UP_DIR
+        if os.path.exists(L1C_UP_DIR) == False:
+            stderrWrite('directory "%s" does not exist.\n' % L1C_UP_DIR)
+            self.config.exitError()
+            return False
+
+        # detect the filename for the datastrip metadata:
+        L1C_DS_DIR = L1C_UP_DIR + '/DATASTRIP/'
+        if os.path.exists(L1C_DS_DIR) == False:
+            stderrWrite('directory "%s" does not exist.\n' % L1C_DS_DIR)
+            self.config.exitError()
+            return False
+
+        L1C_DS_MASK = '*_L1C_*'
+        dirlist = sorted(os.listdir(L1C_DS_DIR))
+        found = False
+        
+        for dirname in dirlist:
+            if(fnmatch.fnmatch(dirname, L1C_DS_MASK) == True):
+                found = True
+                break
+        
+        if found == False:
+            stderrWrite('No metadata in datastrip\n.')
+            self.config.exitError()
+
+        L1C_DS_DIR += dirname
+        L1C_DS_MTD_XML = (dirname[:-7]+'.xml').replace('_MSI_', '_MTD_')
+        self.L1C_DS_MTD_XML = L1C_DS_DIR + '/' + L1C_DS_MTD_XML
+
+        dirname, basename = os.path.split(L1C_UP_DIR)
+        if(fnmatch.fnmatch(basename, L1C_UP_MASK) == False):
+            stderrWrite('%s: identifier "*1C_*" is missing.\n' % basename)
+            self.config.exitError()
+            return False
+
+        GRANULE = L1C_UP_DIR + '/GRANULE'
+        if os.path.exists(GRANULE) == False:
+            stderrWrite('directory "%s" does not exist.\n' % GRANULE)
+            self.config.exitError()
+            return False
+        
+        #
+        # the product (directory) structure:
+        #-------------------------------------------------------
+        L2A_UP_ID = basename[:4] + 'USER' + basename[8:]
+        L2A_UP_ID = L2A_UP_ID.replace('1C_', '2A_')            
+        L2A_UP_DIR = dirname + '/' + L2A_UP_ID
+        self._L2A_UP_DIR = L2A_UP_DIR
+        self.L2A_UP_ID = L2A_UP_ID
+
+        L1C_INSPIRE_XML = L1C_UP_DIR + '/INSPIRE.xml'
+        L1C_MANIFEST_SAFE = L1C_UP_DIR + '/manifest.safe'
+
+        L2A_INSPIRE_XML = L2A_UP_DIR + '/INSPIRE.xml'
+        L2A_MANIFEST_SAFE = L2A_UP_DIR + '/manifest.safe'
+
+        AUX_DATA = '/AUX_DATA'
+        DATASTRIP = '/DATASTRIP'
+        GRANULE = '/GRANULE'
+        HTML = '/HTML'
+        REP_INFO = '/rep_info'
+        firstInit = False
+
+        if(os.path.exists(L2A_UP_DIR + GRANULE) == False):
+            copy_tree(L1C_UP_DIR + AUX_DATA, L2A_UP_DIR + AUX_DATA)
+            copy_tree(L1C_UP_DIR + DATASTRIP, L2A_UP_DIR + DATASTRIP)
+            copy_tree(L1C_UP_DIR + HTML, L2A_UP_DIR + HTML)
+            copy_tree(L1C_UP_DIR + REP_INFO, L2A_UP_DIR + REP_INFO)
+            # remove the L1C xsds:
+            S2_mask = 'S2_*.xsd'
+            repdir = L2A_UP_DIR + REP_INFO
+            filelist = os.listdir(repdir)
+            for filename in filelist:
+                if(fnmatch.fnmatch(filename, S2_mask) == True):
+                    os.remove(repdir + '/' + filename)
+            copy_file(L1C_INSPIRE_XML, L2A_INSPIRE_XML)
+            copy_file(L1C_MANIFEST_SAFE, L2A_MANIFEST_SAFE)
+            os.mkdir(L2A_UP_DIR + GRANULE)
+            firstInit = True
+
+        self.L1C_INSPIRE_XML = L1C_INSPIRE_XML
+        self.L2A_INSPIRE_XML = L2A_INSPIRE_XML
+        self.L1C_MANIFEST_SAFE = L1C_MANIFEST_SAFE
+        self.L2A_MANIFEST_SAFE = L2A_MANIFEST_SAFE
+
+        #create user product:
+        S2A_mask = 'S2A_*.xml'
+        filelist = sorted(os.listdir(L1C_UP_DIR))
+        found = False
+        for filename in filelist:
+            if(fnmatch.fnmatch(filename, S2A_mask) == True):
+                found = True
+                break
+        if found == False:
+            stderrWrite('No metadata for user product.\n')
+            self.config.exitError()
+
+        # prepare L2A User Product metadata file
+        fn_L1C = L1C_UP_DIR  + '/' + filename
+        fn_L2A = filename[:4] + 'USER' + filename[8:]
+        fn_L2A = fn_L2A.replace('L1C_', 'L2A_')
+        fn_L2A = L2A_UP_DIR + '/' + fn_L2A
+        self.L1C_UP_MTD_XML = fn_L1C
+        self.L2A_UP_MTD_XML = fn_L2A
+        if firstInit == True:
+            # copy L2A schemes from config_dir into rep_info:    
+            xp = L3_XmlParser(self.config, 'GIPP')
+            cs = xp.getRoot('Common_Section')
+            upScheme2a = cs.UP_Scheme_2A.text
+            tileScheme2a = cs.Tile_Scheme_2A.text
+            dsScheme2a = cs.DS_Scheme_2A.text
+            copy_file(self.config.configDir + upScheme2a, L2A_UP_DIR + REP_INFO + '/' + upScheme2a)
+            copy_file(self.config.configDir + tileScheme2a, L2A_UP_DIR + REP_INFO + '/' + tileScheme2a)
+            copy_file(self.config.configDir + dsScheme2a, L2A_UP_DIR + REP_INFO + '/' + dsScheme2a)
+            # copy L2A User Product metadata file:
+            copy_file(fn_L1C, fn_L2A)
+            # remove old L1C entries from L1C_UP_MTD_XML:
+            xp = L3_XmlParser(self.config, 'UP2A')
+            if(xp.convert() == False):
+                self.config.logger.fatal('error in converting user product metadata to level 2A')
+                self.exitError()
+            xp = L3_XmlParser(self.config, 'UP2A')
+            pi = xp.getTree('General_Info', 'L2A_Product_Info')
+            del pi.L2A_Product_Organisation.Granule_List[:]            
+            # update L2A entries from L1C_UP_MTD_XML:
+            pi.PRODUCT_URI = 'http://www.telespazio-vega.de'
+            pi.PROCESSING_LEVEL = 'Level-2Ap'
+            pi.PRODUCT_TYPE = 'S2MSI2Ap'
+            dt = datetime.utcnow()
+            pi.GENERATION_TIME = strftime('%Y-%m-%dT%H:%M:%SZ', dt.timetuple())
+            pi.PREVIEW_IMAGE_URL = 'http://www.telespazio-vega.de'
+            qo = pi.Query_Options
+            #qo.PREVIEW_IMAGE = True
+            #qo.METADATA_LEVEL = 'Standard'
+            qo.Aux_List.attrib['productLevel'] = 'Level-2Ap'
+            pic = xp.getTree('General_Info', 'L2A_Product_Image_Characteristics')              
+            L1C_TOA_QUANTIFICATION_VALUE =pic.L1C_L2A_Quantification_Values_List
+            qvl = objectify.Element('L1C_L2A_Quantification_Values_List')
+            qvl.L1C_TOA_QUANTIFICATION_VALUE = L1C_TOA_QUANTIFICATION_VALUE
+            qvl.L2A_BOA_QUANTIFICATION_VALUE = str(self.config.L2A_BOA_QUANTIFICATION_VALUE)
+            qvl.L2A_BOA_QUANTIFICATION_VALUE.attrib['unit'] = 'none'
+            qvl.L2A_AOT_QUANTIFICATION_VALUE = str(self.config.L2A_AOT_QUANTIFICATION_VALUE)
+            qvl.L2A_AOT_QUANTIFICATION_VALUE.attrib['unit'] = 'none'
+            qvl.L2A_WVP_QUANTIFICATION_VALUE = str(self.config.L2A_WVP_QUANTIFICATION_VALUE)
+            qvl.L2A_WVP_QUANTIFICATION_VALUE.attrib['unit'] = 'cm'
+            pic.L1C_L2A_Quantification_Values_List = qvl
+            
+            scl = objectify.Element('L2A_Scene_Classification_List')
+            scid = objectify.Element('L2A_Scene_Classification_ID')    
+            scid.L2A_SCENE_CLASSIFICATION_TEXT = 'SC_NODATA'
+            scid.L2A_SCENE_CLASSIFICATION_INDEX = '0'
+            scl.append(scid)
+            
+            scid = objectify.Element('L2A_Scene_Classification_ID')              
+            scid.L2A_SCENE_CLASSIFICATION_TEXT = 'SC_SATURATED_DEFECTIVE'
+            scid.L2A_SCENE_CLASSIFICATION_INDEX = '1'
+            scl.append(scid)
+
+            scid = objectify.Element('L2A_Scene_Classification_ID')                  
+            scid.L2A_SCENE_CLASSIFICATION_TEXT = 'SC_DARK_FEATURE_SHADOW'
+            scid.L2A_SCENE_CLASSIFICATION_INDEX = '2'
+            scl.append(scid)
+
+            scid = objectify.Element('L2A_Scene_Classification_ID')                  
+            scid.L2A_SCENE_CLASSIFICATION_TEXT = 'SC_CLOUD_SHADOW'
+            scid.L2A_SCENE_CLASSIFICATION_INDEX = '3'
+            scl.append(scid)        
+            
+            scid = objectify.Element('L2A_Scene_Classification_ID')      
+            scid.L2A_SCENE_CLASSIFICATION_TEXT = 'SC_VEGETATION'
+            scid.L2A_SCENE_CLASSIFICATION_INDEX = '4'
+            scl.append(scid)
+
+            scid = objectify.Element('L2A_Scene_Classification_ID')                      
+            scid.L2A_SCENE_CLASSIFICATION_TEXT = 'SC_BARE_SOIL_DESERT'
+            scid.L2A_SCENE_CLASSIFICATION_INDEX = '5'
+            scl.append(scid)
+                            
+            scid = objectify.Element('L2A_Scene_Classification_ID')                  
+            scid.L2A_SCENE_CLASSIFICATION_TEXT = 'SC_WATER'
+            scid.L2A_SCENE_CLASSIFICATION_INDEX = '6'
+            scl.append(scid)
+                    
+            scid = objectify.Element('L2A_Scene_Classification_ID')                  
+            scid.L2A_SCENE_CLASSIFICATION_TEXT = 'SC_CLOUD_LOW_PROBA'
+            scid.L2A_SCENE_CLASSIFICATION_INDEX = '7'
+            scl.append(scid)
+            
+            scid = objectify.Element('L2A_Scene_Classification_ID')                              
+            scid.L2A_SCENE_CLASSIFICATION_TEXT = 'SC_CLOUD_MEDIUM_PROBA'
+            scid.L2A_SCENE_CLASSIFICATION_INDEX = '8'
+            scl.append(scid)
+            
+            scid = objectify.Element('L2A_Scene_Classification_ID')                              
+            scid.L2A_SCENE_CLASSIFICATION_TEXT = 'SC_CLOUD_HIGH_PROBA'
+            scid.L2A_SCENE_CLASSIFICATION_INDEX = '9'
+            scl.append(scid)
+            
+            scid = objectify.Element('L2A_Scene_Classification_ID')                  
+            scid.L2A_SCENE_CLASSIFICATION_TEXT = 'SC_THIN_CIRRUS'
+            scid.L2A_SCENE_CLASSIFICATION_INDEX = '10'
+            scl.append(scid)
+            
+            scid = objectify.Element('L2A_Scene_Classification_ID')                            
+            scid.L2A_SCENE_CLASSIFICATION_TEXT = 'SC_SNOW_ICE'
+            scid.L2A_SCENE_CLASSIFICATION_INDEX = '11'
+            scl.append(scid) 
+            pic.append(scl)
+
+            auxinfo = xp.getRoot('L2A_Auxiliary_Data_Info')
+            auxdata = objectify.Element('Aux_Data')   
+            gipp = objectify.Element('L2A_GIPP_List')
+            auxdata.append(gipp)
+            auxdata.L2A_PRODUCTION_DEM_TYPE = self.config.getStr('Common_Section', 'DEM_Reference')
+            auxdata.L2A_LIBRADTRAN_LUTS = 'NONE'
+            auxdata.L2A_SNOW_CLIMATOLOGY = self.config.getStr('Scene_Classification', 'Snow_Map_Reference')
+            auxinfo.append(auxdata)
+            xp.export()
+
+        #create datastrip ID:
+        L2A_DS_DIR = self._L2A_UP_DIR + DATASTRIP
+        dirlist = sorted(os.listdir(L2A_DS_DIR))
+        S2A_mask = 'S2A_*'
+        found = False
+        for dirname in dirlist:
+            if(fnmatch.fnmatch(dirname, S2A_mask) == True):
+                found = True
+                break
+        if found == False:
+            stderrWrite('No subdirectory in datastrip.\n')
+            self.exitError()
+
+        L1C_DS_ID = dirname
+        L2A_DS_ID = L1C_DS_ID[:4] + 'USER' + L1C_DS_ID[8:]
+        L2A_DS_ID = L2A_DS_ID.replace('L1C_', 'L2A_')
+        self.L2A_DS_ID = L2A_DS_ID
+
+        olddir = L2A_DS_DIR + '/' + L1C_DS_ID
+        newdir = L2A_DS_DIR + '/' + L2A_DS_ID
+
+        if firstInit == True:
+            os.rename(olddir, newdir)
+
+        #find datastrip metadada, rename and change it:
+        L2A_DS_DIR = newdir
+        filelist = sorted(os.listdir(L2A_DS_DIR))
+        found = False
+        for filename in filelist:
+            if(fnmatch.fnmatch(filename, S2A_mask) == True):
+                found = True
+                break
+        if found == False:
+            stderrWrite('No metadata in datastrip\n.')
+            self.exitError()
+
+        LXX_DS_MTD_XML = filename
+        L2A_DS_MTD_XML = LXX_DS_MTD_XML[:4] + 'USER' + LXX_DS_MTD_XML[8:]
+        L2A_DS_MTD_XML = L2A_DS_MTD_XML.replace('L1C_', 'L2A_')
+
+        oldfile = L2A_DS_DIR + '/' + LXX_DS_MTD_XML
+        newfile = L2A_DS_DIR + '/' + L2A_DS_MTD_XML
+        self.L2A_DS_MTD_XML = newfile
+        if firstInit == True:
+            os.rename(oldfile, newfile)
+            xp = L3_XmlParser(self.config, 'DS2A')
+            if(xp.convert() == False):
+                self.config.logger.fatal('error in converting datastrip metadata to level 2A')
+                self.exitError()
+            xp = L3_XmlParser(self.config, 'DS2A')
+            ti = xp.getTree('Image_Data_Info', 'Tiles_Information')
+            del ti.Tile_List.Tile[:]
+            xp.export()
+                              
+        return sorted(os.listdir(L1C_UP_DIR + GRANULE))
 
     def existL3_TargetProduct(self):
         self.config.logger.info('Checking existence of L3 target product ...')
@@ -446,16 +753,15 @@ class L3_Product(Borg):
         xp.export()
         xp.validate()
         self.L3_TARGET_MTD_XML = fn_L3
-
         # copy L2A schemes from config_dir into rep_info:    
         xp = L3_XmlParser(self.config, 'GIPP')
         cs = xp.getRoot('Common_Section')
         upScheme2a = cs.UP_Scheme_2A.text
         tileScheme2a = cs.Tile_Scheme_2A.text
         dsScheme2a = cs.DS_Scheme_2A.text
-        copy_file(self.config.get_config_dir() + upScheme2a, L3_TARGET_DIR + REP_INFO + '/' + upScheme2a)
-        copy_file(self.config.get_config_dir() + tileScheme2a, L3_TARGET_DIR + REP_INFO + '/' + tileScheme2a)
-        copy_file(self.config.get_config_dir() + dsScheme2a, L3_TARGET_DIR + REP_INFO + '/' + dsScheme2a)
+        copy_file(self.config.configDir + upScheme2a, L3_TARGET_DIR + REP_INFO + '/' + upScheme2a)
+        copy_file(self.config.configDir + tileScheme2a, L3_TARGET_DIR + REP_INFO + '/' + tileScheme2a)
+        copy_file(self.config.configDir + dsScheme2a, L3_TARGET_DIR + REP_INFO + '/' + dsScheme2a)
         # copy L3 User Product metadata file:
         copy_file(fn_L2A, fn_L3)
         
@@ -736,3 +1042,31 @@ class L3_Product(Borg):
         copy_file(self.config.fnLog, report)
         return
  
+    def tileExists(self, tileId):
+        processedFn = self.config.workDir + '/' + 'processed'
+
+        try: # read list of tiles already processed
+            f = open(processedFn, 'r')
+            processedTiles = f.read()
+            if tileId[:-7] in processedTiles:
+                return True
+        except:
+            pass
+        
+        return False
+
+    def appendTile(self, tileId):
+        processedTile = tileId + '\n'
+        processedFn = self.config.workDir + '/' + 'processed'
+        try:
+            f = open(processedFn, 'a')
+            f.write(processedTile)
+            f.flush()
+            f.close()
+        except:
+            stderrWrite('Could not update processed tile history.\n')
+            self.config.exitError()
+            return False               
+                
+        return True
+

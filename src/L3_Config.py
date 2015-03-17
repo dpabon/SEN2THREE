@@ -4,9 +4,11 @@ from numpy import *
 import sys, os, time
 import logging
 import ConfigParser
-from lxml import objectify
+from lxml import etree, objectify
 from time import strftime
 from datetime import datetime, date
+from distutils.file_util import copy_file
+
 from L3_Borg import Borg
 from L3_Library import stdoutWrite, stderrWrite
 from L3_Product import L3_Product
@@ -18,6 +20,7 @@ class L3_Config(Borg):
         if(workDir):
             self._home = os.environ['S2L3APPHOME'] + '/'
             self._workDir = workDir
+            self._processorVersion = None
             self._product = L3_Product(self)
             if(os.environ['S2L3APPCFG'] == ''):
                 self._configDir = self._home + 'cfg/'
@@ -47,10 +50,12 @@ class L3_Config(Borg):
             self._nrows = -1
             self._nbnds = -1
             self._tTotal = 0.0
-            self._sza = -1
-            self._saa = -1
-            self._szaArray = None
-            self._saaArray = None
+            self._solaz = None
+            self._solaz_arr = None
+            self._solze = None
+            self._solze_arr = None
+            self._vaa_arr = None
+            self._vza_arr = None            
             self._GIPP = ''
             self._ECMWF = ''
             self._DEM = ''
@@ -75,10 +80,97 @@ class L3_Config(Borg):
             self._nrTilesProcessed = 0
             self._maxCloudProbability = None
             self._maxInvalidPixelsPercentage = None
-            self._maxAerosolOptical_thickness = None
+            self._minAerosolOptical_thickness = None
             self._maxSolarZenithAngle = None
-            self._maxViewingAngle = None
             self._classifier = None
+            self._targetDirectory = None
+            self._c0 = None
+            self._c1 = None
+            self._e0 = None
+            self._d2 = None
+
+    def get_processor_version(self):
+        return self._processorVersion
+
+
+    def set_processor_version(self, value):
+        self._processorVersion = value
+
+
+    def del_processor_version(self):
+        del self._processorVersion
+
+
+    def get_solaz(self):
+        return self._solaz
+
+
+    def get_solaz_arr(self):
+        return self._solaz_arr
+
+
+    def get_solze(self):
+        return self._solze
+
+
+    def get_solze_arr(self):
+        return self._solze_arr
+
+
+    def get_vaa_arr(self):
+        return self._vaa_arr
+
+
+    def get_vza_arr(self):
+        return self._vza_arr
+
+
+    def set_solaz(self, value):
+        self._solaz = value
+
+
+    def set_solaz_arr(self, value):
+        self._solaz_arr = value
+
+
+    def set_solze(self, value):
+        self._solze = value
+
+
+    def set_solze_arr(self, value):
+        self._solze_arr = value
+
+
+    def set_vaa_arr(self, value):
+        self._vaa_arr = value
+
+
+    def set_vza_arr(self, value):
+        self._vza_arr = value
+
+
+    def del_solaz(self):
+        del self._solaz
+
+
+    def del_solaz_arr(self):
+        del self._solaz_arr
+
+
+    def del_solze(self):
+        del self._solze
+
+
+    def del_solze_arr(self):
+        del self._solze_arr
+
+
+    def del_vaa_arr(self):
+        del self._vaa_arr
+
+
+    def del_vza_arr(self):
+        del self._vza_arr
 
     
     def set_logLevel(self, level):
@@ -183,14 +275,6 @@ class L3_Config(Borg):
         return self._tTotal
 
 
-    def get_zenith_angle(self):
-        return self._sza
-
-
-    def get_azimuth_angle(self):
-        return self._saa
-
-
     def get_gipp(self):
         return self._GIPP
 
@@ -287,14 +371,6 @@ class L3_Config(Borg):
         self._tTotal = value
 
 
-    def set_zenith_angle(self, value):
-        self._sza = value
-
-
-    def set_azimuth_angle(self, value):
-        self._saa = value
-
-
     def set_gipp(self, value):
         self._GIPP = value
 
@@ -389,14 +465,6 @@ class L3_Config(Borg):
 
     def del_t_total(self):
         del self._tTotal
-
-
-    def del_zenith_angle(self):
-        del self._sza
-
-
-    def del_azimuth_angle(self):
-        del self._saa
 
 
     def del_gipp(self):
@@ -511,8 +579,8 @@ class L3_Config(Borg):
         return self._maxInvalidPixelsPercentage
 
 
-    def get_max_aerosol_optical_thickness(self):
-        return self._maxAerosolOptical_thickness
+    def get_min_aerosol_optical_thickness(self):
+        return self._minAerosolOptical_thickness
 
 
     def get_max_solar_zenith_angle(self):
@@ -555,8 +623,8 @@ class L3_Config(Borg):
         self._maxInvalidPixelsPercentage = value
 
 
-    def set_max_aerosol_optical_thickness(self, value):
-        self._maxAerosolOptical_thickness = value
+    def set_min_aerosol_optical_thickness(self, value):
+        self._minAerosolOptical_thickness = value
 
 
     def set_max_solar_zenith_angle(self, value):
@@ -599,8 +667,8 @@ class L3_Config(Borg):
         del self._maxInvalidPixelsPercentage
 
 
-    def del_max_aerosol_optical_thickness(self):
-        del self._maxAerosolOptical_thickness
+    def del_min_aerosol_optical_thickness(self):
+        del self._minAerosolOptical_thickness
 
 
     def del_max_solar_zenith_angle(self):
@@ -635,31 +703,6 @@ class L3_Config(Borg):
         del self._fnLog
 
 
-    def get_sza_array(self):
-        return self._szaArray
-
-
-    def get_saa_array(self):
-        return self._saaArray
-
-
-    def set_sza_array(self, value):
-        self._szaArray = value
-
-
-    def set_saa_array(self, value):
-        self._saaArray = value
-
-
-    def del_sza_array(self):
-        del self._szaArray
-
-
-    def del_saa_array(self):
-        del self._saaArray
-
-
-
     def get_display_data(self):
         return self._displayData
 
@@ -684,8 +727,56 @@ class L3_Config(Borg):
         del self._radiometricPreference
 
 
+    def get_d_2(self):
+        return self._d2
+
+
+    def get_c_0(self):
+        return self._c0
+
+
+    def get_c_1(self):
+        return self._c1
+
+
+    def get_e_0(self):
+        return self._e0
+
+
+    def set_d_2(self, value):
+        self._d2 = value
+
+
+    def set_c_0(self, value):
+        self._c0 = value
+
+
+    def set_c_1(self, value):
+        self._c1 = value
+
+
+    def set_e_0(self, value):
+        self._e0 = value
+
+
+    def del_d_2(self):
+        del self._d2
+
+
+    def del_c_0(self):
+        del self._c0
+
+
+    def del_c_1(self):
+        del self._c1
+
+
+    def del_e_0(self):
+        del self._e0
+
     fnLog = property(get_fn_log, set_fn_log, del_fn_log, "fnLog's docstring")
     product = property(get_product, set_product, del_product, "product's docstring")
+    processorVersion = property(get_processor_version, set_processor_version, del_processor_version, "processorVersion's docstring")
     minTime = property(get_min_time, set_min_time, del_min_time, "minTime's docstring")
     maxTime = property(get_max_time, set_max_time, del_max_time, "maxTime's docstring")
     algorithm = property(get_algorithm, set_algorithm, del_algorithm, "algorithm's docstring")
@@ -695,7 +786,7 @@ class L3_Config(Borg):
     nrTilesProcessed = property(get_nr_tiles_processed, set_nr_tiles_processed, del_nr_tiles_processed, "maxTilesProcessed's docstring")
     maxCloudProbability = property(get_max_cloud_probability, set_max_cloud_probability, del_max_cloud_probability, "maxCloudProbability's docstring")
     maxInvalidPixelsPercentage = property(get_max_invalid_pixels_percentage, set_max_invalid_pixels_percentage, del_max_invalid_pixels_percentage, "maxInvalidPixelsPercentage's docstring")
-    maxAerosolOptical_thickness = property(get_max_aerosol_optical_thickness, set_max_aerosol_optical_thickness, del_max_aerosol_optical_thickness, "maxAerosolOptical_thickness's docstring")
+    minAerosolOptical_thickness = property(get_min_aerosol_optical_thickness, set_min_aerosol_optical_thickness, del_min_aerosol_optical_thickness, "minAerosolOptical_thickness's docstring")
     maxSolarZenithAngle = property(get_max_solar_zenith_angle, set_max_solar_zenith_angle, del_max_solar_zenith_angle, "maxSolarZenithAngle's docstring")
     maxViewingAngle = property(get_max_viewing_angle, set_max_viewing_angle, del_max_viewing_angle, "maxViewingAngle's docstring")
     resolution = property(get_resolution, set_resolution, del_resolution, "resolution's docstring")
@@ -714,10 +805,6 @@ class L3_Config(Borg):
     nrows = property(get_nrows, set_nrows, del_nrows, "nrows's docstring")
     nbnds = property(get_nbnds, set_nbnds, del_nbnds, "nbnds's docstring")
     tTotal = property(get_t_total, set_t_total, del_t_total, "tTotal's docstring")
-    sza = property(get_zenith_angle, set_zenith_angle, del_zenith_angle, "zenith_angle's docstring")
-    saa = property(get_azimuth_angle, set_azimuth_angle, del_azimuth_angle, "azimuth_angle's docstring")
-    szaArray = property(get_sza_array, set_sza_array, del_sza_array, "szaArray's docstring")
-    saaArray = property(get_saa_array, set_saa_array, del_saa_array, "saaArray's docstring")    
     displayData = property(get_display_data, set_display_data, del_display_data, "displayData's docstring")
     radiometricPreference = property(get_radiometric_preference, set_radiometric_preference, del_radiometric_preference, "radiometricPreference's docstring")
     GIPP = property(get_gipp, set_gipp, del_gipp, "GIPP's docstring")
@@ -730,8 +817,18 @@ class L3_Config(Borg):
     timestamp = property(get_timestamp, set_timestamp, del_timestamp, "timestamp's docstring")
     creationDate = property(get_creation_date, set_creation_date, del_creation_date, "creationDate's docstring")
     acquisitionDate = property(get_acquisition_date, set_acquisition_date, del_acquisition_date, "acquisitionDate's docstring")
+    d2 = property(get_d_2, set_d_2, del_d_2, "d2's docstring")
+    c0 = property(get_c_0, set_c_0, del_c_0, "c0's docstring")
+    c1 = property(get_c_1, set_c_1, del_c_1, "c1's docstring")
+    e0 = property(get_e_0, set_e_0, del_e_0, "e0's docstring")
     loglevel = property(get_logLevel, set_logLevel)
     logger = property(get_logger, set_logger, del_logger, "logger's docstring")
+    solaz = property(get_solaz, set_solaz, del_solaz, "solaz's docstring")
+    solaz_arr = property(get_solaz_arr, set_solaz_arr, del_solaz_arr, "solaz_arr's docstring")
+    solze = property(get_solze, set_solze, del_solze, "solze's docstring")
+    solze_arr = property(get_solze_arr, set_solze_arr, del_solze_arr, "solze_arr's docstring")
+    vaa_arr = property(get_vaa_arr, set_vaa_arr, del_vaa_arr, "vaa_arr's docstring")
+    vza_arr = property(get_vza_arr, set_vza_arr, del_vza_arr, "vza_arr's docstring")
     
     def initLogger(self):
         dt = datetime.now()
@@ -758,7 +855,7 @@ class L3_Config(Borg):
     def readGipp(self):
         xp = L3_XmlParser(self, 'GIPP')
         xp.export()
-        xp.validate()
+        # xp.validate()
         try:
             doc = objectify.parse(self._configFn)
             root = doc.getroot()
@@ -777,11 +874,10 @@ class L3_Config(Borg):
             self._snowRemoval = l3s.Snow_Removal.pyval
             self._maxCloudProbability = l3s.Max_Cloud_Probability.pyval
             self._maxInvalidPixelsPercentage = l3s.Max_Invalid_Pixels_Percentage.pyval
-            self._maxAerosolOptical_thickness = l3s.Max_Aerosol_Optical_Thickness.pyval
+            self._minAerosolOptical_thickness = l3s.Min_Aerosol_Optical_Thickness.pyval
             self._maxSolarZenithAngle = l3s.Max_Solar_Zenith_Angle.pyval
-            self._maxViewingAngle = l3s.Max_Viewing_Angle.pyval
             
-            cl = root.Classificators
+            cl = root.Scene_Classification.Classificators
             self._classifier =  {'NO_DATA'              : cl.NO_DATA.pyval,
                                 'SATURATED_DEFECTIVE'   : cl.SATURATED_DEFECTIVE.pyval,
                                 'DARK_FEATURES'         : cl.DARK_FEATURES.pyval,
@@ -801,7 +897,8 @@ class L3_Config(Borg):
             self.exitError();
         return True
 
-    def init(self):
+    def init(self, processorVersion):
+            self._processorVersion = processorVersion
             self.initLogger()
             self.readGipp()
             self.setTimeEstimation(self.resolution)
@@ -905,9 +1002,126 @@ class L3_Config(Borg):
         self._d2 = dastr * dastr
         return
 
+    def readTileMetadata(self):
+        xp = L3_XmlParser(self, 'T2A')
+        ang = xp.getTree('Geometric_Info', 'Tile_Angles')
+        azimuthAnglesList = ang.Sun_Angles_Grid.Azimuth.Values_List.VALUES
+        solaz_arr = xp.getFloatArray(azimuthAnglesList)
+        zenithAnglesList = ang.Sun_Angles_Grid.Zenith.Values_List.VALUES
+        solze_arr = xp.getFloatArray(zenithAnglesList)
+        # images may be not squared - this is the case for the current testdata used
+        # angle arrays have to be adapted, otherwise the bilinear interpolation is misaligned.
+        imgSizeList = xp.getTree('Geometric_Info', 'Tile_Geocoding')
+        size = imgSizeList.Size
+        sizelen = len(size)
+        nrows = None
+        ncols = None
+        for i in range(sizelen):
+            if int(size[i].attrib['resolution']) == self._resolution:
+                nrows = int(size[i].NROWS)
+                ncols = int(size[i].NCOLS)
+                break
+
+        if(nrows == None or ncols == None):
+            self.exitError('no image dimension in metadata specified, please correct')
+
+        if(nrows < ncols):
+            last_row = int(solaz_arr[0].size * float(nrows)/float(ncols) + 0.5)
+            saa = solaz_arr[0:last_row,:]
+            sza = solze_arr[0:last_row,:]
+        elif(ncols < nrows):
+            last_col = int(solaz_arr[1].size * float(ncols)/float(nrows) + 0.5)
+            saa = solaz_arr[:,0:last_col]
+            sza = solze_arr[:,0:last_col]
+        else:
+            saa = solaz_arr
+            sza = solze_arr
+
+        if(saa.max() < 0):
+            saa *= -1
+        self.saaArray = clip(saa, 0, 360.0)
+
+        sza = absolute(sza)
+        self.solze_arr = clip(sza, 0, 70.0)
+
+        self.nrows = nrows
+        self.ncols = ncols
+        solze = float32(ang.Mean_Sun_Angle.ZENITH_ANGLE.text)
+        solaz = float32(ang.Mean_Sun_Angle.AZIMUTH_ANGLE.text)
+
+        self._solze = absolute(solze)
+        if self._solze > 70.0:
+            self._solze = 70.0
+
+        if solaz < 0:
+            solaz *= -1
+        if solaz > 360.0:
+            solaz = 360.0
+        self._solaz = solaz
+
+        #
+        # ATCOR employs the Lamberts reflectance law and assumes a constant viewing angle per tile (sub-scene)
+        # as this is not given, this is a workaround, which have to be improved in a future version
+        #
+        viewAnglesList = ang.Mean_Viewing_Incidence_Angle_List.Mean_Viewing_Incidence_Angle
+        arrlen = len(viewAnglesList)
+        vaa = zeros(arrlen, float32)
+        vza = zeros(arrlen, float32)
+        for i in range(arrlen):
+            vaa[i] = float32(viewAnglesList[i].AZIMUTH_ANGLE.text)
+            vza[i] = float32(viewAnglesList[i].ZENITH_ANGLE.text)
+
+        _min = vaa.min()
+        _max = vaa.max()
+        if _min < 0: _min += 360
+        if _max < 0: _max += 360
+        vaa_arr = array([_min,_min,_max,_max])
+        self.vaa_arr = vaa_arr.reshape(2,2)
+
+        _min = absolute(vza.min())
+        _max = absolute(vza.max())
+        if _min > 40.0: _min = 40.0
+        if _max > 40.0: _max = 40.0
+        vza_arr = array([_min,_min,_max,_max])
+        self.vza_arr = vza_arr.reshape(2,2)
+        return
+
+    def postprocess(self):
+        xp = L3_XmlParser(self, 'UP2A')
+        auxdata = xp.getTree('L2A_Auxiliary_Data_Info', 'Aux_Data')
+        gipp = auxdata.L2A_GIPP_List
+        dirname, basename = os.path.split(self.product.L2A_TILE_MTD_XML)
+        fn1r = basename.replace('_MTD_', '_GIP_')
+        fn2r = fn1r.replace('.xml', '')
+        gippFn = etree.Element('GIPP_FILENAME', type='GIP_Level-2Ap', version=self._processorVersion)
+        gippFn.text = fn2r
+        gipp.append(gippFn)
+        xp.export()
+
+        # copy log to QI data as a report:
+        report = basename.replace('.xml', '_Report.xml')
+        report = dirname + '/QI_DATA/' + report
+
+        if((os.path.isfile(self._fnLog)) == False):
+            self.tracer.fatal('Missing file: ' + self._fnLog)
+            self.exitError()
+
+        f = open(self._fnLog, 'a')
+        f.write('</Sen2Cor_Level-2A_Report_File>')
+        f.close()
+        copy_file(self._fnLog, report)
+               
+        '''
+        if os.path.exists(self._fnTrace):
+            os.remove(self._fnTrace)
+        if os.path.exists(self._fnLog):
+            os.remove(self._fnLog)
+        '''
+        return
+
     def parNotFound(self, parameter):
         self.logger.fatal('Configuration parameter %s not found in %s', parameter, self._configFn)
-        stderrWrite('Configuration parameter <' + parameter + '> not found in ' + self._configFn)
+        stderrWrite('Configuration parameter <%s> not found in %s\n' % (parameter, self._configFn))
         stderrWrite('Program is forced to terminate.')
         self.__exit__()
 
@@ -1012,4 +1226,5 @@ class L3_Config(Borg):
             a[i,:] = array(node[i].split(),dtype(str))
 
         return a
+    
     

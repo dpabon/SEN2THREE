@@ -6,8 +6,6 @@ Created on Feb 10, 2015
 import sys, os, fnmatch
 
 
-
-
 def stdoutWrite(s):
     sys.stdout.write(s)
     sys.stdout.flush()
@@ -57,7 +55,6 @@ def main(args):
     IMG_AOT = 'S2A_USER_AOT_L2A_TL_MPS__20XXYY15T120000_A0000YY_T14RMQ_B$$'
     IMG_WVP = 'S2A_USER_WVP_L2A_TL_MPS__20XXYY15T120000_A0000YY_T14RMQ_B$$'
     IMG_VIS = 'S2A_USER_VIS_L2A_TL_MPS__20XXYY15T120000_A0000YY_T14RMQ_B$$'
-
 
     USR_MSK = 'S2A_USER_PRD_*'
     DIR_MSK = 'S2A_*.01'

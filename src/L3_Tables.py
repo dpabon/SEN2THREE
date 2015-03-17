@@ -218,6 +218,7 @@ class L3_Tables(Borg):
         self._L3_Tile_SNW_File = self._L3_QualityDataDir + pre + '_SNW' + post + '_' + str(self._resolution) + 'm.jp2'
         self._L3_Tile_MSC_File = self._L3_QualityDataDir + pre + '_MSC' + post + '_' + str(self._resolution) + 'm.jp2'
         self._L3_Tile_PVI_File = self._L3_QualityDataDir + pre + '_PVI' + post + '_' + str(self.config.nrTilesProcessed) + '.png'
+        self._L3_Tile_PLT_File = self._L3_QualityDataDir + pre + '_PLT' + post + '_' + str(self.config.nrTilesProcessed) + '.png'
         self._L3_Tile_SCL_File = self._L3_ImgDataDir     + pre + '_SCL' + post + '_' + str(self._resolution) + 'm.jp2'
 
         self._imageDatabase = self._L3_bandDir + '/.database.h5'
@@ -279,6 +280,18 @@ class L3_Tables(Borg):
         config.logger.debug('Module L3_Tables initialized with resolution %d' % self._resolution)
 
         return
+
+    def get_l_3_tile_plt_file(self):
+        return self._L3_Tile_PLT_File
+
+
+    def set_l_3_tile_plt_file(self, value):
+        self._L3_Tile_PLT_File = value
+
+
+    def del_l_3_tile_plt_file(self):
+        del self._L3_Tile_PLT_File
+
 
     def get_msc(self):
         return self._MSC
@@ -628,6 +641,8 @@ class L3_Tables(Borg):
     CLD = property(get_qcl, set_qcl, del_qcl, "CLD's docstring")
     MSC = property(get_msc, set_msc, del_msc, "MSC's docstring")
     PRV = property(get_prv, set_prv, del_prv, "PRV's docstring")
+    L3_Tile_PLT_File = property(get_l_3_tile_plt_file, set_l_3_tile_plt_file, del_l_3_tile_plt_file, "L3_Tile_PLT_File's docstring")
+
     config = property(get_config, set_config, del_config, "config's docstring")
     bandIndex = property(get_band_bandIndex, set_band_bandIndex, del_band_bandIndex, "bandIndex's docstring")
     nBands = property(get_n_bands, set_n_bands, del_n_bands, "nBands's docstring")
@@ -685,8 +700,7 @@ class L3_Tables(Borg):
             self.importBandList('L2A')
             if(self.config.resolution == 60):            
                 self.createPreviewImage('L3')
-            #if(self.config.resolution == 60):
-            #    self.createPreviewImage('L2A')
+                self.createPreviewImage('L2A')
         except:
             self.initDatabase()
             self.importBandList('L3')
@@ -762,7 +776,7 @@ class L3_Tables(Borg):
                 if fnmatch.fnmatch(filename, filemask) == False:
                     continue
                 self.importBand(i, filename)  
-    
+        if is file:
         self.importBand(self._AOT, self._L2A_Tile_AOT_File)
         self.importBand(self._CLD, self._L2A_Tile_CLD_File)
         self.importBand(self._SNW, self._L2A_Tile_SNW_File)

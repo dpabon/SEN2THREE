@@ -82,5 +82,6 @@ class L3_Display(object):
         ax4.set_xlabel('Class [#]')
         ax4.set_ylabel('Frequency [%]')
         self._plot.tight_layout()
-        self._plot.show(block=False)
+        self._plot.show(block=False)     
+        self._plot.savefig(tables.L3_Tile_PLT_File, dpi=100)
         return

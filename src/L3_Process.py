@@ -10,7 +10,10 @@ import fnmatch
 from time import time
 
 from L3_Config import L3_Config
+from L2A_Tables import L2A_Tables
 from L3_Tables import L3_Tables
+from L3_Product import L3_Product
+from L2A_Process import L2A_Process
 from L3_Synthesis import L3_Synthesis
 from L3_Library import stdoutWrite, stderrWrite
 
@@ -18,7 +21,6 @@ from L3_Library import stdoutWrite, stderrWrite
 class L3_Process(object):
     def __init__(self, config):
         self._config = config
-
         self._l3Synthesis = L3_Synthesis(config)
 
     def get_tables(self):
@@ -77,7 +79,7 @@ class L3_Process(object):
             self.config.exitError()
             return False                 
         return True
-
+    
     def preprocess(self):
         self.config.logger.info('Pre-processing with resolution %d m', self.config.resolution)
         return
@@ -113,21 +115,54 @@ def main(args):
         resolution = args.resolution
 
     config = L3_Config(resolution, workDir)
-    config.init()
+    config.init(processorVersion)
     processedTiles = ''
     result = False
     processedFn = workDir + '/' + 'processed'
-    L2A_mask = 'S2?_*L2A_*'
+
     HelloWorld = processorName +', '+ processorVersion +', created: '+ processorDate
     stdoutWrite('\n%s started ...\n' % HelloWorld)    
-    uplist = sorted(os.listdir(workDir))
+    upList = sorted(os.listdir(workDir))
+    
+    # Check if unprocessed L1C products exist. If yes, process first:
+    L1C_mask = 'S2?_*L1C_*'
+    product = L3_Product(config)
+    processor = L2A_Process(config)
+    for L1C_UP_ID in upList:
+        if(fnmatch.fnmatch(L1C_UP_ID, L1C_mask) == False):     
+            continue
+        if config.checkTimeRange(L1C_UP_ID) == False:
+            continue
+        tilelist = product.createL2A_UserProduct(L1C_UP_ID)
+        for tile in tilelist:
+            # process only L1C tiles:
+            if fnmatch.fnmatch(tile, L1C_mask) == False:
+                continue
+            # ignore already processed tiles:
+            if product.tileExists(tile) == True:
+                continue
+            # finally, process the remaining tiles:
+            stdoutWrite('\nL1C tile %s found, will be classified first ...\n' % tile)   
+            tStart = time()
+            tables = L2A_Tables(config, tile)
+            if processor.process(tables) == False:
+                config.exitError()
+                return False
+            if product.appendTile(tile) == False:
+                config.exitError()
+                return False                       
+    
+    # Now process all unprocessed L2A products:
+    L2A_mask = 'S2?_*L2A_*'    
     processor = L3_Process(config)
-    for L2A_UP_ID in uplist:
+    for L2A_UP_ID in upList:
         if(fnmatch.fnmatch(L2A_UP_ID, L2A_mask) == False):     
             continue
         if config.checkTimeRange(L2A_UP_ID) == False:
             continue
+    
         config.updateUserProduct(L2A_UP_ID)
+  
         GRANULE = workDir + '/' + L2A_UP_ID + '/GRANULE'
         tilelist = sorted(os.listdir(GRANULE))
         for tile in tilelist:
@@ -135,13 +170,7 @@ def main(args):
             if fnmatch.fnmatch(tile, L2A_mask) == False:
                 continue
             # ignore already processed tiles:
-            try:
-                # read list of tiles already processed
-                f = open(processedFn)
-                processedTiles = f.read()
-            except:
-                pass
-            if tile[:-7] in processedTiles:
+            if product.tileExists(tile) == True:
                 continue
             tStart = time()
             nrTilesProcessed = len(processedTiles.split())
@@ -151,17 +180,8 @@ def main(args):
             # no processing if first initialisation:
             if tables.testBand('L2A', 1) == False:
                 # append processed tile to list
-                processedTile = tile + '\n'
-                processedFn = config.workDir + '/' + 'processed'
-                try:
-                    f = open(processedFn, 'a')
-                    f.write(processedTile)
-                    f.flush()
-                    f.close()
-                except:
-                    stderrWrite('Could not update processed tile history.\n')
+                if product.appendTile(tile) == False:
                     config.exitError()
-                    return False
                 continue
             result = processor.process(tables)
             if(result == False):

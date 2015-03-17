@@ -69,7 +69,6 @@ class L3_XmlParser(Borg):
         self.setRoot();
         return
 
-
     def getRoot(self, key=None):
         try:
             if key == None:
@@ -79,7 +78,6 @@ class L3_XmlParser(Borg):
                 return root
         except:
             return False
-
 
     def setRoot(self):
         if self._root != None:
@@ -91,14 +89,12 @@ class L3_XmlParser(Borg):
         except:
             return False
 
-
     def getTree(self, key, subkey):
         try:
             tree = self._root[key]    
             return tree['{}' + subkey]
         except:
             return False
-
 
     def setTree(self, key, subkey):
         try:
@@ -119,7 +115,6 @@ class L3_XmlParser(Borg):
                     return False
         return False
 
-    
     def validate(self):
         dummy, fn = os.path.split(self._xmlFn)
         stdoutWrite('Validating metadata %s against scheme ...\n' % fn)       
@@ -138,7 +133,6 @@ class L3_XmlParser(Borg):
             sys.exit(-1)
             return False
 
-
     def append(self, key, value):
         try:
             e = etree.Element(key)
@@ -147,7 +141,6 @@ class L3_XmlParser(Borg):
             return True
         except:
             return False
-
 
     def export(self):
         import codecs
@@ -159,24 +152,41 @@ class L3_XmlParser(Borg):
         outfile.close()
         return self.setRoot()
 
-    
     def convert(self):
         import codecs
         outfile = codecs.open(self._xmlFn, 'w', 'utf-8')
         outfile.write('<?xml version="1.0"  encoding="UTF-8"?>\n')
         objectify.deannotate(self._root, xsi_nil=True, cleanup_namespaces=True)
         outstr = etree.tostring(self._root, pretty_print=True)
-        outstr = outstr.replace('Level-2A', 'Level-3')
-        outstr = outstr.replace('L2A_Product_Info>', 'L3_Product_Info>')
-        outstr = outstr.replace('L2A_Product_Organisation>', 'L3_Product_Organisation>')
-        outstr = outstr.replace('L2A_Product_Image_Characteristics>', 'L3_Product_Image_Characteristics>')
-        outstr = outstr.replace('TILE_ID_2A>', 'TILE_ID_3>')
-        outstr = outstr.replace('DATASTRIP_ID_2A>', 'DATASTRIP_ID_3>')
-        outstr = outstr.replace('</PROCESSING_BASELINE>', '</PROCESSING_BASELINE>\n<PROCESSING_ALGORITHM/>\n<RADIOMETRIC_PREFERENCE/>')        
+        
+        if '2A' in self._product:
+            outstr = outstr.replace('-1C', '-2A')
+            outstr = outstr.replace('Product_Info>', 'L2A_Product_Info>')
+            outstr = outstr.replace('Product_Organisation>', 'L2A_Product_Organisation>')
+            outstr = outstr.replace('Product_Image_Characteristics>', 'L2A_Product_Image_Characteristics>')
+            outstr = outstr.replace('Pixel_Level_QI', 'L1C_Pixel_Level_QI')
+            outstr = outstr.replace('TILE_ID>', 'TILE_ID_2A>')
+            outstr = outstr.replace('DATASTRIP_ID>', 'DATASTRIP_ID_2A>')
+            if self._product == 'T2A':
+                outstr = outstr.replace('Image_Content_QI>', 'L1C_Image_Content_QI>')
+            elif self._product == 'UP2A':
+                outstr = outstr.replace('QUANTIFICATION_VALUE', 'L1C_L2A_Quantification_Values_List')
+                outstr = outstr.replace('</n1:Auxiliary_Data_Info>', '</n1:Auxiliary_Data_Info>\n'\
+                                        '<n1:L2A_Auxiliary_Data_Info/>')
+                outstr = outstr.replace('</n1:Quality_Indicators_Info>', '</n1:Quality_Indicators_Info>\n'\
+                                '<n1:L2A_Quality_Indicators_Info/>')            
+        elif '03' in self._product:
+            outstr = outstr.replace('Level-2A', 'Level-3')
+            outstr = outstr.replace('L2A_Product_Info>', 'L3_Product_Info>')
+            outstr = outstr.replace('L2A_Product_Organisation>', 'L3_Product_Organisation>')
+            outstr = outstr.replace('L2A_Product_Image_Characteristics>', 'L3_Product_Image_Characteristics>')
+            outstr = outstr.replace('TILE_ID_2A>', 'TILE_ID_3>')
+            outstr = outstr.replace('DATASTRIP_ID_2A>', 'DATASTRIP_ID_3>')
+            outstr = outstr.replace('</PROCESSING_BASELINE>', '</PROCESSING_BASELINE>\n<PROCESSING_ALGORITHM/>\n<RADIOMETRIC_PREFERENCE/>')        
+ 
         outfile.write(outstr)
         outfile.close()
         return self.setRoot()
-
 
     def getIntArray(self, node):
         nrows = len(node)
@@ -191,7 +201,6 @@ class L3_XmlParser(Borg):
         
         return a
 
-
     def getUintArray(self, node):
         nrows = len(node)
         if nrows < 0:
@@ -205,7 +214,6 @@ class L3_XmlParser(Borg):
             
         return a
 
-    
     def getFloatArray(self, node):
         nrows = len(node)
         if nrows < 0:
@@ -219,7 +227,6 @@ class L3_XmlParser(Borg):
             
         return a
 
-
     def getStringArray(self, node):
         nrows = len(node)
         if nrows < 0:
@@ -232,7 +239,6 @@ class L3_XmlParser(Borg):
             a[i,:] = array(node[i].text.split(),dtype(str))
 
         return a
-
 
     def setArrayAsStr(self, node, a):
         set_printoptions(precision=6)
@@ -251,7 +257,6 @@ class L3_XmlParser(Borg):
         else:
             return False
 
-    
     def getViewingIncidenceAnglesArray(self, node, bandId, detectorId, _type='Zenith'):
         nrows = len(node)
         for i in range(nrows):
@@ -263,7 +268,6 @@ class L3_XmlParser(Borg):
 
                 return a
         return False
-
 
     def setViewingIncidenceAnglesArray(self, node, arr, bandId, detectorId, _type='Zenith'):
         nrows = len(node)
