@@ -18,18 +18,17 @@ class L3_Config(Borg):
     _shared = {}
     def __init__(self, resolution, workDir = None):
         if(workDir):
-            self._home = os.environ['S2L3APPHOME'] + '/'
+            self._home = os.environ['SEN2THREE_HOME'] + '/'
+            moduleDir = os.environ['SEN2THREE_BIN'] + '/'            
             self._workDir = workDir
+            self._configDir = moduleDir + 'cfg/'
+            self._configFn = self._home + 'cfg/L3_GIPP.xml'
+            self._libDir = moduleDir + 'lib/'
+            self._logDir = self._home + 'log/'
+            if not os.path.exists(self._logDir):
+                os.mkdir(self._logDir)
             self._processorVersion = None
             self._product = L3_Product(self)
-            if(os.environ['S2L3APPCFG'] == ''):
-                self._configDir = self._home + 'cfg/'
-            else:
-                self._configDir = os.environ['S2L3APPCFG'] + '/'
-            self._binDir = self._home + 'bin/'
-            self._libDir = self._home + 'lib/'
-            self._logDir = self._home + 'log/'
-            self._configFn = self._configDir + 'L3_GIPP.xml'
             self._tEstimation = 0.0
             self._tEst60 = 100.0
             self._tEst20 = 500.0

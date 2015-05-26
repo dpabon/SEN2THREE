@@ -1,0 +1,3 @@
+[console_scripts]
+L3_Process = sen2three.L3_Process:main
+

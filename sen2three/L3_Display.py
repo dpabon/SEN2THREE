@@ -11,6 +11,7 @@ from scipy.stats import itemfreq
 from L3_Config import L3_Config
 from L3_Tables import L3_Tables
 from L3_Library import stdoutWrite, stderrWrite, showImage
+from boto.glacier.writer import resume_file_upload
 
 class L3_Display(object):
     def __init__(self, config):
@@ -42,12 +43,12 @@ class L3_Display(object):
             ax3 = self._plot.subplot2grid((2,2), (0,1))
             ax4 = self._plot.subplot2grid((2,2), (1,1))            
         
-        mosaicData = [mosaic != self._noData]
-        tiles = self._config.nrTilesProcessed+1 
-        xMoif = arange(1,tiles+1)
-        yMoif = zeros(tiles, dtype=float32)
-        idxMoif = itemfreq(mosaic[mosaicData])[:,0]
-        yMoif[idxMoif-1] = itemfreq(mosaic[mosaicData])[:,1]
+        validData = [mosaic != self._noData]
+        idxMoif = itemfreq(mosaic[validData])[:,0]
+        nClasses = idxMoif.max()
+        xMoif = arange(1,nClasses+1)
+        yMoif = zeros(nClasses, dtype=float32)
+        yMoif[idxMoif-1] = itemfreq(mosaic[validData])[:,1]
         yMoifCount = float32(yMoif.sum())
         yMoif = yMoif.astype(float32)/yMoifCount * 100.0
         scenecData = [scenec != self._noData]

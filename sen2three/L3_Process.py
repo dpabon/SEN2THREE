@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: iso-8859-15 -*-
 processorName = 'Sentinel-2 Level 3 Prototype Processor (SEN2THREE)'
-processorVersion = '0.0.1'
-processorDate = '2015.01.01'
+processorVersion = '0.9.0'
+processorDate = '2015.06.15'
+productVersion = '12'
 
 from tables import *
 import sys, os
@@ -102,13 +103,31 @@ class L3_Process(object):
             return res
         return self._l3Synthesis.postProcessing()
 
-def main(args):
-    
-    if os.path.exists(args.directory) == False:
-        stderrWrite('directory "%s" does not exist\n.' % args.directory)
-        sys.exit(-1)
+def main(args=None):
+    import argparse
+    descr = processorName +', '+ processorVersion +', created: '+ processorDate + \
+        ', supporting Level-1C product version: ' + productVersion + '.'
+     
+    parser = argparse.ArgumentParser(description=descr)
+    parser.add_argument('directory', help='Directory where the Level-2A input files are located')
+    parser.add_argument('--resolution', type=int, choices=[10, 20, 60], help='Target resolution, must be 10, 20 or 60 [m]')
+    parser.add_argument('--clean', action='store_true', help='Cleans the history of processed files and starts from scratch')
+    args = parser.parse_args()
 
+    # SIITBX-49: directory should not end with '/':
     workDir = args.directory
+    if workDir[-1] == '/':
+        workDir = workDir[:-1]
+
+    # check if directory argument starts with a relative path. If yes, expand: 
+    cwd = os.getcwd()
+    if (cwd in workDir) == False:
+        workDir = cwd + '/' + workDir
+
+    elif os.path.exists(args.directory) == False:
+        stderrWrite('directory "%s" does not exist\n.' % args.directory)
+        return False
+
     if args.resolution == None:
         resolution = 60.0
     else:
@@ -161,8 +180,7 @@ def main(args):
         if config.checkTimeRange(L2A_UP_ID) == False:
             continue
     
-        config.updateUserProduct(L2A_UP_ID)
-  
+        config.updateUserProduct(L2A_UP_ID)  
         GRANULE = workDir + '/' + L2A_UP_ID + '/GRANULE'
         tilelist = sorted(os.listdir(GRANULE))
         for tile in tilelist:
@@ -201,26 +219,4 @@ def main(args):
     return result
 
 if __name__ == "__main__":
-    # Someone is launching this directly
-    import argparse
-    descr = processorName +', '+ processorVersion +', created: '+ processorDate
-    parser = argparse.ArgumentParser(description=descr)
-    parser.add_argument('directory', help='Directory where the Level-2A input files are located')
-    parser.add_argument('--clean', action='store_true', help='Cleans the history of processed files and starts from scratch')
-    parser.add_argument('--profile', action='store_true', help='Performs a processor performance profile and displays the results')
-    parser.add_argument('--resolution', type=int, choices=[10, 20, 60], help='Target resolution, must be 10, 20 or 60 [m]')
-    parser.add_argument('--tests', action='store_true', help='Performs a series of unit tests on all modules and displays the results')
-    
-    args = parser.parse_args()
-
-    if(args.profile == True):
-        import cProfile
-        import pstats
-        logdir = os.environ['S2L3APPHOME'] + '/log'
-        profile = logdir + '/profile'
-        cProfile.run('main(args)', profile)
-        p = pstats.Stats(profile)
-        p.strip_dirs().sort_stats('cumulative').print_stats(.25, 'L3_')
-    else:
-        main(args)
-        
+    sys.exit(main() or 0)

@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 from numpy import *
-import Image
 from scipy import ndimage
 from scipy import stats
 from scipy.signal import medfilt2d
@@ -11,7 +10,10 @@ from scipy import interpolate as sp
 from scipy import stats
 from scipy.ndimage.filters import uniform_filter
 from matplotlib import pyplot as plt
-
+try:
+    import Image
+except:
+    from PIL import Image
 import time
 import os, sys, fnmatch
 

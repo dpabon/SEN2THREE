@@ -9,4 +9,3 @@ Sen2Three works under the Umbrella of Anaconda (Python 2.7)
 on the three platforms Mac OSX, Linux, and Windows 64-bit. This is mandatory! 
 
 Please read the docs located on: http://s2tbx.telespazio-vega.de for further info.
-

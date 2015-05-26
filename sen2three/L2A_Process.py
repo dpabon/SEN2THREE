@@ -63,7 +63,7 @@ class L2A_Process(object):
         xp.export()
         xp.validate()
 
-        if(self.tables.J2kToH5() == False):
+        if(self.tables.importBandList() == False):
             return False   
         return True
 
@@ -92,7 +92,7 @@ class L2A_Process(object):
     def postprocess(self):
         self.config.logger.info('Post-processing with resolution %d m', self.config.resolution)
         
-        res = self.tables.H5ToJ2k()
+        res = self.tables.exportBandList()
         if(self.config.resolution == 60):
             self.config.postprocess()
 

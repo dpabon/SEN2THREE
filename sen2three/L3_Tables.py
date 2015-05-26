@@ -8,11 +8,15 @@ import subprocess
 import threading
 import os
 import glob
-import Image
+import glymur
+try:
+    import Image
+except:
+    from PIL import Image
 
 from numpy import *
 from tables import *
-from lxml import objectify
+from lxml import etree, objectify
 from tables.description import *
 from distutils.dir_util import mkpath
 from distutils.file_util import copy_file
@@ -776,76 +780,16 @@ class L3_Tables(Borg):
                 if fnmatch.fnmatch(filename, filemask) == False:
                     continue
                 self.importBand(i, filename)  
-        if is file:
-        self.importBand(self._AOT, self._L2A_Tile_AOT_File)
-        self.importBand(self._CLD, self._L2A_Tile_CLD_File)
-        self.importBand(self._SNW, self._L2A_Tile_SNW_File)
-        self.importBand(self._SCL, self._L2A_Tile_SCL_File)
+        if os.path.isfile(self._L2A_Tile_AOT_File):
+            self.importBand(self._AOT, self._L2A_Tile_AOT_File)
+        if os.path.isfile(self._L2A_Tile_CLD_File):
+            self.importBand(self._CLD, self._L2A_Tile_CLD_File)
+        if os.path.isfile(self._L2A_Tile_SNW_File):
+            self.importBand(self._SNW, self._L2A_Tile_SNW_File)
+        if os.path.isfile(self._L2A_Tile_SCL_File):
+            self.importBand(self._SCL, self._L2A_Tile_SCL_File)
         return
     
-    def importBand(self, bandIndex, filename):
-        # convert JPEG-2000 input file to H5 file format
-        self.verifyProductId(self._productLevel)
-        indataset = gdal.Open(filename, GA_ReadOnly)
-        if(self._rows == None):
-        # get the target resolution and metadata for the resampled bands below:
-            rasterX = indataset.RasterXSize
-            rasterY = indataset.RasterYSize
-            xp = L3_XmlParser(self.config, 'T03')           
-            tg = xp.getTree('Geometric_Info', 'Tile_Geocoding')
-            ulx = tg.Geoposition[0].ULX
-            uly = tg.Geoposition[0].ULY
-            res = float32(self.config.resolution)
-            self._geoTransformation = [ulx,res,0.0,uly,0.0,-res]
-            extent = self.GetExtent(self._geoTransformation, rasterX, rasterY)
-            self._cornerCoordinates = asarray(extent)
-            src_srs = osr.SpatialReference()
-            src_srs.ImportFromWkt(indataset.GetProjection())
-            tgt_srs = src_srs.CloneGeogCS()
-            if(tgt_srs != None):
-                geo_extent = self.ReprojectCoords(extent,src_srs,tgt_srs)
-                self._geoExtent = asarray(geo_extent)
-                self._projectionRef = src_srs
-
-        # Create new arrays:
-        database = self._imageDatabase
-        nodeStr = self._productLevel
-        bandName = self.getBandNameFromIndex(bandIndex)
-        try:
-            if self.testBand(self._productLevel, bandIndex) == True:
-                self.delBand(self._productLevel, bandIndex)
-            h5file = open_file(database, mode='a')
-            if(h5file.__contains__('/' + nodeStr)) == False:
-                self.config.logger.fatal('table initialization, wrong node %s:' % nodeStr)
-                self.config.exitError()
-                return False
-                
-            if self._productLevel == 'L1C':
-                locator = h5file.root.L1C
-            elif self._productLevel == 'L2A':
-                locator = h5file.root.L2A
-            elif self._productLevel == 'L3':
-                locator = h5file.root.L3
-                
-            inband = indataset.GetRasterBand(1)
-            dtOut = self.mapDataType(inband.DataType)
-            filters = Filters(complib="zlib", complevel=1)
-            node = h5file.createEArray(locator, bandName, dtOut, (0,inband.XSize), bandName, filters=filters)
-    
-            for i in range(inband.YSize):
-                scanline = inband.ReadAsArray(0, i, inband.XSize, 1, inband.XSize, 1)
-                scanline = choose( equal( scanline, None), (scanline, None) )
-                node.append(scanline)
-    
-            indataset = None
-            self.config.timestamp('L3_Tables: Level ' + self._productLevel + ' band ' + bandName + ' imported')
-            result = True
-        except:
-            self.config.logger.fatal('error in import of band %s in productLevel %s.' % (bandName, self._productLevel))
-            self.config.exitError()
-            result = False
-        h5file.close()
-        return result
 
     def getBand(self, productLevel, bandIndex, dataType=uint16):
         self.verifyProductId(productLevel)
@@ -869,8 +813,54 @@ class L3_Tables(Borg):
         h5file.close()
         return result
 
+    def importBand(self, bandIndex, filename):
+        # convert JPEG-2000 input file to H5 file format
+        self.verifyProductId(self._productLevel)
+        indataset = glymur.Jp2k(filename)
+        # to suppress the rounding error for TPZF testdata:
+        warnings.filterwarnings("ignore")
+        nrows = indataset.shape[0]
+        ncols = indataset.shape[1]
+        indataArr = indataset[:]
+        indataset = None
+        # Create new arrays:
+        database = self._imageDatabase
+        nodeStr = self._productLevel
+        bandName = self.getBandNameFromIndex(bandIndex)
+        try:
+            if self.testBand(self._productLevel, bandIndex) == True:
+                self.delBand(self._productLevel, bandIndex)
+            h5file = open_file(database, mode='a')
+            if(h5file.__contains__('/' + nodeStr)) == False:
+                self.config.logger.fatal('table initialization, wrong node %s:' % nodeStr)
+                self.config.exitError()
+                return False
+                
+            if self._productLevel == 'L1C':
+                locator = h5file.root.L1C
+            elif self._productLevel == 'L2A':
+                locator = h5file.root.L2A
+            elif self._productLevel == 'L3':
+                locator = h5file.root.L3
+                
+            dtOut = self.mapDataType(indataArr.dtype)
+            filters = Filters(complib="zlib", complevel=1)
+            node = h5file.createEArray(locator, bandName, dtOut, (0,ncols), bandName, filters=filters)
+            node.append(indataArr)
+            self.config.timestamp('L3_Tables: Level ' + self._productLevel + ' band ' + bandName + ' imported')
+            result = True
+        except:
+            indataArr = None
+            self.config.logger.fatal('error in import of band %s in productLevel %s.' % (bandName, self._productLevel))
+            self.config.exitError()
+            result = False
+
+        indataArr = None
+        h5file.close()
+        return result
+
+
     def exportBandList(self, productLevel):
-        self._productLevel = productLevel
         bandDir = self._L3_bandDir
         # converts all bands from hdf5 to JPEG 2000
         if(os.path.exists(bandDir) == False):
@@ -889,15 +879,6 @@ class L3_Tables(Borg):
         elif(self._resolution == 60):
             bandIndex = [0,1,2,3,4,5,6,8,9,11,12]
 
-        for bandIndex in bandIndex:
-            filename = self._L3_Tile_BND_File
-            self.exportBand(bandIndex, filename)
-        
-        self.exportBand(self._CLD, self._L3_Tile_CLD_File)
-        self.exportBand(self._SNW, self._L3_Tile_SNW_File)
-        self.exportBand(self._SCL, self._L3_Tile_SCL_File)
-        self.exportBand(self._MSC, self._L3_Tile_MSC_File)
-
         #prepare the xml export
         Granules = objectify.Element('Granules')
         Granules.attrib['granuleIdentifier'] = self.config.product.L3_TILE_ID
@@ -905,6 +886,20 @@ class L3_Tables(Borg):
         Granules.attrib['imageFormat'] = 'JPEG2000'
         gl = objectify.Element('Granule_List')
         gl.append(Granules)
+        for index in bandIndex:
+            bandName = self.getBandNameFromIndex(index)
+            filename = self._L2A_Tile_BND_File
+            filename = filename.replace('BXX', bandName)
+            band = self.getBand(productLevel, index)
+            kwargs = {"tilesize": (2048, 2048), "prog": "RPCL"}
+            glymur.Jp2k(filename, band.astype(uint16), **kwargs)            
+            self.config.logger.info('Band ' + bandName + ' exported')
+            self.config.timestamp('L3_Tables: band ' + bandName + ' exported')
+            filename = os.path.basename(filename.strip('.jp2'))
+            imageId = etree.Element('IMAGE_ID_2A')
+            imageId.text = filename
+            Granules.append(imageId)
+        
         '''
         xp = L3_XmlParser(self.config, 'UP03')
         pi = xp.getTree('General_Info', 'L3_Product_Info')
@@ -926,7 +921,6 @@ class L3_Tables(Borg):
             qiiL3.L3_Pixel_Level_QI = qiList
         xmlParser.export()
         '''
-
         globdir = self.config.product.L3_TARGET_ID + '/GRANULE/' + self.config.product.L3_TILE_ID + '/*/*.jp2.aux.xml'
         for filename in glob.glob(globdir):
             os.remove(filename)
@@ -935,54 +929,7 @@ class L3_Tables(Borg):
             os.remove(filename)
         self.config.timestamp(productLevel + '_Tables: stop export')
         return True
-    
-    def exportBand(self, bandIndex, filename):
-        tmpfile = self._TmpFile + '%02d.tif' % bandIndex
-        os.chdir(self._L3_bandDir)
-        database = self._imageDatabase
-        productLevel = self._productLevel
-        bandName = self.getBandNameFromIndex(bandIndex)
-        nrows, ncols = self.getBandSize(productLevel, bandIndex)
-        filename = filename.replace('BXX', bandName)
-        try:
-            h5file = open_file(database)
-            if(h5file.__contains__('/' + productLevel + '/' +  bandName)):
-                node = h5file.getNode('/'+ productLevel, bandName)
-            array = node.read()
-            out_driver = gdal.GetDriverByName('GTiff')
-            outdataset = out_driver.Create(tmpfile, ncols, nrows, 1, GDT_UInt16)
-            gt = self._geoTransformation
-            if(gt is not None):
-                outdataset.SetGeoTransform(gt)
-            pr = self._projectionRef
-            if(pr is not None):
-                outdataset.SetProjection(pr.ExportToWkt())
-            outband = outdataset.GetRasterBand(1)
-            outband.WriteArray(array)
-            outdataset = None
-            if((bandName == 'SCL') | (bandName == 'MSC')):
-            # SCL is Byte Type:
-                option = ' -ot Byte '              
-            else:
-                option = ' -ot UInt16 '            
-            if os.name == 'posix':
-                callstr = 'gdal_translate -of JPEG2000' + option + tmpfile + ' ' + filename + self._DEV0
-            else: # windows
-                callstr = 'geojasper -f ' + tmpfile + ' -F ' + filename + ' -T jp2 > NUL'
 
-            if(subprocess.call(callstr, shell=True) != 0):
-                self.config.logger.fatal('shell execution error using gdal_translate')
-                self.config.exitError()
-                return False
-            
-            self.config.timestamp('L3_Tables: ' + productLevel + ', ' + bandName + ' exported')
-            result = True
-        except:
-            result = False
-        h5file.close()
-        if os.path.isfile(tmpfile):
-            os.remove(tmpfile)
-        return result  
 
     def setBand(self, productLevel, bandIndex, array):
         self.verifyProductId(productLevel)
