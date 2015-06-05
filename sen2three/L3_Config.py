@@ -88,6 +88,18 @@ class L3_Config(Borg):
             self._e0 = None
             self._d2 = None
 
+    def get_target_directory(self):
+        return self._targetDirectory
+
+
+    def set_target_directory(self, value):
+        self._targetDirectory = value
+
+
+    def del_target_directory(self):
+        del self._targetDirectory
+
+
     def get_processor_version(self):
         return self._processorVersion
 
@@ -828,6 +840,8 @@ class L3_Config(Borg):
     solze_arr = property(get_solze_arr, set_solze_arr, del_solze_arr, "solze_arr's docstring")
     vaa_arr = property(get_vaa_arr, set_vaa_arr, del_vaa_arr, "vaa_arr's docstring")
     vza_arr = property(get_vza_arr, set_vza_arr, del_vza_arr, "vza_arr's docstring")
+    targetDirectory = property(get_target_directory, set_target_directory, del_target_directory, "targetDirectory's docstring")    
+    
     
     def initLogger(self):
         dt = datetime.now()
@@ -862,7 +876,8 @@ class L3_Config(Borg):
             self.loglevel = cs.Log_Level.text
             self._displayData = cs.Display_Data
             self._dnScale = cs.DN_Scale.pyval
-            
+            self._targetDirectory = cs.Target_Directory.text
+
             l3s = root.L3_Synthesis
             self._minTime = l3s.Min_Time.text
             self._maxTime = l3s.Max_Time.text
@@ -1225,5 +1240,6 @@ class L3_Config(Borg):
             a[i,:] = array(node[i].split(),dtype(str))
 
         return a
+
     
     

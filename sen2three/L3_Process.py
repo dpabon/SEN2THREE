@@ -115,15 +115,14 @@ def main(args=None):
     args = parser.parse_args()
 
     # SIITBX-49: directory should not end with '/':
-    workDir = args.directory
-    if workDir[-1] == '/':
-        workDir = workDir[:-1]
+    directory = args.directory
+    if directory[-1] == '/':
+        directory = directory[:-1]
 
-    # check if directory argument starts with a relative path. If yes, expand: 
-    cwd = os.getcwd()
-    if (cwd in workDir) == False:
-        workDir = cwd + '/' + workDir
-
+    # check if directory argument starts with a relative path. If not, expand: 
+    if(os.path.isabs(directory)) == False:
+        cwd = os.getcwd()
+        directory = os.path.join(cwd, directory)
     elif os.path.exists(args.directory) == False:
         stderrWrite('directory "%s" does not exist\n.' % args.directory)
         return False
@@ -133,15 +132,15 @@ def main(args=None):
     else:
         resolution = args.resolution
 
-    config = L3_Config(resolution, workDir)
+    config = L3_Config(resolution, directory)
     config.init(processorVersion)
     processedTiles = ''
     result = False
-    processedFn = workDir + '/' + 'processed'
+    processedFn = directory + '/' + 'processed'
 
     HelloWorld = processorName +', '+ processorVersion +', created: '+ processorDate
     stdoutWrite('\n%s started ...\n' % HelloWorld)    
-    upList = sorted(os.listdir(workDir))
+    upList = sorted(os.listdir(directory))
     
     # Check if unprocessed L1C products exist. If yes, process first:
     L1C_mask = 'S2?_*L1C_*'
@@ -181,7 +180,7 @@ def main(args=None):
             continue
     
         config.updateUserProduct(L2A_UP_ID)  
-        GRANULE = workDir + '/' + L2A_UP_ID + '/GRANULE'
+        GRANULE = directory + '/' + L2A_UP_ID + '/GRANULE'
         tilelist = sorted(os.listdir(GRANULE))
         for tile in tilelist:
             # process only L2A tiles:

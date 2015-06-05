@@ -161,7 +161,7 @@ class L3_Tables(Borg):
         ORBIT_ID = L2A_TILE_ID[-13:-7]
         L3_TILE_ID = ''
         L3_TARGET_ID = config.product.L3_TARGET_ID
-        tiles = config.workDir + '/' + L3_TARGET_ID + GRANULE
+        tiles = config.targetDirectory + '/' + L3_TARGET_ID + GRANULE
         files = sorted(os.listdir(tiles))
         for L3_TILE_ID in files:       
             if fnmatch.fnmatch(L3_TILE_ID, L3_TILE_MSK) == True:
@@ -176,7 +176,7 @@ class L3_Tables(Borg):
         L2A_TILE_ID_SHORT = '/' + L2A_TILE_ID[:55]
         L3_TILE_ID_SHORT = '/' + config.product.L3_TILE_ID[:55]            
         L2A_TILE_ID = config.workDir + '/' + L2A_UP_ID + GRANULE + '/' + L2A_TILE_ID
-        L3_TILE_ID = config.workDir + '/' + L3_TARGET_ID + GRANULE + '/' + L3_TILE_ID
+        L3_TILE_ID = config.targetDirectory + '/' + L3_TARGET_ID + GRANULE + '/' + L3_TILE_ID
         self._L2A_ImgDataDir = L2A_TILE_ID + IMG_DATA
         self._L3_ImgDataDir = L3_TILE_ID + IMG_DATA
         self._L2A_bandDir = self._L2A_ImgDataDir + BANDS
@@ -755,9 +755,9 @@ class L3_Tables(Borg):
         try:
             h5file = open_file(self._imageDatabase, mode='a', title =  str(self._resolution) + 'm bands')
             # remove all existing L2A tables as they will be replaced by the new data set
-            h5file.createGroup('/', 'L1C', 'bands L1C')
-            h5file.createGroup('/', 'L2A', 'bands L2A')
-            h5file.createGroup('/', 'L3', 'bands L3')
+            h5file.create_group('/', 'L1C', 'bands L1C')
+            h5file.create_group('/', 'L2A', 'bands L2A')
+            h5file.create_group('/', 'L3', 'bands L3')
             result = True
         except:
             self.config.logger.fatal('error in initialization of database: %s:' % self._imageDatabase)
