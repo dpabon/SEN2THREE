@@ -72,7 +72,7 @@ class L2A_Process(object):
         astr = 'L2A_Process: processing with resolution ' + str(self.config.resolution) + ' m'
         self.config.timestamp(astr)
         self.config.timestamp('L2A_Process: start of pre processing')
-        self.config.readTileMetadata()
+        self.config.readTileMetadata('T2A')
         if(self.preprocess() == False):
             return False
 

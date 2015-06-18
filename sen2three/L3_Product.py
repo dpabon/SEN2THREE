@@ -704,7 +704,7 @@ class L3_Product(Borg):
         L3_TARGET_ID = L3_TARGET_ID.replace(L3_TARGET_ID[47:62], self.config.minTime)
         L3_TARGET_ID = L3_TARGET_ID.replace(L3_TARGET_ID[63:78], self.config.maxTime)
         targetDir = self.config.targetDirectory
-        if targetDir == 'DEFAULT':
+        if targetDir != 'DEFAULT':
             targetDir = dirname
         L3_TARGET_DIR = targetDir + '/' + L3_TARGET_ID
         self.L3_TARGET_DIR = L3_TARGET_DIR

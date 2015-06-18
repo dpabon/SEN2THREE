@@ -5,6 +5,7 @@
     <!-- NOTSET, DEBUG, INFO, WARNING, ERROR, CRITICAL -->
     <Display_Data>true</Display_Data>
     <DN_Scale>4000</DN_Scale>
+    <Target_Directory>/Users/uwe/Development/workspace/testdata/RAD</Target_Directory> <!-- should be either a directory or 'DEFAULT'. If default, target will be created at root of L1C product -->
     <UP_Scheme_1C>S2_User_Product_Level-1C_Metadata.xsd</UP_Scheme_1C>
     <UP_Scheme_2A>S2_User_Product_Level-2A_Metadata.xsd</UP_Scheme_2A>
     <UP_Scheme_3>S2_User_Product_Level-3_Metadata.xsd</UP_Scheme_3>

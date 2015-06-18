@@ -877,7 +877,6 @@ class L3_Config(Borg):
             self._displayData = cs.Display_Data
             self._dnScale = cs.DN_Scale.pyval
             self._targetDirectory = cs.Target_Directory.text
-
             l3s = root.L3_Synthesis
             self._minTime = l3s.Min_Time.text
             self._maxTime = l3s.Max_Time.text
@@ -906,6 +905,23 @@ class L3_Config(Borg):
                                 'SNOW_ICE'              : cl.SNOW_ICE.pyval,
                                 'URBAN_AREAS'           : cl.URBAN_AREAS.pyval
                                 }
+            bandIndex = 13
+            sensor = root.Sensor
+            wavelength = sensor.Solar_Irradiance.Band_List.wavelength
+            self._wvlsen = zeros([bandIndex], float32)
+            self._e0 = zeros([bandIndex], float32)
+            self._fwhm = zeros([bandIndex], float32)
+            for index in range(bandIndex):
+                self._wvlsen[index] = float32(wavelength[index].pyval) 
+                self._e0[index] = float32(wavelength[index].attrib['e0'])
+                self._fwhm[index] = float32(wavelength[index].attrib['fwhm'])
+
+            wavelength = sensor.Calibration.Band_List.wavelength
+            self._c0 = zeros([bandIndex], float32)
+            self._c1 = zeros([bandIndex], float32)
+            for index in range(bandIndex):
+                self._c0[index] = float32(wavelength[index].attrib['c0'])
+                self._c1[index] = float32(wavelength[index].attrib['c1'])
         except:
             self._logger.fatal('Error in parsing configuration file.')
             self.exitError();
@@ -1016,8 +1032,8 @@ class L3_Config(Borg):
         self._d2 = dastr * dastr
         return
 
-    def readTileMetadata(self):
-        xp = L3_XmlParser(self, 'T2A')
+    def readTileMetadata(self, tileID):
+        xp = L3_XmlParser(self, tileID)
         ang = xp.getTree('Geometric_Info', 'Tile_Angles')
         azimuthAnglesList = ang.Sun_Angles_Grid.Azimuth.Values_List.VALUES
         solaz_arr = xp.getFloatArray(azimuthAnglesList)
