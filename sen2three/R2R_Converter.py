@@ -41,8 +41,6 @@ class R2R_Converter(object):
     config = property(get_config, set_config, del_config, "config's docstring")
     
     def convert(self, targetDir):
-        self.config.logger.info('Converting reflectance to radiance')
-        stdoutWrite('Converting reflectance to radiance ...\n')
         #basename = os.path.basename(targetDir)
         L1C_mask = 'S2?_*L1C_*'
         L2A_mask = 'S2?_*L2A_*'
@@ -51,10 +49,15 @@ class R2R_Converter(object):
         tiledir = targetDir + '/GRANULE' 
         os.chdir(tiledir)
         tiles = sorted(os.listdir(tiledir))
+        nrTiles = len(tiles)
         for tilename in tiles:
             # needed for self.config.d2:
             if(('S2' in tilename) == False):
+                nrTiles -=1
                 continue
+            stdoutWrite('%d tile(s) to be converted ...\n' % nrTiles)
+            self.config.logger.info('Converting reflectance to radiance')
+            stdoutWrite('Converting reflectance to radiance ...\n')
             self.config.calcEarthSunDistance2(tilename)
             # get metadata filename:
             globlist = tiledir + '/' + tilename + '/' + XML_mask
@@ -195,28 +198,28 @@ def main(args=None):
     L2A_mask = 'S2?_*L2A_*'
     exclusionMask = 'S2?_*_RAD'
     nrUserProducts = len(upList)
-    stdoutWrite('%d user products to be converted ...\n' % nrUserProducts)    
-    for UP_ID in upList:
-        if(('S2' in UP_ID) == False):
+    for upId in upList:
+        if(('S2' in upId) == False):
+            nrUserProducts -=1
             continue
         # avoid reprocessing of converted data:
-        if(fnmatch.fnmatch(UP_ID, exclusionMask) == True):
+        if(fnmatch.fnmatch(upId, exclusionMask) == True):
             continue
-        if((fnmatch.fnmatch(UP_ID, L1C_mask) == False) and \
-           (fnmatch.fnmatch(UP_ID, L2A_mask) == False)):     
+        if((fnmatch.fnmatch(upId, L1C_mask) == False) and \
+           (fnmatch.fnmatch(upId, L2A_mask) == False)):     
             continue
-
+        stdoutWrite('%d user product(s) to be converted ...\n' % nrUserProducts)    
         nrUserProducts -=1
-        upFullPath = os.path.join(directory, UP_ID) 
+        upFullPath = os.path.join(directory, upId) 
         targetDir = config.targetDirectory
         if targetDir == 'DEFAULT':   
             targetDir = directory + '_RAD'
         else:
-            targetDir = os.path.join(targetDir, UP_ID)
+            targetDir = os.path.join(targetDir, upId)
         copy_tree(upFullPath, targetDir)
         result = processor.convert(targetDir)
-        config.logger.info('User product ' + UP_ID + ' converted')
-        stdoutWrite('%d user products remain\n\n' % nrUserProducts)
+        config.logger.info('User product ' + upId + ' converted')
+        stdoutWrite('%d user product(s) remain\n\n' % nrUserProducts)
         if(result == False):
             stderrWrite('Application terminated with errors, see log file and traces.\n')
             return False
