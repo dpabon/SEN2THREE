@@ -202,10 +202,11 @@ elif system == 'Windows':
 	cfghome =  os.environ['USERPROFILE'] + '\\documents'
 
 os.system(cmdstr)
-os.system('conda install --yes --channel https://conda.binstar.org/osgeo proj4')
-os.system('conda install --yes --channel https://conda.binstar.org/sunpy glymur')
-os.system('conda update pytables')
-os.system('conda clean --yes --tarballs --index-cache --packages --source-cache')
+os.system('conda install --yes --channel https://conda.binstar.org/s2tbx proj4')
+os.system('conda install --yes --channel https://conda.binstar.org/s2tbx contextlib2')
+os.system('conda install --yes --channel https://conda.binstar.org/s2tbx glymur')
+# better to do this manually, see SUM section uninstall:
+#os.system('conda clean --yes --tarballs --index-cache --packages --source-cache')
 
 libOpj2Source = buildfolder + platform + libopj2
 libOpj2Target = targetfolder + libopj2
