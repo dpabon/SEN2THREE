@@ -8,10 +8,7 @@ import warnings
 import subprocess
 import sys, os
 import glob
-try:
-    import Image
-except:
-    from PIL import Image
+#from PIL import Image
 import glymur
 
 from tables import *
@@ -776,15 +773,15 @@ class L2A_Tables(Borg):
     def importBandList(self):
         # convert JPEG-2000 input files to H5 file format
         # initialize H5 database for usage:
-        workDir = self._L1C_bandDir
-        os.chdir(workDir)
+        sourceDir = self._L1C_bandDir
+        os.chdir(sourceDir)
         database = self._ImageDataBase
         rasterX = False
         if(os.path.isfile(database)):
             os.remove(database)
             self.config.logger.info('Old database removed')
         self.config.timestamp('L2A_Tables: start import')
-        dirs = sorted(os.listdir(workDir))
+        dirs = sorted(os.listdir(sourceDir))
         bandIndex = self.bandIndex
         for i in bandIndex:
             for filename in dirs:
@@ -801,7 +798,7 @@ class L2A_Tables(Borg):
         
         # 20m bands only: perform an up sampling of VIS from 60 m channels to 20
         if(self._resolution == 20):
-            workDir = self._L2A_bandDir.replace('R20m', 'R60m')
+            sourceDir = self._L2A_bandDir.replace('R20m', 'R60m')
             srcResolution = '_60m'
             channels = [17,19]
             upsampling = True
@@ -809,15 +806,15 @@ class L2A_Tables(Borg):
 
         # 10m bands only: perform an up sampling of SCL, AOT, WVP, and VIS from 20 m channels to 10
         elif(self._resolution == 10):
-            workDir = self._L2A_bandDir.replace('R10m', 'R20m')
+            sourceDir = self._L2A_bandDir.replace('R10m', 'R20m')
             srcResolution = '_20m'
             channels = [14,17,18,19]
             upsampling = True
             self.config.logger.info('perform up sampling of SCL from 20m channels to 10m')
 
         if(upsampling == True):
-            os.chdir(workDir)
-            dirs = sorted(os.listdir(workDir))
+            os.chdir(sourceDir)
+            dirs = sorted(os.listdir(sourceDir))
             for i in channels:
                 for filename in dirs:
                     bandName = self.getBandNameFromIndex(i)
@@ -915,10 +912,10 @@ class L2A_Tables(Borg):
             return False
 
         self.config.logger.info('Start DEM alignment for tile')
-        workDir = self.config.home + '/' + demDir
-        if(os.path.exists(workDir) == False):
-            mkpath(workDir)
-        os.chdir(workDir)
+        sourceDir = self.config.home + '/' + demDir
+        if(os.path.exists(sourceDir) == False):
+            mkpath(sourceDir)
+        os.chdir(sourceDir)
 
         xy = self.cornerCoordinates
         xp = L3_XmlParser(self.config, 'T2A')
@@ -1147,13 +1144,13 @@ class L2A_Tables(Borg):
         return
 
     def exportBandList(self):
-        workDir = self._L2A_bandDir
-        if(os.path.exists(workDir) == False):
-            self.config.logger.fatal('missing directory %s:' % workDir)
+        sourceDir = self._L2A_bandDir
+        if(os.path.exists(sourceDir) == False):
+            self.config.logger.fatal('missing directory %s:' % sourceDir)
             self.config.exitError()
             return False
 
-        os.chdir(workDir)
+        os.chdir(sourceDir)
         database = self._ImageDataBase
 
         self.config.timestamp('L2A_Tables: start export')
@@ -1290,59 +1287,6 @@ class L2A_Tables(Borg):
 
         self.config.timestamp('L2A_Tables: stop export')
         return True
-
-
-    def createPreviewImage(self):
-        self.config.logger.debug('Creating Preview Image')
-        workDir = self._L2A_QualityDataDir
-        os.chdir(workDir)
-
-        if(self._resolution != 60):
-            self.config.logger.fatal('wrong resolution for this procedure, must be 60m')
-            self.config.exitError()
-            return False
-
-        filename = self._L2A_Tile_PVI_File
-        acMode = self.acMode
-        self.acMode = False
-        b = self.getBand(self.B02)
-        g = self.getBand(self.B03)
-        r = self.getBand(self.B04)
-        self.acMode = acMode
-
-        b = self.scaleImgArray(b)
-        g = self.scaleImgArray(g)
-        r = self.scaleImgArray(r)
-
-        b = Image.fromarray(b)
-        g = Image.fromarray(g)
-        r = Image.fromarray(r)
-
-        try:
-            out = Image.merge('RGB', (r,g,b))
-            out.save(filename, 'PNG')
-            self.config.logger.debug('Preview Image created')
-            return True
-        except:
-            self.config.logger.fatal('Preview Image creation failed')
-            self.config.exitError()
-            return False
-
-
-    def scaleImgArray(self, arr):
-        if(arr.ndim) != 2:
-            self.config.logger.fatal('must be a 2 dimensional array')
-            self.config.exitError()
-            return False
-
-        arrclip = arr.copy()
-        min = 0.0
-        max = 0.125
-        scale = 255.0
-        arr = clip(arrclip, min, max)
-        #SIITBX-50: wrong scale was used: 
-        scaledArr = uint8(arr*scale/max)
-        return scaledArr
 
 
     def testDb(self):

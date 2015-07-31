@@ -359,7 +359,7 @@ class L3_Product(Borg):
 
     def createL2A_UserProduct(self, L1C_PRODUCT_ID):        
         L1C_UP_MASK = '*1C_*'
-        L1C_UP_DIR = self.config.workDir + '/' + L1C_PRODUCT_ID
+        L1C_UP_DIR = self.config.sourceDir + '/' + L1C_PRODUCT_ID
         self._L1C_UP_DIR = L1C_UP_DIR
         if os.path.exists(L1C_UP_DIR) == False:
             stderrWrite('directory "%s" does not exist.\n' % L1C_UP_DIR)
@@ -639,8 +639,12 @@ class L3_Product(Borg):
     def existL3_TargetProduct(self):
         self.config.logger.info('Checking existence of L3 target product ...')
         L3_TARGET_MASK = '*L03_*'
-        L2A_UP_ID = self.config.workDir
-        dirlist = sorted(os.listdir(L2A_UP_ID))
+        L3_UP_ID = self.config.targetDir
+        try:
+            os.stat(L3_UP_ID)
+        except:
+            os.mkdir(L3_UP_ID)       
+        dirlist = sorted(os.listdir(L3_UP_ID))
         for L3_TARGET_ID in dirlist:
             if fnmatch.fnmatch(L3_TARGET_ID, L3_TARGET_MASK) == True:
                 self.config.logger.info('L3 target product already exists.')
@@ -657,7 +661,7 @@ class L3_Product(Borg):
     def createL3_TargetProduct(self):
         self.config.logger.info('Creating L3 target product ...')
         L2A_UP_MASK = '*2A_*'
-        L2A_UP_DIR = self.config.workDir + '/' + self.L2A_UP_ID
+        L2A_UP_DIR = self.config.sourceDir + '/' + self.L2A_UP_ID
         # detect the filename for the datastrip metadata:
         L2A_DS_DIR = L2A_UP_DIR + '/DATASTRIP/'
         if os.path.exists(L2A_DS_DIR) == False:
@@ -703,9 +707,9 @@ class L3_Product(Borg):
         L3_TARGET_ID = L3_TARGET_ID.replace('L2A_', 'L03_')
         L3_TARGET_ID = L3_TARGET_ID.replace(L3_TARGET_ID[47:62], self.config.minTime)
         L3_TARGET_ID = L3_TARGET_ID.replace(L3_TARGET_ID[63:78], self.config.maxTime)
-        targetDir = self.config.targetDirectory
+        targetDir = self.config.targetDir
         if targetDir != 'DEFAULT':
-            targetDir = dirname
+            targetDir = self.config.targetDir
         L3_TARGET_DIR = targetDir + '/' + L3_TARGET_ID
         self.L3_TARGET_DIR = L3_TARGET_DIR
         self.L3_TARGET_ID = L3_TARGET_ID
@@ -845,15 +849,15 @@ class L3_Product(Borg):
     def reinitL3_TargetProduct(self):
         L3_DS_ID = None
         L3_TARGET_MASK = '*L03_*'
-        dirlist = sorted(os.listdir(self.config.workDir))
+        dirlist = sorted(os.listdir(self.config.targetDir))
         for L3_TARGET_ID in dirlist:
             if fnmatch.fnmatch(L3_TARGET_ID, L3_TARGET_MASK) == True:
                 self.L3_TARGET_ID = L3_TARGET_ID
-                self.L3_TARGET_DIR = self.config.workDir + '/' + L3_TARGET_ID
+                self.L3_TARGET_DIR = self.config.targetDir + '/' + L3_TARGET_ID
                 break
         
         L3_DS_MASK = '*_L03_DS_*'
-        L3_DS_DIR = self.config.workDir + '/' + L3_TARGET_ID + '/DATASTRIP'
+        L3_DS_DIR = self.config.targetDir + '/' + L3_TARGET_ID + '/DATASTRIP'
         dirlist = sorted(os.listdir(L3_DS_DIR))
         for L3_DS_ID in dirlist:
             if fnmatch.fnmatch(L3_DS_ID, L3_DS_MASK) == True:
@@ -871,13 +875,13 @@ class L3_Product(Borg):
         L2A_TILE_ID = tileId
         L3_TILE_ID = L2A_TILE_ID.replace('L2A_', 'L03_')
         self.L3_TILE_ID = L3_TILE_ID
-        workDir = self.config.workDir + '/'
+        sourceDir = self.config.sourceDir + '/'
         L2A_UP_ID = self.L2A_UP_ID + '/'
         L3_TARGET_DIR = self.L3_TARGET_DIR
         GRANULE = '/GRANULE/'
         QI_DATA = '/QI_DATA/'
         
-        L2A_TILE_ID = workDir + L2A_UP_ID + GRANULE + L2A_TILE_ID
+        L2A_TILE_ID = sourceDir + L2A_UP_ID + GRANULE + L2A_TILE_ID
         L3_TILE_ID = L3_TARGET_DIR + GRANULE + L3_TILE_ID
 
         os.mkdir(L3_TILE_ID)
@@ -907,7 +911,7 @@ class L3_Product(Borg):
         self.L3_TILE_MTD_XML = L3_TILE_MTD_XML
 
         #update tile and datastrip id in metadata file.
-        if(self.config.resolution == 60):
+        if(self.config.resolution == 20) or (self.config.resolution == 60):
             copy_file(L2A_TILE_MTD_XML, L3_TILE_MTD_XML)
             xp = L3_XmlParser(self.config, 'T03')
             if(xp.convert() == False):
@@ -1015,6 +1019,19 @@ class L3_Product(Borg):
             xp.export()
         return
     
+    def reinitL2A_Tile(self):
+        L2A_MTD_MASK = 'S2A_*_MTD_L2A_TL_*.xml'
+        L2A_SOURCE_DIR = self.config.sourceDir + '/'
+        L2A_UP_ID = self.L2A_UP_ID
+        GRANULE = '/GRANULE/'
+        L2A_TILE_ID = L2A_SOURCE_DIR + L2A_UP_ID + GRANULE + self.L2A_TILE_ID
+        dirlist = sorted(os.listdir(L2A_TILE_ID))
+        for L2A_TILE_MTD_XML in dirlist:
+            if(fnmatch.fnmatch(L2A_TILE_MTD_XML, L2A_MTD_MASK) == True):
+                self.L2A_TILE_MTD_XML = L2A_TILE_ID + '/' + L2A_TILE_MTD_XML
+                break
+        return
+    
     def reinitL3_Tile(self, tileId):
         L3_MTD_MASK = 'S2A_*_MTD_L03_TL_*.xml'
         L3_TARGET_DIR = self.L3_TARGET_DIR + '/'
@@ -1046,12 +1063,13 @@ class L3_Product(Borg):
         return
  
     def tileExists(self, tileId):
-        processedFn = self.config.workDir + '/' + 'processed'
+        tileId = tileId + '_' + str(self.config.resolution)
+        processedFn = self.config.sourceDir + '/' + 'processed'
 
         try: # read list of tiles already processed
             f = open(processedFn, 'r')
             processedTiles = f.read()
-            if tileId[:-7] in processedTiles:
+            if tileId in processedTiles:
                 return True
         except:
             pass
@@ -1060,7 +1078,7 @@ class L3_Product(Borg):
 
     def appendTile(self, tileId):
         processedTile = tileId + '\n'
-        processedFn = self.config.workDir + '/' + 'processed'
+        processedFn = self.config.sourceDir + '/' + 'processed'
         try:
             f = open(processedFn, 'a')
             f.write(processedTile)

@@ -68,8 +68,8 @@ class L3_Process(object):
             return False
 
         # append processed tile to list
-        processedTile = self.config.product.L2A_TILE_ID + '\n'
-        processedFn = self.config.workDir + '/' + 'processed'
+        processedTile = self.config.product.L2A_TILE_ID + '_' + str(self.config.resolution) + '\n'
+        processedFn = self.config.sourceDir + '/' + 'processed'
         try:
             f = open(processedFn, 'a')
             f.write(processedTile)
@@ -89,7 +89,7 @@ class L3_Process(object):
         self.config.timestamp('L3_Process: start of Post Processing')
         self.config.logger.info('Post-processing with resolution %d m', self.config.resolution)
 
-        GRANULE = self.config.workDir + '/' + self.config.product.L3_TARGET_ID + '/GRANULE'
+        GRANULE = self.config.targetDir + '/' + self.config.product.L3_TARGET_ID + '/GRANULE'
         tilelist = sorted(os.listdir(GRANULE))
         L3_TILE_MSK = 'S2A_*_TL_*'
         res = False
@@ -166,6 +166,7 @@ def main(args=None):
             if processor.process(tables) == False:
                 config.exitError()
                 return False
+            tile += '_' + str(config.resolution)
             if product.appendTile(tile) == False:
                 config.exitError()
                 return False                       
@@ -195,8 +196,10 @@ def main(args=None):
             tables = L3_Tables(config)
             tables.init()
             # no processing if first initialisation:
-            if tables.testBand('L2A', 1) == False:
+            # check existence of Bands - B2 is always present:
+            if tables.testBand('L2A', 2) == False:
                 # append processed tile to list
+                tile += '_' + str(config.resolution)
                 if product.appendTile(tile) == False:
                     config.exitError()
                 continue

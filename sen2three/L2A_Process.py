@@ -91,10 +91,9 @@ class L2A_Process(object):
 
     def postprocess(self):
         self.config.logger.info('Post-processing with resolution %d m', self.config.resolution)
-        
         res = self.tables.exportBandList()
-        if(self.config.resolution == 60):
-            self.config.postprocess()
+        #if(self.config.resolution == 60):
+        self.config.postprocess()
 
         # validate the meta data:
         xp = L3_XmlParser(self.config, 'UP2A')

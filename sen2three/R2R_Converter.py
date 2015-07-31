@@ -74,14 +74,19 @@ class R2R_Converter(object):
                 basename = os.path.basename(band)
                 indataset = glymur.Jp2k(band)
                 indataArr = indataset[:]
+                dnScale = float32(self.config.dnScale)
+                #indataArr = clip(indataArr, 0, dnScale)
+                print '========================='
+                print basename + ':'
+                print 'Min: '  + str(indataArr.min())
+                print 'Mean: ' + str(indataArr.mean())
+                print 'Max: '  + str(indataArr.max())
+                print 'Nr. Values below 0: ' + str(size(indataArr[indataArr < 0]))
+                '''
                 self.setResolution(basename)
                 self.setBandIndex(basename)
                 self.getTileMetadata(filename)
                 outdataArr = self.refl2rad(indataArr)
-                print '========================='
-                print indataArr.min()
-                print indataArr.mean()
-                print indataArr.max()
                 print '-------------------------'
                 print outdataArr.min()
                 print outdataArr.mean()
@@ -90,6 +95,7 @@ class R2R_Converter(object):
                 glymur.Jp2k(band, outdataArr, **kwargs)            
                 self.config.logger.info('Band ' + basename + ' converted')
                 stdoutWrite('%d bands remain\n' % nrBands)
+                '''
         return
 
     def setResolution(self, bandname):
@@ -162,7 +168,8 @@ class R2R_Converter(object):
         rad_szi = radians(szi)
         sza = cos(rad_szi)
         L = float32(rtoa * e0 * sza / (pi * d2) / c1)
-        return (L/c1).astype(uint16)
+        radScale = self.config.radScale
+        return (L * radScale + 0.5).astype(uint16)
 
 def main(args=None):
     import argparse
@@ -193,25 +200,24 @@ def main(args=None):
     HelloWorld = processorName +', '+ processorVersion +', created: '+ processorDate
     stdoutWrite('\n%s started ...\n' % HelloWorld)    
     processor = R2R_Converter(config)
-    upList = sorted(os.listdir(directory))
     L1C_mask = 'S2?_*L1C_*'
-    L2A_mask = 'S2?_*L2A_*'
     exclusionMask = 'S2?_*_RAD'
-    nrUserProducts = len(upList)
+    upList = sorted(os.listdir(directory))
+    l1cList = []    
+    nrUserProducts = 0
+    
     for upId in upList:
-        if(('S2' in upId) == False):
-            nrUserProducts -=1
-            continue
-        # avoid reprocessing of converted data:
         if(fnmatch.fnmatch(upId, exclusionMask) == True):
             continue
-        if((fnmatch.fnmatch(upId, L1C_mask) == False) and \
-           (fnmatch.fnmatch(upId, L2A_mask) == False)):     
-            continue
+        elif(fnmatch.fnmatch(upId, L1C_mask) == True):
+            nrUserProducts += 1
+            l1cList.append(upId)
+
+    for upId in l1cList:                 
         stdoutWrite('%d user product(s) to be converted ...\n' % nrUserProducts)    
         nrUserProducts -=1
         upFullPath = os.path.join(directory, upId) 
-        targetDir = config.targetDirectory
+        targetDir = config.targetDir
         if targetDir == 'DEFAULT':   
             targetDir = directory + '_RAD'
         else:

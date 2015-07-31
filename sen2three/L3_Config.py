@@ -16,11 +16,11 @@ from L3_XmlParser import L3_XmlParser
 
 class L3_Config(Borg):
     _shared = {}
-    def __init__(self, resolution, workDir = None):
-        if(workDir):
+    def __init__(self, resolution, sourceDir = None):
+        if(sourceDir):
             self._home = os.environ['SEN2THREE_HOME'] + '/'
             moduleDir = os.environ['SEN2THREE_BIN'] + '/'            
-            self._workDir = workDir
+            self._sourceDir = sourceDir
             self._configDir = moduleDir + 'cfg/'
             self._configFn = self._home + 'cfg/L3_GIPP.xml'
             self._libDir = moduleDir + 'lib/'
@@ -62,6 +62,7 @@ class L3_Config(Borg):
             self._L2A_WVP_QUANTIFICATION_VALUE = 1000
             self._L2A_AOT_QUANTIFICATION_VALUE = 1000
             self._dnScale = 4095
+            self._radScale = 1.0
             self._timestamp = datetime.now()
             self._logger = None
             self._fnLog = None
@@ -82,22 +83,34 @@ class L3_Config(Borg):
             self._minAerosolOptical_thickness = None
             self._maxSolarZenithAngle = None
             self._classifier = None
-            self._targetDirectory = None
+            self._targetDir = None
             self._c0 = None
             self._c1 = None
             self._e0 = None
             self._d2 = None
 
-    def get_target_directory(self):
-        return self._targetDirectory
+    def get_rad_scale(self):
+        return self._radScale
 
 
-    def set_target_directory(self, value):
-        self._targetDirectory = value
+    def set_rad_scale(self, value):
+        self._radScale = value
 
 
-    def del_target_directory(self):
-        del self._targetDirectory
+    def del_rad_scale(self):
+        del self._radScale
+
+
+    def get_target_dir(self):
+        return self._targetDir
+
+
+    def set_target_dir(self, value):
+        self._targetDir = value
+
+
+    def del_target_dir(self):
+        del self._targetDir
 
 
     def get_processor_version(self):
@@ -238,8 +251,8 @@ class L3_Config(Borg):
         return self._home
 
 
-    def get_work_dir(self):
-        return self._workDir
+    def get_source_dir(self):
+        return self._sourceDir
 
 
     def get_config_dir(self):
@@ -334,8 +347,8 @@ class L3_Config(Borg):
         self._home = value
 
 
-    def set_work_dir(self, value):
-        self._workDir = value
+    def set_source_dir(self, value):
+        self._sourceDir = value
 
 
     def set_config_dir(self, value):
@@ -430,8 +443,8 @@ class L3_Config(Borg):
         del self._home
 
 
-    def del_work_dir(self):
-        del self._workDir
+    def del_source_dir(self):
+        del self._sourceDir
 
 
     def del_config_dir(self):
@@ -804,7 +817,7 @@ class L3_Config(Borg):
     shared = property(get_shared, set_shared, del_shared, "shared's docstring")
     classifier = property(get_classifier, set_classifier, del_classifier, "classifier's docstring")
     home = property(get_home, set_home, del_home, "home's docstring")
-    workDir = property(get_work_dir, set_work_dir, del_work_dir, "workDir's docstring")
+    sourceDir = property(get_source_dir, set_source_dir, del_source_dir, "sourceDir's docstring")
     configDir = property(get_config_dir, set_config_dir, del_config_dir, "configDir's docstring")
     binDir = property(get_bin_dir, set_bin_dir, del_bin_dir, "binDir's docstring")
     libDir = property(get_lib_dir, set_lib_dir, del_lib_dir, "libDir's docstring")
@@ -825,6 +838,7 @@ class L3_Config(Borg):
     L2A_WVP_QUANTIFICATION_VALUE = property(get_l_2_a_wvp_quantification_value, set_l_2_a_wvp_quantification_value, del_l_2_a_wvp_quantification_value, "L2A_WVP_QUANTIFICATION_VALUE's docstring")
     L2A_AOT_QUANTIFICATION_VALUE = property(get_l_2_a_aot_quantification_value, set_l_2_a_aot_quantification_value, del_l_2_a_aot_quantification_value, "L2A_AOT_QUANTIFICATION_VALUE's docstring")
     dnScale = property(get_dn_scale, set_dn_scale, del_dn_scale, "dnScale's docstring")
+    radScale = property(get_rad_scale, set_rad_scale, del_rad_scale, "radScale's docstring")
     timestamp = property(get_timestamp, set_timestamp, del_timestamp, "timestamp's docstring")
     creationDate = property(get_creation_date, set_creation_date, del_creation_date, "creationDate's docstring")
     acquisitionDate = property(get_acquisition_date, set_acquisition_date, del_acquisition_date, "acquisitionDate's docstring")
@@ -840,7 +854,7 @@ class L3_Config(Borg):
     solze_arr = property(get_solze_arr, set_solze_arr, del_solze_arr, "solze_arr's docstring")
     vaa_arr = property(get_vaa_arr, set_vaa_arr, del_vaa_arr, "vaa_arr's docstring")
     vza_arr = property(get_vza_arr, set_vza_arr, del_vza_arr, "vza_arr's docstring")
-    targetDirectory = property(get_target_directory, set_target_directory, del_target_directory, "targetDirectory's docstring")    
+    targetDir = property(get_target_dir, set_target_dir, del_target_dir, "targetDir's docstring")    
     
     
     def initLogger(self):
@@ -876,7 +890,8 @@ class L3_Config(Borg):
             self.loglevel = cs.Log_Level.text
             self._displayData = cs.Display_Data
             self._dnScale = cs.DN_Scale.pyval
-            self._targetDirectory = cs.Target_Directory.text
+            self._radScale = cs.RAD_Scale.pyval
+            self._targetDir = cs.Target_Directory.text
             l3s = root.L3_Synthesis
             self._minTime = l3s.Min_Time.text
             self._maxTime = l3s.Max_Time.text
@@ -936,7 +951,7 @@ class L3_Config(Borg):
     def updateUserProduct(self, userProduct):
         self.product.L2A_UP_ID = userProduct
         if self.product.existL3_TargetProduct() == False:
-            stderrWrite('directory "%s" L3 target product is missing\n.' % self.workDir)
+            stderrWrite('directory "%s" L3 target product is missing\n.' % self.targetDir)
             self.exitError()   
         return True
 
@@ -1120,7 +1135,7 @@ class L3_Config(Borg):
         xp = L3_XmlParser(self, 'UP2A')
         auxdata = xp.getTree('L2A_Auxiliary_Data_Info', 'Aux_Data')
         gipp = auxdata.L2A_GIPP_List
-        dirname, basename = os.path.split(self.product.L2A_TILE_MTD_XML)
+        dirname, basename = os.path.split(self.product.L3_TILE_MTD_XML)
         fn1r = basename.replace('_MTD_', '_GIP_')
         fn2r = fn1r.replace('.xml', '')
         gippFn = etree.Element('GIPP_FILENAME', type='GIP_Level-2Ap', version=self._processorVersion)
@@ -1256,6 +1271,3 @@ class L3_Config(Borg):
             a[i,:] = array(node[i].split(),dtype(str))
 
         return a
-
-    
-    

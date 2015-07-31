@@ -9,10 +9,7 @@ import threading
 import os
 import glob
 import glymur
-try:
-    import Image
-except:
-    from PIL import Image
+from PIL import Image
 
 from numpy import *
 from tables import *
@@ -161,13 +158,14 @@ class L3_Tables(Borg):
         ORBIT_ID = L2A_TILE_ID[-13:-7]
         L3_TILE_ID = ''
         L3_TARGET_ID = config.product.L3_TARGET_ID
-        tiles = config.targetDirectory + '/' + L3_TARGET_ID + GRANULE
+        tiles = config.targetDir + '/' + L3_TARGET_ID + GRANULE
         files = sorted(os.listdir(tiles))
         for L3_TILE_ID in files:       
             if fnmatch.fnmatch(L3_TILE_ID, L3_TILE_MSK) == True:
                 break
         if ORBIT_ID in L3_TILE_ID:
         # target exists, will be used:
+            config.product.reinitL2A_Tile()
             config.product.reinitL3_Tile(L3_TILE_ID)
         else:
             config.product.createL3_Tile(L2A_TILE_ID)
@@ -175,8 +173,8 @@ class L3_Tables(Borg):
         L3_TILE_ID = config.product.L3_TILE_ID
         L2A_TILE_ID_SHORT = '/' + L2A_TILE_ID[:55]
         L3_TILE_ID_SHORT = '/' + config.product.L3_TILE_ID[:55]            
-        L2A_TILE_ID = config.workDir + '/' + L2A_UP_ID + GRANULE + '/' + L2A_TILE_ID
-        L3_TILE_ID = config.targetDirectory + '/' + L3_TARGET_ID + GRANULE + '/' + L3_TILE_ID
+        L2A_TILE_ID = config.sourceDir + '/' + L2A_UP_ID + GRANULE + '/' + L2A_TILE_ID
+        L3_TILE_ID = config.targetDir + '/' + L3_TARGET_ID + GRANULE + '/' + L3_TILE_ID
         self._L2A_ImgDataDir = L2A_TILE_ID + IMG_DATA
         self._L3_ImgDataDir = L3_TILE_ID + IMG_DATA
         self._L2A_bandDir = self._L2A_ImgDataDir + BANDS
@@ -223,7 +221,7 @@ class L3_Tables(Borg):
         self._L3_Tile_MSC_File = self._L3_QualityDataDir + pre + '_MSC' + post + '_' + str(self._resolution) + 'm.jp2'
         self._L3_Tile_PVI_File = self._L3_QualityDataDir + pre + '_PVI' + post + '_' + str(self.config.nrTilesProcessed) + '.png'
         self._L3_Tile_PLT_File = self._L3_QualityDataDir + pre + '_PLT' + post + '_' + str(self.config.nrTilesProcessed) + '.png'
-        self._L3_Tile_SCL_File = self._L3_ImgDataDir     + pre + '_SCL' + post + '_' + str(self._resolution) + 'm.jp2'
+        self._L3_Tile_SCL_File = self._L3_QualityDataDir + pre + '_SCL' + post + '_' + str(self._resolution) + 'm.jp2'
 
         self._imageDatabase = self._L3_bandDir + '/.database.h5'
         self._TmpFile = self._L3_bandDir + '/.tmpfile_'
@@ -702,14 +700,15 @@ class L3_Tables(Borg):
             h5file = open_file(self._imageDatabase)
             h5file.close()
             self.importBandList('L2A')
-            if(self.config.resolution == 60):            
-                self.createPreviewImage('L3')
-                self.createPreviewImage('L2A')
         except:
             self.initDatabase()
             self.importBandList('L3')
+            return
+        if(self.config.resolution == 60):            
+            self.createPreviewImage('L3')
+            self.createPreviewImage('L2A')
         return
-    
+
     def exportTile(self, L3_TILE_ID):
         AUX_DATA = '/AUX_DATA'
         IMG_DATA = '/IMG_DATA'
@@ -726,7 +725,7 @@ class L3_Tables(Borg):
         BANDS = bandDir
         L3_TARGET_ID = self.config.product.L3_TARGET_ID
         L3_TILE_ID_SHORT = '/' + L3_TILE_ID[:55]            
-        L3_TILE_ID = self.config.workDir + '/' + L3_TARGET_ID + GRANULE + '/' + L3_TILE_ID
+        L3_TILE_ID = self.config.targetDir + '/' + L3_TARGET_ID + GRANULE + '/' + L3_TILE_ID
         self._L3_ImgDataDir = L3_TILE_ID + IMG_DATA
         self._L3_bandDir = self._L3_ImgDataDir + BANDS
         self._L3_QualityDataDir = L3_TILE_ID + QI_DATA
@@ -742,8 +741,9 @@ class L3_Tables(Borg):
         self._L3_Tile_CLD_File = self._L3_QualityDataDir + pre + '_CLD' + post + '_' + str(self._resolution) + 'm.jp2'
         self._L3_Tile_SNW_File = self._L3_QualityDataDir + pre + '_SNW' + post + '_' + str(self._resolution) + 'm.jp2'
         self._L3_Tile_MSC_File = self._L3_QualityDataDir + pre + '_MSC' + post + '_' + str(self._resolution) + 'm.jp2'
-        self._L3_Tile_PVI_File = self._L3_QualityDataDir + pre + '_PVI' + post + '.jp2'
-        self._L3_Tile_SCL_File = self._L3_ImgDataDir     + pre + '_SCL' + post + '_' + str(self._resolution) + 'm.jp2'
+        self._L3_Tile_PVI_File = self._L3_QualityDataDir + pre + '_PVI' + post + '_' + str(self.config.nrTilesProcessed) + '.png'
+        self._L3_Tile_PLT_File = self._L3_QualityDataDir + pre + '_PLT' + post + '_' + str(self.config.nrTilesProcessed) + '.png'
+        self._L3_Tile_SCL_File = self._L3_QualityDataDir + pre + '_SCL' + post + '_' + str(self._resolution) + 'm.jp2'
 
         self._imageDatabase = self._L3_bandDir + '/.database.h5'
         self.config.logger.debug('Module L3_Tables reinitialized with resolution %d' % self._resolution)
@@ -821,7 +821,8 @@ class L3_Tables(Borg):
         warnings.filterwarnings("ignore")
         nrows = indataset.shape[0]
         ncols = indataset.shape[1]
-        indataArr = indataset[:]
+        tmp = indataset[:]
+        indataArr = tmp
         indataset = None
         # Create new arrays:
         database = self._imageDatabase
@@ -843,7 +844,7 @@ class L3_Tables(Borg):
             elif self._productLevel == 'L3':
                 locator = h5file.root.L3
                 
-            dtOut = self.mapDataType(indataArr.dtype)
+            dtOut = self.mapDataType(indataArr)
             filters = Filters(complib="zlib", complevel=1)
             node = h5file.createEArray(locator, bandName, dtOut, (0,ncols), bandName, filters=filters)
             node.append(indataArr)
@@ -871,13 +872,13 @@ class L3_Tables(Borg):
         os.chdir(bandDir)
         self.config.timestamp(productLevel + '_Tables: start export')
         if(self._resolution == 10):
-            bandIndex = [1,2,3,7]
+            bandIndex = [1,2,3,7,14,30]
 
         elif(self._resolution == 20):
             bandIndex = [1,2,3,4,5,6,8,11,12]
 
         elif(self._resolution == 60):
-            bandIndex = [0,1,2,3,4,5,6,8,9,11,12]
+            bandIndex = [0,1,2,3,4,5,6,8,9,11,12] # 14,30
 
         #prepare the xml export
         Granules = objectify.Element('Granules')
@@ -888,8 +889,12 @@ class L3_Tables(Borg):
         gl.append(Granules)
         for index in bandIndex:
             bandName = self.getBandNameFromIndex(index)
-            filename = self._L2A_Tile_BND_File
-            filename = filename.replace('BXX', bandName)
+            if index == 14:
+                filename = self._L3_Tile_SCL_File
+            elif index == 30:
+                filename = self._L3_Tile_MSC_File
+            else:
+                filename = self._L2A_Tile_BND_File.replace('BXX', bandName)
             band = self.getBand(productLevel, index)
             kwargs = {"tilesize": (2048, 2048), "prog": "RPCL"}
             glymur.Jp2k(filename, band.astype(uint16), **kwargs)            
@@ -899,7 +904,6 @@ class L3_Tables(Borg):
             imageId = etree.Element('IMAGE_ID_2A')
             imageId.text = filename
             Granules.append(imageId)
-        
         '''
         xp = L3_XmlParser(self.config, 'UP03')
         pi = xp.getTree('General_Info', 'L3_Product_Info')
