@@ -1,8 +1,15 @@
 #!/usr/bin/env python
-'''
-Created on Feb 24, 2012
-@author: umuellerwilm
-'''
+
+"""
+.. module:: sen2three.L3_Tables
+   :platform: Unix, Mac-OSX, Windows
+   :synopsis: Level-3 IO module
+
+.. moduleauthor:: umwilm
+
+
+"""
+
 import fnmatch
 import subprocess
 import threading
@@ -117,6 +124,15 @@ class gdalThreadWrite(threading.Thread):
         
 
 class L3_Tables(Borg):
+    ''' A support class, managing the conversion of the JPEG-2000 based input data
+        to an internal format based on HDF5 (pyTables). Provide a high performance
+        access to the image data for all bands of all tiles to be processed.
+        
+        :param config: the config object for the current tile.
+        :type config: a reference to the L3_Config object.
+
+    '''
+
     def __init__(self, config):
         self.config = config
 
@@ -624,45 +640,47 @@ class L3_Tables(Borg):
     def del_prv(self):
         del self._PRV
 
-    AOT = property(get_aot, set_aot, del_aot, "AOT's docstring")
-    B01 = property(get_b01, set_b01, del_b01, "B01's docstring")
-    B02 = property(get_b02, set_b02, del_b02, "B02's docstring")
-    B03 = property(get_b03, set_b03, del_b03, "B03's docstring")
-    B04 = property(get_b04, set_b04, del_b04, "B04's docstring")
-    B05 = property(get_b05, set_b05, del_b05, "B05's docstring")
-    B06 = property(get_b06, set_b06, del_b06, "B06's docstring")
-    B07 = property(get_b07, set_b07, del_b07, "B07's docstring")
-    B08 = property(get_b08, set_b08, del_b08, "B08's docstring")
-    B8A = property(get_b8a, set_b8a, del_b8a, "B8A's docstring")
-    B09 = property(get_b09, set_b09, del_b09, "B09's docstring")
-    B10 = property(get_b10, set_b10, del_b10, "B10's docstring")
-    B11 = property(get_b11, set_b11, del_b11, "B11's docstring")
-    B12 = property(get_b12, set_b12, del_b12, "B12's docstring")
-    SCL = property(get_scl, set_scl, del_scl, "SCL's docstring")
-    SNW = property(get_qsn, set_qsn, del_qsn, "SNW's docstring")
-    CLD = property(get_qcl, set_qcl, del_qcl, "CLD's docstring")
-    MSC = property(get_msc, set_msc, del_msc, "MSC's docstring")
-    PRV = property(get_prv, set_prv, del_prv, "PRV's docstring")
-    L3_Tile_PLT_File = property(get_l_3_tile_plt_file, set_l_3_tile_plt_file, del_l_3_tile_plt_file, "L3_Tile_PLT_File's docstring")
+    AOT = property(get_aot, set_aot, del_aot)
+    B01 = property(get_b01, set_b01, del_b01)
+    B02 = property(get_b02, set_b02, del_b02)
+    B03 = property(get_b03, set_b03, del_b03)
+    B04 = property(get_b04, set_b04, del_b04)
+    B05 = property(get_b05, set_b05, del_b05)
+    B06 = property(get_b06, set_b06, del_b06)
+    B07 = property(get_b07, set_b07, del_b07)
+    B08 = property(get_b08, set_b08, del_b08)
+    B8A = property(get_b8a, set_b8a, del_b8a)
+    B09 = property(get_b09, set_b09, del_b09)
+    B10 = property(get_b10, set_b10, del_b10)
+    B11 = property(get_b11, set_b11, del_b11)
+    B12 = property(get_b12, set_b12, del_b12)
+    SCL = property(get_scl, set_scl, del_scl)
+    SNW = property(get_qsn, set_qsn, del_qsn)
+    CLD = property(get_qcl, set_qcl, del_qcl)
+    MSC = property(get_msc, set_msc, del_msc)
+    PRV = property(get_prv, set_prv, del_prv)
+    L3_Tile_PLT_File = property(get_l_3_tile_plt_file, set_l_3_tile_plt_file, del_l_3_tile_plt_file)
 
-    config = property(get_config, set_config, del_config, "config's docstring")
-    bandIndex = property(get_band_bandIndex, set_band_bandIndex, del_band_bandIndex, "bandIndex's docstring")
-    nBands = property(get_n_bands, set_n_bands, del_n_bands, "nBands's docstring")
-    dbName = property(get_db_name, set_db_name, del_db_name, "dbName's docstring")
-    cornerCoordinates = property(get_corner_coordinates, set_corner_coordinates, del_corner_coordinates, "cornerCoordinates's docstring")
-    geoExtent = property(get_geo_extent, set_geo_extent, del_geo_extent, "geoExtent's docstring")
-    projection = property(get_projection, set_projection, del_projection, "projection's docstring")
+    config = property(get_config, set_config, del_config)
+    bandIndex = property(get_band_bandIndex, set_band_bandIndex, del_band_bandIndex)
+    nBands = property(get_n_bands, set_n_bands, del_n_bands)
+    dbName = property(get_db_name, set_db_name, del_db_name)
+    cornerCoordinates = property(get_corner_coordinates, set_corner_coordinates, del_corner_coordinates)
+    geoExtent = property(get_geo_extent, set_geo_extent, del_geo_extent)
+    projection = property(get_projection, set_projection, del_projection)
 
-    def ReprojectCoords(self,coords,src_srs,tgt_srs):
+    def reprojectCoords(self,coords,src_srs,tgt_srs):
         ''' Reproject a list of x,y coordinates.
-            @type geom:     C{tuple/list}
-            @param geom:    List of [[x,y],...[x,y]] coordinates
-            @type src_srs:  C{osr.SpatialReference}
-            @param src_srs: OSR SpatialReference object
-            @type tgt_srs:  C{osr.SpatialReference}
-            @param tgt_srs: OSR SpatialReference object
-            @rtype:         C{tuple/list}
-            @return:        List of transformed [[x,y],...[x,y]] coordinates
+        
+            :param coords: List of [[x,y],...[x,y]] coordinates
+            :type coords: C{tuple/list}
+            :param src_srs: OSR SpatialReference object
+            :type src_srs: C{osr.SpatialReference}
+            :param tgt_srs: OSR SpatialReference object
+            :type tgt_srs: C{osr.SpatialReference}
+            :return: List of transformed [[x,y],...[x,y]] coordinates
+            :rtype: C{tuple/list}
+            
         '''
         trans_coords=[]
         transform = osr.CoordinateTransformation( src_srs, tgt_srs)
@@ -671,16 +689,18 @@ class L3_Tables(Borg):
             trans_coords.append([x,y])
         return trans_coords
 
-    def GetExtent(self, gt,cols,rows):
-        ''' Return list of corner coordinates from a geotransform
-            @type gt:   C{tuple/list}
-            @param gt: geotransform
-            @type cols:   C{int}
-            @param cols: number of columns in the dataset
-            @type rows:   C{int}
-            @param rows: number of rows in the dataset
-            @rtype:    C{[float,...,float]}
-            @return:   coordinates of each corner
+    def getExtent(self, gt,cols,rows):
+        ''' Return list of corner coordinates from an osgeo geotransform.
+        
+            :param gt: geotransform
+            :type gt: C{tuple/list}
+            :param cols: number of columns in the dataset
+            :type cols: C{int}
+            :param rows: number of rows in the dataset
+            :type rows: C{int}
+            :return: coordinates of each corner
+            :rtype: C{[float,...,float]}
+
         '''
         ext=[]
         xarr=[0,cols]
@@ -695,6 +715,10 @@ class L3_Tables(Borg):
         return ext
     
     def init(self):
+        ''' Checks the existence of a L3 target database for the processed tile.
+            If the database exists, the given tile will be imported. If the database does not exist
+            it will be created and the current tile will become the base for the subsequent processing.
+        '''
         self._config.logger.info('Checking existence of L3 target database')
         try:
             h5file = open_file(self._imageDatabase)
@@ -710,6 +734,13 @@ class L3_Tables(Borg):
         return
 
     def exportTile(self, L3_TILE_ID):
+        ''' Prepare the export of a synthesized tile.
+        
+           :param identifier: the tile ID.
+           :type identifier: str
+           
+        '''
+
         AUX_DATA = '/AUX_DATA'
         IMG_DATA = '/IMG_DATA'
         QI_DATA = '/QI_DATA'
@@ -751,7 +782,8 @@ class L3_Tables(Borg):
         return
     
     def initDatabase(self):
-        # initialize H5 database for usage:
+        ''' Initialize H5 target database for usage.
+        '''
         try:
             h5file = open_file(self._imageDatabase, mode='a', title =  str(self._resolution) + 'm bands')
             # remove all existing L2A tables as they will be replaced by the new data set
@@ -767,6 +799,13 @@ class L3_Tables(Borg):
         return result
     
     def importBandList(self, productLevel):
+        ''' Import all bands of current tile.
+            
+            :param productLevel: [L1C | L2A | L3].
+            :type productLevel: str
+            :rtype: none.
+            
+        '''        
         self.config.timestamp('L3_Tables: start import')
         self._productLevel = productLevel        
         bandDir = self._L2A_bandDir
@@ -792,6 +831,18 @@ class L3_Tables(Borg):
     
 
     def getBand(self, productLevel, bandIndex, dataType=uint16):
+        ''' Get a single band from database.
+
+            :param productLevel: [L1C | L2A | L3].
+            :type productLevel: str            
+            :param bandIndex: the band index.
+            :type bandIndex: unsigned int
+            :param dataType: data type of band.
+            :type dataType: default: unsigned int 16
+            :return: the pixel data.
+            :rtype: a 2 dimensional numpy array (row x column) of type unsigned int 16 
+            
+        '''
         self.verifyProductId(productLevel)
         bandName = self.getBandNameFromIndex(bandIndex)
         if (bandName == 'SCL') | (bandName == 'CLD') | \
@@ -814,6 +865,16 @@ class L3_Tables(Borg):
         return result
 
     def importBand(self, bandIndex, filename):
+        ''' convert JPEG-2000 input file to internal H5 file format.
+        
+            :param bandIndex: the band index.
+            :type bandIndex: unsigned int
+            :param filename: file name of JPEG-2000 input image.
+            :type filename: str
+            :return: false if error occurred during import.
+            :rtype: boolean
+            
+        ''' 
         # convert JPEG-2000 input file to H5 file format
         self.verifyProductId(self._productLevel)
         indataset = glymur.Jp2k(filename)
@@ -821,8 +882,7 @@ class L3_Tables(Borg):
         warnings.filterwarnings("ignore")
         nrows = indataset.shape[0]
         ncols = indataset.shape[1]
-        tmp = indataset[:]
-        indataArr = tmp
+        indataArr = indataset[:]
         indataset = None
         # Create new arrays:
         database = self._imageDatabase
@@ -844,7 +904,7 @@ class L3_Tables(Borg):
             elif self._productLevel == 'L3':
                 locator = h5file.root.L3
                 
-            dtOut = self.mapDataType(indataArr)
+            dtOut = self.mapDataType(indataArr.dtype)
             filters = Filters(complib="zlib", complevel=1)
             node = h5file.createEArray(locator, bandName, dtOut, (0,ncols), bandName, filters=filters)
             node.append(indataArr)
@@ -862,6 +922,15 @@ class L3_Tables(Borg):
 
 
     def exportBandList(self, productLevel):
+        ''' Export all bands of current tile.
+            converts all bands from hdf5 to JPEG-2000.
+            
+            :param productLevel: [L1C | L2A | L3].
+            :type productLevel: str
+            :return: false if error occurred during export.
+            :rtype: boolean           
+
+        '''     
         bandDir = self._L3_bandDir
         # converts all bands from hdf5 to JPEG 2000
         if(os.path.exists(bandDir) == False):
@@ -894,7 +963,7 @@ class L3_Tables(Borg):
             elif index == 30:
                 filename = self._L3_Tile_MSC_File
             else:
-                filename = self._L2A_Tile_BND_File.replace('BXX', bandName)
+                filename = self._L3_Tile_BND_File.replace('BXX', bandName)
             band = self.getBand(productLevel, index)
             kwargs = {"tilesize": (2048, 2048), "prog": "RPCL"}
             glymur.Jp2k(filename, band.astype(uint16), **kwargs)            
@@ -934,15 +1003,49 @@ class L3_Tables(Borg):
         self.config.timestamp(productLevel + '_Tables: stop export')
         return True
 
+    def scaleImgArray(self, arr):
+        ''' Scale image array for preview. Helper function used by createPreviewImage().
 
-    def setBand(self, productLevel, bandIndex, array):
+            :param arr: the image array.
+            :type arr: 2 dimensional numpy array (nrow x ncols).
+            :return: false if image cannot be created, else true.            
+            :rtype: boolean
+            
+        '''
+        if(arr.ndim) != 2:
+            self.config.logger.fatal('must be a 2 dimensional array')
+            self.config.exitError()
+            return False
+
+        arrclip = arr.copy()
+        _min = 0.0
+        _max = 500
+        scale = 255.0
+        arr = clip(arrclip, _min, _max)
+        scaledArr = uint8(arr*scale/_max)
+        return scaledArr
+
+
+    def setBand(self, productLevel, bandIndex, arr):
+        ''' Set a single band from numpy array to H5 database.
+
+            :param productLevel: [L1C | L2A | L3].
+            :type productLevel: str
+            :param bandIndex: the band index.
+            :type bandIndex: unsigned int
+            :param arr: the pixel data.
+            :type arr: a 2 dimensional numpy array (row x column) of type unsigned int 16.            
+            :return: false if error occurred during setting of band.            
+            :rtype: boolean
+            
+        '''  
         self.verifyProductId(productLevel)
         try:
             if self.testBand(productLevel, bandIndex) == True:
                 self.delBand(productLevel, bandIndex)
             h5file = open_file(self._imageDatabase, mode='a')
             bandName = self.getBandNameFromIndex(bandIndex)
-            dtIn = self.mapDataType(array.dtype)
+            dtIn = self.mapDataType(arr.dtype)
             filters = Filters(complib="zlib", complevel=1)
             # create new group and append node:
             if productLevel == 'L1C':
@@ -952,9 +1055,9 @@ class L3_Tables(Borg):
             elif productLevel == 'L3':
                 locator = h5file.root.L3
 
-            node = h5file.createEArray(locator, bandName, dtIn, (0,array.shape[1]), bandName, filters=filters)
+            node = h5file.createEArray(locator, bandName, dtIn, (0,arr.shape[1]), bandName, filters=filters)
             self.config.logger.debug('%s: Band %02d %s added to table', productLevel, bandIndex, self.getBandNameFromIndex(bandIndex))
-            node.append(array)
+            node.append(arr)
             result = True
         except NoSuchNodeError:
             self.config.logger.debug('%s: Band %s cannot be set', productLevel, self.getBandNameFromIndex(bandIndex))
@@ -963,6 +1066,16 @@ class L3_Tables(Borg):
         return result
 
     def delBand(self, productLevel, bandIndex):
+        ''' Delete a single band from H5 database.
+
+            :param productLevel: [L1C | L2A | L3].
+            :type productLevel: str
+            :param bandIndex: the band index.
+            :type bandIndex: unsigned int
+            :return: false if error occurred during deletion of band.            
+            :rtype: boolean
+            
+        '''  
         self.verifyProductId(productLevel)
         try:
             h5file = open_file(self._imageDatabase, mode='a')
@@ -979,6 +1092,14 @@ class L3_Tables(Borg):
         return result
 
     def delBandList(self, productLevel):
+        ''' Delete the complete list of bands from H5 database.
+
+            :param productLevel: [L1C | L2A | L3].
+            :type productLevel: str
+            :return: false if error occurred during deletion of band.            
+            :rtype: boolean
+            
+        ''' 
         try:
             h5file = open_file(self._imageDatabase, mode='a')
             if(h5file.__contains__('/' + productLevel)):
@@ -993,13 +1114,30 @@ class L3_Tables(Borg):
         return result            
         
     def delDatabase(self):
+        ''' Delete the H5 database.
+
+            :return: true if succeeds, false if database does not exist.            
+            :rtype: boolean
+            
+        ''' 
         database = self._imageDatabase
         if os.path.isfile(database):
             os.remove(database)
-        return
-
+            self.config.logger.debug('%s: removed', database)
+            return True
+        else:
+            self.config.logger.debug('%s: does not exist', database)
+            return False
 
     def createPreviewImage(self, productLevel):
+        ''' Create an RGB preview image from bands 2-4.
+
+            :param productLevel: [L1C | L2A | L3].
+            :type productLevel: str
+            :return: false if image cannot be created, else true.            
+            :rtype: boolean
+            
+        '''
         self.config.logger.debug('Creating Preview Image')
         if(self._resolution != 60):
             self.config.logger.fatal('wrong resolution for this procedure, must be 60m')
@@ -1032,23 +1170,14 @@ class L3_Tables(Borg):
             self.config.exitError()
             return False
 
-
-    def scaleImgArray(self, arr):
-        if(arr.ndim) != 2:
-            self.config.logger.fatal('must be a 2 dimensional array')
-            self.config.exitError()
-            return False
-
-        arrclip = arr.copy()
-        _min = 0.0
-        _max = 500
-        scale = 255.0
-        arr = clip(arrclip, _min, _max)
-        scaledArr = uint8(arr*scale/_max)
-        return scaledArr
-
-
     def testDb(self):
+        ''' Test consistency of database.
+        
+            :param: none.
+            :return: false if database is inconsistent, else true.            
+            :rtype: boolean
+            
+        '''
         result = False
         try:
             h5file = open_file(self._imageDatabase)
@@ -1066,12 +1195,30 @@ class L3_Tables(Borg):
         return result
     
     def verifyProductId(self, productLevel):
+        ''' Verify the product ID.
+
+            :param productLevel: [L1C | L2A | L3].
+            :type productLevel: str
+            :return: true if product level exists, else false.            
+            :rtype: boolean
+            
+        '''
         if productLevel != 'L1C' and productLevel != 'L2A' and productLevel != 'L3':
             self.config.logger.fatal('Wrong product ID %s', productLevel)
             self.config.exitError()
         return True
     
     def testBand(self, productLevel, bandIndex):
+        ''' Test if band exists in database.
+
+            :param productLevel: [L1C | L2A | L3].
+            :type productLevel: str
+            :param bandIndex: the band index.
+            :type bandIndex: unsigned int
+            :return: true if band exists, else false.            
+            :rtype: boolean
+            
+        '''        
         self.verifyProductId(productLevel)
         bandName = self.getBandNameFromIndex(bandIndex)
         try:
@@ -1086,14 +1233,24 @@ class L3_Tables(Borg):
         return result
 
     def getBandSize(self, productLevel, bandIndex):
+        ''' Get size of image array.
+
+            :param productLevel: [L1C | L2A | L3].
+            :type productLevel: str
+            :param bandIndex: the band index.
+            :type bandIndex: unsigned int
+            :return: image size (nrows x ncols)            
+            :rtype: data tuple (unsigned int).
+            
+        '''
         self.verifyProductId(productLevel)
         bandName = self.getBandNameFromIndex(bandIndex)
         try:
             h5file = open_file(self._imageDatabase)
             node = h5file.getNode('/' + productLevel, bandName)
-            array = node.read()
-            ncols = array.shape[1]
-            nrows = array.shape[0]
+            arr = node.read()
+            ncols = arr.shape[1]
+            nrows = arr.shape[0]
             result = (nrows, ncols)
         except NoSuchNodeError:
             self.config.logger.debug('%s: Band %s is missing', productLevel, self.getBandNameFromIndex(bandIndex))
@@ -1102,6 +1259,16 @@ class L3_Tables(Borg):
         return result
 
     def getDataType(self, productLevel, bandIndex):
+        ''' Get data type of image array.
+
+            :param productLevel: [L1C | L2A | L3].
+            :type productLevel: str
+            :param bandIndex: the band index.
+            :type bandIndex: unsigned int
+            :return: data type.          
+            :rtype: str
+            
+        '''
         self.verifyProductId(productLevel)
         bandName = self.getBandNameFromIndex(bandIndex)
         try:

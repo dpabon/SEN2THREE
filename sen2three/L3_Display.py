@@ -1,11 +1,9 @@
-'''
-Created on Feb 19, 2015
-
-@author: umwilm
+''' 
+    :Module: L3_Display.
+    :Imports: L3_Config, L3_Tables, L3_Library.
 '''
 from numpy import *
 import pylab as P
-import matplotlib.cm as cm
 from scipy.stats import itemfreq
 
 from L3_Config import L3_Config
@@ -14,6 +12,13 @@ from L3_Library import stdoutWrite, stderrWrite, showImage
 from boto.glacier.writer import resume_file_upload
 
 class L3_Display(object):
+    ''' A support class, for display of the scene classification and the mosaic map 
+        using the Python Image Library (PIL). The display of the data is a configurable option.
+        
+            :param config: the config object for the current tile (via __init__).
+            :type config: a reference to the L3_Config object.
+
+    '''
     def __init__(self, config):
         self._config = config
         self._tables = None
@@ -24,6 +29,12 @@ class L3_Display(object):
         self._plot.ion()
      
     def displayData(self, tables):
+        ''' Performs the display of the scene classification and the mosaic map.
+        
+            :param tables: the config object for the current tile (via __init__).
+            :type config: a reference to the L3_Tables object.
+
+        '''
         self._tables = tables
         mosaic = self._tables.getBand('L3', self._tables.MSC)
         scenec = self._tables.getBand('L3', self._tables.SCL)
@@ -82,7 +93,8 @@ class L3_Display(object):
         ax4.bar(xScif, yScif, align='center', alpha=0.4)
         ax4.set_xlabel('Class [#]')
         ax4.set_ylabel('Frequency [%]')
-        #self._plot.tight_layout()
-        self._plot.show(block=False)     
+        self._plot.draw()
+        self._plot.tight_layout()
+        self._plot.show(block=False)             
         self._plot.savefig(tables.L3_Tile_PLT_File, dpi=100)
         return

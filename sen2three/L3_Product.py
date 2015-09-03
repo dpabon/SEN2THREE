@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 '''
-Created on Feb 2, 2015
-@author: umuellerwilm
+    :module: L3_Product.
+    :imports: L3_XmlParser, L3_Library. 
 '''
 import os, fnmatch
 from time import strftime
@@ -12,9 +12,13 @@ from lxml import objectify
 
 from L3_Borg import Borg
 from L3_XmlParser import L3_XmlParser
-from L3_Library import stdoutWrite, stderrWrite
+from L3_Library import stderrWrite
 
 class L3_Product(Borg):
+    '''
+            :param config: the config object for the current tile (via __init__)
+            :type config: a reference to the L3_Config object
+    '''
     _shared = {}
     def __init__(self, config):
         self.config = config 
@@ -332,30 +336,30 @@ class L3_Product(Borg):
     def del_l_3_target_dir(self):
         del self._L3_TARGET_DIR
 
-    config = property(get_config, set_config, del_config, "config's docstring")
-    L2A_INSPIRE_XML = property(get_l_2_a_inspire_xml, set_l_2_a_inspire_xml, del_l_2_a_inspire_xml, "L2A_INSPIRE_XML's docstring")
-    L2A_MANIFEST_SAFE = property(get_l_2_a_manifest_safe, set_l_2_a_manifest_safe, del_l_2_a_manifest_safe, "L2A_MANIFEST_SAFE's docstring")
-    L1C_UP_MTD_XML = property(get_l_1_c_up_mtd_xml, set_l_1_c_up_mtd_xml, del_l_1_c_up_mtd_xml, "L1C_UP_MTD_XML's docstring")
-    L1C_DS_MTD_XML = property(get_l_1_c_ds_mtd_xml, set_l_1_c_ds_mtd_xml, del_l_1_c_ds_mtd_xml, "L1C_DS_MTD_XML's docstring")
-    L1C_TILE_MTD_XML = property(get_l_1_c_tile_mtd_xml, set_l_1_c_tile_mtd_xml, del_l_1_c_tile_mtd_xml, "L1C_TILE_MTD_XML's docstring")
-    L1C_UP_ID = property(get_l_1_c_up_id, set_l_1_c_up_id, del_l_1_c_up_id, "L1C_UP_ID's docstring")
-    L1C_DS_ID = property(get_l_1_c_ds_id, set_l_1_c_ds_id, del_l_1_c_ds_id, "L1C_DS_ID's docstring")
-    L1C_TILE_ID = property(get_l_1_c_tile_id, set_l_1_c_tile_id, del_l_1_c_tile_id, "L1C_TILE_ID's docstring")
-    L2A_UP_MTD_XML = property(get_l_2_a_up_mtd_xml, set_l_2_a_up_mtd_xml, del_l_2_a_up_mtd_xml, "L2A_UP_MTD_XML's docstring")
-    L2A_DS_MTD_XML = property(get_l_2_a_ds_mtd_xml, set_l_2_a_ds_mtd_xml, del_l_2_a_ds_mtd_xml, "L2A_DS_MTD_XML's docstring")
-    L2A_TILE_MTD_XML = property(get_l_2_a_tile_mtd_xml, set_l_2_a_tile_mtd_xml, del_l_2_a_tile_mtd_xml, "L2A_TILE_MTD_XML's docstring")
-    L2A_UP_ID = property(get_l_2_a_up_id, set_l_2_a_up_id, del_l_2_a_up_id, "L2A_UP_ID's docstring")
-    L2A_DS_ID = property(get_l_2_a_ds_id, set_l_2_a_ds_id, del_l_2_a_ds_id, "L2A_DS_ID's docstring")
-    L2A_TILE_ID = property(get_l_2_a_tile_id, set_l_2_a_tile_id, del_l_2_a_tile_id, "L2A_TILE_ID's docstring")
-    L3_TARGET_MTD_XML = property(get_l_3_target_mtd_xml, set_l_3_target_mtd_xml, del_l_3_target_mtd_xml, "L3_TARGET_MTD_XML's docstring")
-    L3_DS_MTD_XML = property(get_l_3_ds_mtd_xml, set_l_3_ds_mtd_xml, del_l_3_ds_mtd_xml, "L3_DS_MTD_XML's docstring")
-    L3_TILE_MTD_XML = property(get_l_3_tile_mtd_xml, set_l_3_tile_mtd_xml, del_l_3_tile_mtd_xml, "L3_TILE_MTD_XML's docstring")
-    L3_TARGET_ID = property(get_l_3_target_id, set_l_3_target_id, del_l_3_target_id, "L3_TARGET_ID's docstring")
-    L3_DS_ID = property(get_l_3_ds_id, set_l_3_ds_id, del_l_3_ds_id, "L3_DS_ID's docstring")
-    L3_TILE_ID = property(get_l_3_tile_id, set_l_3_tile_id, del_l_3_tile_id, "L3_TILE_ID's docstring")
-    L3_TARGET_DIR = property(get_l_3_target_dir, set_l_3_target_dir, del_l_3_target_dir, "L3_TARGET_DIR's docstring")
-    L2A_UP_DIR = property(get_l_2_a_up_dir, set_l_2_a_up_dir, del_l_2_a_up_dir, "L2A_UP_DIR's docstring")
-    L1C_UP_DIR = property(get_l_1_c_up_dir, set_l_1_c_up_dir, del_l_1_c_up_dir, "L1C_UP_DIR's docstring")
+    config = property(get_config, set_config, del_config)
+    L2A_INSPIRE_XML = property(get_l_2_a_inspire_xml, set_l_2_a_inspire_xml, del_l_2_a_inspire_xml)
+    L2A_MANIFEST_SAFE = property(get_l_2_a_manifest_safe, set_l_2_a_manifest_safe, del_l_2_a_manifest_safe)
+    L1C_UP_MTD_XML = property(get_l_1_c_up_mtd_xml, set_l_1_c_up_mtd_xml, del_l_1_c_up_mtd_xml)
+    L1C_DS_MTD_XML = property(get_l_1_c_ds_mtd_xml, set_l_1_c_ds_mtd_xml, del_l_1_c_ds_mtd_xml)
+    L1C_TILE_MTD_XML = property(get_l_1_c_tile_mtd_xml, set_l_1_c_tile_mtd_xml, del_l_1_c_tile_mtd_xml)
+    L1C_UP_ID = property(get_l_1_c_up_id, set_l_1_c_up_id, del_l_1_c_up_id)
+    L1C_DS_ID = property(get_l_1_c_ds_id, set_l_1_c_ds_id, del_l_1_c_ds_id)
+    L1C_TILE_ID = property(get_l_1_c_tile_id, set_l_1_c_tile_id, del_l_1_c_tile_id)
+    L2A_UP_MTD_XML = property(get_l_2_a_up_mtd_xml, set_l_2_a_up_mtd_xml, del_l_2_a_up_mtd_xml)
+    L2A_DS_MTD_XML = property(get_l_2_a_ds_mtd_xml, set_l_2_a_ds_mtd_xml, del_l_2_a_ds_mtd_xml)
+    L2A_TILE_MTD_XML = property(get_l_2_a_tile_mtd_xml, set_l_2_a_tile_mtd_xml, del_l_2_a_tile_mtd_xml)
+    L2A_UP_ID = property(get_l_2_a_up_id, set_l_2_a_up_id, del_l_2_a_up_id)
+    L2A_DS_ID = property(get_l_2_a_ds_id, set_l_2_a_ds_id, del_l_2_a_ds_id)
+    L2A_TILE_ID = property(get_l_2_a_tile_id, set_l_2_a_tile_id, del_l_2_a_tile_id)
+    L3_TARGET_MTD_XML = property(get_l_3_target_mtd_xml, set_l_3_target_mtd_xml, del_l_3_target_mtd_xml)
+    L3_DS_MTD_XML = property(get_l_3_ds_mtd_xml, set_l_3_ds_mtd_xml, del_l_3_ds_mtd_xml)
+    L3_TILE_MTD_XML = property(get_l_3_tile_mtd_xml, set_l_3_tile_mtd_xml, del_l_3_tile_mtd_xml)
+    L3_TARGET_ID = property(get_l_3_target_id, set_l_3_target_id, del_l_3_target_id)
+    L3_DS_ID = property(get_l_3_ds_id, set_l_3_ds_id, del_l_3_ds_id)
+    L3_TILE_ID = property(get_l_3_tile_id, set_l_3_tile_id, del_l_3_tile_id)
+    L3_TARGET_DIR = property(get_l_3_target_dir, set_l_3_target_dir, del_l_3_target_dir)
+    L2A_UP_DIR = property(get_l_2_a_up_dir, set_l_2_a_up_dir, del_l_2_a_up_dir)
+    L1C_UP_DIR = property(get_l_1_c_up_dir, set_l_1_c_up_dir, del_l_1_c_up_dir)
 
     def createL2A_UserProduct(self, L1C_PRODUCT_ID):        
         L1C_UP_MASK = '*1C_*'

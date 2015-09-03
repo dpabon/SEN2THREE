@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: iso-8859-15 -*-
 processorName = 'Sentinel-2 Reflectance to Radiance Converter'
-processorVersion = '0.9.0'
-processorDate = '2015.06.15'
-productVersion = '12'
+processorVersion = '1.0.0'
+processorDate = '2015.09.15'
+productVersion = '13'
 
 from numpy import *
 import sys, os
@@ -13,12 +13,8 @@ import glob
 import glymur
 
 from L3_Config import L3_Config
-from L2A_Tables import L2A_Tables
-from L3_Tables import L3_Tables
-from L3_Product import L3_Product
 from distutils.dir_util import copy_tree
-from distutils.file_util import copy_file
-from L3_Library import rectBivariateSpline, stdoutWrite, stderrWrite, showImage
+from L3_Library import rectBivariateSpline, stdoutWrite, stderrWrite
 from L3_XmlParser import L3_XmlParser
 
 class R2R_Converter(object):
@@ -58,7 +54,6 @@ class R2R_Converter(object):
             stdoutWrite('%d tile(s) to be converted ...\n' % nrTiles)
             self.config.logger.info('Converting reflectance to radiance')
             stdoutWrite('Converting reflectance to radiance ...\n')
-            self.config.calcEarthSunDistance2(tilename)
             # get metadata filename:
             globlist = tiledir + '/' + tilename + '/' + XML_mask
             for fn in glob.glob(globlist):
@@ -72,30 +67,31 @@ class R2R_Converter(object):
             for band in glob.glob(globlist):
                 nrBands -= 1
                 basename = os.path.basename(band)
+                stdoutWrite('Import image %s ...\n' % basename)
                 indataset = glymur.Jp2k(band)
                 indataArr = indataset[:]
-                dnScale = float32(self.config.dnScale)
-                #indataArr = clip(indataArr, 0, dnScale)
-                print '========================='
-                print basename + ':'
-                print 'Min: '  + str(indataArr.min())
-                print 'Mean: ' + str(indataArr.mean())
-                print 'Max: '  + str(indataArr.max())
-                print 'Nr. Values below 0: ' + str(size(indataArr[indataArr < 0]))
-                '''
+                
+                self.config.logger.info('Image: %s', basename)
+                self.config.logger.debug('Reflectance values:')
+                self.config.logger.debug('Min: %s',  str(indataArr.min()))
+                self.config.logger.debug('Mean: %s', str(indataArr.mean()))
+                self.config.logger.debug('Max: %s',  str(indataArr.max()))
                 self.setResolution(basename)
                 self.setBandIndex(basename)
                 self.getTileMetadata(filename)
                 outdataArr = self.refl2rad(indataArr)
-                print '-------------------------'
-                print outdataArr.min()
-                print outdataArr.mean()
-                print outdataArr.max()
-                print '========================='
+                
+                stdoutWrite('converted.\n')
+                self.config.logger.debug('Radiance values - upscaled with 100:')
+                self.config.logger.debug('Min: %s',  str(outdataArr.min()))
+                self.config.logger.debug('Mean: %s', str(outdataArr.mean()))
+                self.config.logger.debug('Max: %s',  str(outdataArr.max()))
+
+                stdoutWrite('Export image ...\n')
                 glymur.Jp2k(band, outdataArr, **kwargs)            
+
                 self.config.logger.info('Band ' + basename + ' converted')
-                stdoutWrite('%d bands remain\n' % nrBands)
-                '''
+                stdoutWrite('%d bands remain.\n' % nrBands)
         return
 
     def setResolution(self, bandname):
@@ -149,27 +145,77 @@ class R2R_Converter(object):
             self.config.readTileMetadata('T2A')
         return
     
+    def setUpMetadataId(self, L1C_UP_DIR):
+        S2A_mask = 'S2A_*_MTD_*1C_*.xml'
+        filelist = sorted(os.listdir(L1C_UP_DIR))
+        found = False
+        for filename in filelist:
+            if(fnmatch.fnmatch(filename, S2A_mask) == True):
+                found = True
+                break
+        if found == False:
+            stderrWrite('No metadata for user product.\n')
+            self.config.exitError()   
+        self.config.product.L1C_UP_MTD_XML = os.path.join(L1C_UP_DIR, filename)
+        return
+    
     def refl2rad(self, indataArr):
-        # this converts TOA reflectance to radiance:
+        ''' Converts the reflectance to radiance.
+
+            :param indataArray: the digital numbers representing TOA reflectance.
+            :type indataArray: a 2 dimensional numpy array (row x column) of type unsigned int 16.
+            :return: the pixel data converted to radiance.
+            :rtype: a 2 dimensional numpy array (row x column) of type unsigned int 16, representing radiance.
+            
+            Additional inputs from L1 user Product_Image_Characteristics metadata:
+            * QUANTIFICATION_VALUE: the scaling factor for converting DN to reflectance.
+            * U: the earth sun distance correction factor.
+            * SOLAR_IRRADIANCE: the mean solar exoatmospheric irradiances for each band.
+
+            Additional inputs from L1 tile Geometric_Info metadata:
+            * Sun_Angles_Grid.Zenith.Values: the interpolated zenith angles grid.
+
+        '''
+        # This converts TOA reflectance to radiance:
         nrows = self.config.nrows
         ncols = self.config.ncols
+        # The digital number (DN) as float:         
         DN = indataArr.astype(float32)
+        xp = L3_XmlParser(self.config, 'UP1C')
+        pic = xp.getTree('General_Info', 'Product_Image_Characteristics')
+        qv = pic.QUANTIFICATION_VALUE
+        c0 = 0
 
-        c0 = self.config.c0[self._bandIndex]
-        c1 = self.config.c1[self._bandIndex]
-        e0 = self.config.e0[self._bandIndex]
-        dnScale = float32(self.config.dnScale)
+        # The quantification value for the DN from metadata:      
+        c1 =  float32(qv.text)
 
-        rtoa = float32(c0 + DN / dnScale)
-        d2 = self.config.d2
+        # TOA reflectance:        
+        rtoa = float32(c0 + DN / c1)
+
+        rc = pic.Reflectance_Conversion
+
+        # The earth sun distance correction factor,
+        # apparently already squared:
+        u2 =  float32(rc.U.text)
+
+        # The solar irradiance:        
+        si = rc.Solar_Irradiance_List.SOLAR_IRRADIANCE
+        e0 = float32(si[self._bandIndex].text)
+
+        # The solar zenith array:
         x = arange(nrows, dtype=float32) / (nrows-1) * self.config.solze_arr.shape[0]
         y = arange(ncols, dtype=float32) / (ncols-1) * self.config.solze_arr.shape[1]
         szi = rectBivariateSpline(x,y,self.config.solze_arr)
         rad_szi = radians(szi)
-        sza = cos(rad_szi)
-        L = float32(rtoa * e0 * sza / (pi * d2) / c1)
-        radScale = self.config.radScale
-        return (L * radScale + 0.5).astype(uint16)
+        sza = float32(cos(rad_szi))
+        rtoa_e0_sza = float32(rtoa * sza * e0)
+        pi_u2 = float32(pi * u2 )
+        
+        # Finally, calculate the radiance and return array as unsigned int, this is multiplied by 100,
+        # to keep resolution - glymur only allows integer integer values for storage.        
+         
+        L = (rtoa_e0_sza / pi_u2 ) * 100.0
+        return (L + 0.5).astype(uint16)
 
 def main(args=None):
     import argparse
@@ -193,7 +239,7 @@ def main(args=None):
         stderrWrite('directory "%s" does not exist\n.' % args.directory)
         return False
 
-    config = L3_Config('60', directory)
+    config = L3_Config('60', directory, 'R2R_GIPP')
     config.init(processorVersion)
     result = False
 
@@ -214,7 +260,7 @@ def main(args=None):
             l1cList.append(upId)
 
     for upId in l1cList:                 
-        stdoutWrite('%d user product(s) to be converted ...\n' % nrUserProducts)    
+        stdoutWrite('%d user product(s) to be converted ...\n' % nrUserProducts)
         nrUserProducts -=1
         upFullPath = os.path.join(directory, upId) 
         targetDir = config.targetDir
@@ -223,14 +269,16 @@ def main(args=None):
         else:
             targetDir = os.path.join(targetDir, upId)
         copy_tree(upFullPath, targetDir)
+        processor.setUpMetadataId(targetDir)
         result = processor.convert(targetDir)
-        config.logger.info('User product ' + upId + ' converted')
-        stdoutWrite('%d user product(s) remain\n\n' % nrUserProducts)
         if(result == False):
             stderrWrite('Application terminated with errors, see log file and traces.\n')
             return False
+        else:
+            config.logger.info('User product ' + upId + ' converted')
+            stdoutWrite('%d user product(s) remain\n\n' % nrUserProducts)
                 
-    stdoutWrite('\nApplication terminated successfully.\n')
+    stdoutWrite('Application terminated successfully.\n')
     return result
 
 if __name__ == "__main__":

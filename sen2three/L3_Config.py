@@ -1,4 +1,8 @@
 #!/usr/bin/env python
+''' 
+    :Module: L3_Config.
+    :Imports: L3_Config, L3_Tables, L3_Library.
+'''
 
 from numpy import *
 import sys, os, time
@@ -15,14 +19,22 @@ from L3_Product import L3_Product
 from L3_XmlParser import L3_XmlParser
 
 class L3_Config(Borg):
+    ''' Provide the configuration in and output of the GIPP.
+        
+    :param resolution: the requested resolution from command line.
+    :type resolution: string
+    :param sourceDir: the user product base directory.
+    :type sourceDir: string
+
+    '''
     _shared = {}
-    def __init__(self, resolution, sourceDir = None):
+    def __init__(self, resolution, sourceDir=None, configFile='L3_GIPP'):
         if(sourceDir):
             self._home = os.environ['SEN2THREE_HOME'] + '/'
             moduleDir = os.environ['SEN2THREE_BIN'] + '/'            
             self._sourceDir = sourceDir
             self._configDir = moduleDir + 'cfg/'
-            self._configFn = self._home + 'cfg/L3_GIPP.xml'
+            self._configFn = self._home + 'cfg/' + configFile + '.xml'
             self._libDir = moduleDir + 'lib/'
             self._logDir = self._home + 'log/'
             if not os.path.exists(self._logDir):
@@ -82,7 +94,6 @@ class L3_Config(Borg):
             self._maxInvalidPixelsPercentage = None
             self._minAerosolOptical_thickness = None
             self._maxSolarZenithAngle = None
-            self._classifier = None
             self._targetDir = None
             self._c0 = None
             self._c1 = None
@@ -815,8 +826,20 @@ class L3_Config(Borg):
     maxViewingAngle = property(get_max_viewing_angle, set_max_viewing_angle, del_max_viewing_angle, "maxViewingAngle's docstring")
     resolution = property(get_resolution, set_resolution, del_resolution, "resolution's docstring")
     shared = property(get_shared, set_shared, del_shared, "shared's docstring")
-    classifier = property(get_classifier, set_classifier, del_classifier, "classifier's docstring")
-    home = property(get_home, set_home, del_home, "home's docstring")
+    classifier = property(get_classifier, set_classifier, del_classifier,
+    ''' 
+        :property: a scene classifier.
+        :keys: 'NO_DATA', 'SATURATED_DEFECTIVE', 'DARK_FEATURES', 'CLOUD_SHADOWS', 'VEGETATION', 'BARE_SOILS', 'WATER', 'LOW_PROBA_CLOUDS', 'MEDIUM_PROBA_CLOUDS', 'HIGH_PROBA_CLOUDS','THIN_CIRRUS', 'SNOW_ICE', 'URBAN_AREAS'.
+        :type: dictionary
+        
+    ''')
+    home = property(get_home, set_home, del_home,
+    '''
+        :property: the home directory.
+        :type: string
+
+    ''')
+    
     sourceDir = property(get_source_dir, set_source_dir, del_source_dir, "sourceDir's docstring")
     configDir = property(get_config_dir, set_config_dir, del_config_dir, "configDir's docstring")
     binDir = property(get_bin_dir, set_bin_dir, del_bin_dir, "binDir's docstring")
@@ -888,10 +911,16 @@ class L3_Config(Borg):
             root = doc.getroot()
             cs = root.Common_Section
             self.loglevel = cs.Log_Level.text
-            self._displayData = cs.Display_Data
-            self._dnScale = cs.DN_Scale.pyval
-            self._radScale = cs.RAD_Scale.pyval
             self._targetDir = cs.Target_Directory.text
+        except:
+            self._logger.fatal('Error in parsing configuration file.')
+            self.exitError();
+            
+        if ('R2R_' in self.configFn) == True:
+            return True
+        # else:
+        try:
+            self._displayData = cs.Display_Data
             l3s = root.L3_Synthesis
             self._minTime = l3s.Min_Time.text
             self._maxTime = l3s.Max_Time.text
@@ -920,35 +949,34 @@ class L3_Config(Borg):
                                 'SNOW_ICE'              : cl.SNOW_ICE.pyval,
                                 'URBAN_AREAS'           : cl.URBAN_AREAS.pyval
                                 }
-            bandIndex = 13
-            sensor = root.Sensor
-            wavelength = sensor.Solar_Irradiance.Band_List.wavelength
-            self._wvlsen = zeros([bandIndex], float32)
-            self._e0 = zeros([bandIndex], float32)
-            self._fwhm = zeros([bandIndex], float32)
-            for index in range(bandIndex):
-                self._wvlsen[index] = float32(wavelength[index].pyval) 
-                self._e0[index] = float32(wavelength[index].attrib['e0'])
-                self._fwhm[index] = float32(wavelength[index].attrib['fwhm'])
-
-            wavelength = sensor.Calibration.Band_List.wavelength
-            self._c0 = zeros([bandIndex], float32)
-            self._c1 = zeros([bandIndex], float32)
-            for index in range(bandIndex):
-                self._c0[index] = float32(wavelength[index].attrib['c0'])
-                self._c1[index] = float32(wavelength[index].attrib['c1'])
         except:
             self._logger.fatal('Error in parsing configuration file.')
             self.exitError();
         return True
 
     def init(self, processorVersion):
-            self._processorVersion = processorVersion
-            self.initLogger()
-            self.readGipp()
-            self.setTimeEstimation(self.resolution)
+        ''' Perform the base initialization.
+
+            :param processorVersion: the version string.
+            :type processorVersion: str         
+            
+        '''
+        self._processorVersion = processorVersion
+        self.initLogger()
+        self.readGipp()
+        self.setTimeEstimation(self.resolution)
+        return
 
     def updateUserProduct(self, userProduct):
+        ''' Update the current user product.
+            Check if at target product is present.
+
+            :param userProduct: the user product identifier.
+            :type userProduct: str         
+            :return: true, if target product exists.
+            :rtype: boolean
+            
+        '''
         self.product.L2A_UP_ID = userProduct
         if self.product.existL3_TargetProduct() == False:
             stderrWrite('directory "%s" L3 target product is missing\n.' % self.targetDir)
@@ -956,12 +984,25 @@ class L3_Config(Borg):
         return True
 
     def updateTile(self, tile, nrTilesProcessed):
+        ''' Update the current tile ID.
+
+            :param nrTilesProcessed: the number of processed tiles.
+            :type nrTilesProcessed: unsigned int    
+            
+        '''
         self.nrTilesProcessed = nrTilesProcessed
         self.product.L2A_TILE_ID = tile       
         self.calcEarthSunDistance2(tile)
         return
 
     def setTimeEstimation(self, resolution):
+        ''' Set the time estimation for the current processing.
+
+            :param resolution: the selected resolution.
+            :type resolution: unsigned int    
+            
+        '''
+        
         config = ConfigParser.RawConfigParser(allow_no_value=True)
         config.read(self._processingEstimationFn)
         self._tEst60 = config.getfloat('time estimation','t_est_60')
@@ -976,6 +1017,14 @@ class L3_Config(Borg):
         return
 
     def writeTimeEstimation(self, resolution, tMeasure):
+        ''' Store the time estimation for the current processing.
+
+            :param resolution: the selected resolution.
+            :type resolution: unsigned int
+            :param tMeasure: the measured performance data in seconds + fractions.
+            :type tMeasure: float 32
+            
+        '''
         config = ConfigParser.RawConfigParser()
         tMeasureAsString = str(tMeasure)
         config.add_section('time estimation')
@@ -994,6 +1043,12 @@ class L3_Config(Borg):
         return
 
     def timestamp(self, procedure):
+        ''' Marks a time stamp for the duration of the previous procedure.
+
+            :param procedure: the previous procedure.
+            :type procedure: str
+            
+        '''
         tNow = datetime.now()
         tDelta = tNow - self._timestamp
         self._timestamp = tNow
@@ -1011,7 +1066,15 @@ class L3_Config(Borg):
         f.close()
         return
 
-    def checkTimeRange(self, userProduct):       
+    def checkTimeRange(self, userProduct):
+        ''' Check if current user product is within configured time range.
+
+            :param userProduct: the user product ID.
+            :type userProduct: str
+            :return: true, if within time range, false else.
+            :rtype: boolean
+            
+        '''
         def replace(string):
             for ch in ['-',':', 'Z']:
                 if ch in string:
@@ -1036,10 +1099,16 @@ class L3_Config(Borg):
         else:
             return True
 
-    def calcEarthSunDistance2(self, tile):
-        year =  int(tile[25:29])
-        month = int(tile[29:31])
-        day = int(tile[31:33])
+    def calcEarthSunDistance2(self, tileID):
+        ''' Calculate the earth sun distance for the given tile and ackquisition time.
+
+            :param tileID: the tile ID.
+            :type tileID: str
+            
+        '''
+        year =  int(tileID[25:29])
+        month = int(tileID[29:31])
+        day = int(tileID[31:33])
         doy = date(year,month,day)
         doy = int(doy.strftime('%j'))
         exc_earth = 0.01673 # earth-sun distance in A.U.
@@ -1048,6 +1117,12 @@ class L3_Config(Borg):
         return
 
     def readTileMetadata(self, tileID):
+        ''' Read the metadata for the given tile ID.
+
+            :param tileID: the tile ID.
+            :type tileID: str
+            
+        '''
         xp = L3_XmlParser(self, tileID)
         ang = xp.getTree('Geometric_Info', 'Tile_Angles')
         azimuthAnglesList = ang.Sun_Angles_Grid.Azimuth.Values_List.VALUES
@@ -1132,6 +1207,8 @@ class L3_Config(Borg):
         return
 
     def postprocess(self):
+        ''' Update the metadata after processing is performed.
+        '''
         xp = L3_XmlParser(self, 'UP2A')
         auxdata = xp.getTree('L2A_Auxiliary_Data_Info', 'Aux_Data')
         gipp = auxdata.L2A_GIPP_List
@@ -1165,12 +1242,16 @@ class L3_Config(Borg):
         return
 
     def parNotFound(self, parameter):
+        ''' Throw a fatal error message if a configuration parameter is not found and terminate the application.
+        '''        
         self.logger.fatal('Configuration parameter %s not found in %s', parameter, self._configFn)
         stderrWrite('Configuration parameter <%s> not found in %s\n' % (parameter, self._configFn))
         stderrWrite('Program is forced to terminate.')
         self.__exit__()
 
     def exitError(self, reason = None):
+        ''' Throw an error message if a fatal error occurred and and terminate the application.
+        '''        
         stderrWrite('Fatal error occurred, see report file for details.')
         if reason: stderrWrite('Reason: ' + reason)
         self.__exit__()
@@ -1186,6 +1267,16 @@ class L3_Config(Borg):
         return doc
 
     def getInt(self, label, key):
+        ''' Low level routine for getting an int value from configuration file.
+
+            :param label: the doc string within xml tree.
+            :type label: str
+            :param key: the parameter key.
+            :type key: str
+            :return: the parameter value.
+            :rtype: int
+            
+        '''
         doc = self._getDoc()
         parameter = label + '/' + key
         par = doc.find(parameter)
@@ -1193,6 +1284,16 @@ class L3_Config(Borg):
         return int(par.text)
 
     def getFloat(self, label, key):
+        ''' Low level routine for getting a flot32 value from configuration file.
+
+            :param label: the doc string within xml tree.
+            :type label: str
+            :param key: the parameter key.
+            :type key: str
+            :return: the parameter value.
+            :rtype: float32
+            
+        '''
         doc = self._getDoc()
         parameter = label + '/' + key
         par = doc.find(parameter)
@@ -1200,6 +1301,16 @@ class L3_Config(Borg):
         return float32(par.text)
 
     def getStr(self, label, key):
+        ''' Low level routine for getting a string value from configuration file.
+
+            :param label: the doc string within xml tree.
+            :type label: str
+            :param key: the parameter key.
+            :type key: str
+            :return: the parameter value.
+            :rtype: string
+            
+        '''
         doc = self._getDoc()
         parameter = label + '/' + key
         par = doc.find(parameter)
@@ -1207,6 +1318,14 @@ class L3_Config(Borg):
         return par.text
 
     def getIntArray(self, node):
+        ''' Low level routine for getting an integer array from configuration file.
+
+            :param node: the parameter node.
+            :type node: str
+            :return: the parameter array.
+            :rtype: numpy array
+            
+        '''
         nrows = len(node)
         if nrows < 0:
             return False
@@ -1220,6 +1339,26 @@ class L3_Config(Borg):
         return a
 
     def getUintArray(self, node):
+        ''' Low level routine for getting an unsigned integer array from configuration file.
+
+            :param node: the parameter node.
+            :type node: str
+            :return: the parameter array.
+            :rtype: numpy array
+            
+        '''
+        nrows = len(node)
+        if nrows < 0:
+            return False
+
+        ncols = len(node[0].split())
+        a = zeros([nrows,ncols],dtype=int)
+
+        for i in range(nrows):
+            a[i,:] = array(node[i].split(),dtype(int))
+
+        return a
+
         nrows = len(node)
         if nrows < 0:
             return False
@@ -1233,6 +1372,14 @@ class L3_Config(Borg):
         return a
 
     def getFloatArray(self, node):
+        ''' Low level routine for getting a float32 array from configuration file.
+
+            :param node: the parameter node.
+            :type node: str
+            :return: the parameter array.
+            :rtype: numpy array
+            
+        '''
         nrows = len(node)
         if nrows < 0:
             return False
@@ -1246,6 +1393,17 @@ class L3_Config(Borg):
         return a
 
     def putArrayAsStr(self, a, node):
+        ''' Low level routine for setting a numpy array as string into configuration file.
+            Can be one or two dimensional.
+
+            :param a: the numpy array
+            :type a: numpy array
+            :param node: the parameter node.
+            :type node: str
+            :return: false, if array exceeds two dimensions.
+            :rtype: boolean
+            
+        '''        
         if a.ndim == 1:
             nrows = a.shape[0]
             for i in nrows:
@@ -1260,6 +1418,15 @@ class L3_Config(Borg):
             return False
 
     def getStringArray(self, node):
+        ''' Low level routine for getting a numpy array from a list of strings from configuration file.
+            Can be one or two dimensional.
+
+            :param node: the parameter node.
+            :type node: str
+            :return: the parameter array.
+            :rtype: numpy array
+            
+        '''        
         nrows = len(node)
         if nrows < 0:
             return False

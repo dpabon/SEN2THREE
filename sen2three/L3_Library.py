@@ -9,7 +9,6 @@ from scipy.ndimage import map_coordinates
 from scipy import interpolate as sp
 from scipy import stats
 from scipy.ndimage.filters import uniform_filter
-from matplotlib import pyplot as plt
 from PIL import Image
 import time
 import os, sys, fnmatch
@@ -51,8 +50,6 @@ def showImage(arr):
     scale = 255.0
     scaledArr = (arr-arrmin).astype(float32) / float32(arrlen) * scale
     arr = (scaledArr.astype(uint8))
-    #plt.imshow(arr, interpolation='nearest')
-    #plt.show()
     img = Image.fromarray(arr)
     img.show()
     return True

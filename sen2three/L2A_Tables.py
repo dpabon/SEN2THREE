@@ -8,17 +8,17 @@ import warnings
 import subprocess
 import sys, os
 import glob
-#from PIL import Image
+from PIL import Image
 import glymur
 
 from tables import *
 from numpy import *
 from tables.description import *
 from distutils.dir_util import copy_tree, mkpath
-from distutils.file_util import copy_file
+#from distutils.file_util import copy_file
 from scipy.ndimage.interpolation import zoom
 from L3_Config import L3_Config
-from L3_Library import rectBivariateSpline, stdoutWrite, showImage
+from L3_Library import rectBivariateSpline, stdoutWrite
 from lxml import etree, objectify
 from L3_XmlParser import L3_XmlParser
 from L3_Borg import Borg

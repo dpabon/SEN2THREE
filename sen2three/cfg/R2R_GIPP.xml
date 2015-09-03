@@ -1,0 +1,20 @@
+<?xml version="1.0"  encoding="UTF-8"?>
+<R2R_Ground_Image_Processing_Parameter xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="R2R_GIPP.xsd">
+
+  <Common_Section>
+    <Log_Level>DEBUG</Log_Level>
+    <!-- NOTSET, DEBUG, INFO, WARNING, ERROR, CRITICAL -->
+    <Target_Directory>/Users/uwe/Development/workspace/testdata/RAD</Target_Directory>
+    <!-- should be either a directory or 'DEFAULT'. If default, target will be created at root of L1C product -->
+    <UP_Scheme_1C>S2_User_Product_Level-1C_Metadata.xsd</UP_Scheme_1C>
+    <UP_Scheme_2A>S2_User_Product_Level-2A_Metadata.xsd</UP_Scheme_2A>
+    <UP_Scheme_3>S2_User_Product_Level-3_Metadata.xsd</UP_Scheme_3>
+    <Tile_Scheme_1C>S2_PDI_Level-1C_Tile_Metadata.xsd</Tile_Scheme_1C>
+    <Tile_Scheme_2A>S2_PDI_Level-2A_Tile_Metadata.xsd</Tile_Scheme_2A>
+    <Tile_Scheme_3>S2_PDI_Level-3_Tile_Metadata.xsd</Tile_Scheme_3>
+    <DS_Scheme_1C>S2_PDI_Level-1C_Datastrip_Metadata.xsd</DS_Scheme_1C>
+    <DS_Scheme_2A>S2_PDI_Level-2A_Datastrip_Metadata.xsd</DS_Scheme_2A>
+    <DS_Scheme_3>S2_PDI_Level-3_Datastrip_Metadata.xsd</DS_Scheme_3>
+    <GIPP_Scheme>R2R_GIPP.xsd</GIPP_Scheme>
+  </Common_Section>
+</R2R_Ground_Image_Processing_Parameter>

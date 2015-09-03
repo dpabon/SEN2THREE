@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: iso-8859-15 -*-
 processorName = 'Sentinel-2 Level 3 Prototype Processor (SEN2THREE)'
-processorVersion = '0.9.0'
-processorDate = '2015.06.15'
-productVersion = '12'
+processorVersion = '1.0.0'
+processorDate = '2015.09.15'
+productVersion = '13'
 
 from tables import *
-import sys, os
+import sys, os, shutil
 import fnmatch
 from time import time
 
@@ -20,7 +20,20 @@ from L3_Library import stdoutWrite, stderrWrite
 
 
 class L3_Process(object):
+    ''' The main processor module, which coordinates the interaction between the other modules.
+        
+            :param config: the config object for the current tile (via __init__)
+            :type config: a reference to the config object
+    
+    '''
     def __init__(self, config):
+        ''' Perform the L3 base initialisation.
+        
+            :param config: the config object for the current tile
+            :type config: a reference to the config object
+                     
+        '''
+
         self._config = config
         self._l3Synthesis = L3_Synthesis(config)
 
@@ -51,10 +64,18 @@ class L3_Process(object):
     def __exit__(self):
             sys.exit(-1)
 
-    config = property(get_config, set_config, del_config, "config's docstring")
-    tables = property(get_tables, set_tables, del_tables, "tables's docstring")
+    config = property(get_config, set_config, del_config)
+    tables = property(get_tables, set_tables, del_tables)
 
     def process(self, tables):
+        ''' Perform the L3 processing.
+        
+            :param tables: the table object for the current tile
+            :type tables: a reference to the table object
+            :return: true if processing succeeds, false else
+            :rtype: bool
+            
+        '''
         self._tables = tables
         astr = 'L3_Process: processing with resolution ' + str(self.config.resolution) + ' m'
         self.config.timestamp(astr)
@@ -82,10 +103,21 @@ class L3_Process(object):
         return True
     
     def preprocess(self):
+        ''' Perform the L3 pre processing,
+            currently empty.
+        '''
         self.config.logger.info('Pre-processing with resolution %d m', self.config.resolution)
-        return
+        return True
 
     def postprocess(self):
+        ''' Perform the L3 post processing,
+            triggers the export of L3 product, tile metadata and bands
+            
+            :return: true if export succeeds, false else.
+            :rtype: bool
+
+        '''
+
         self.config.timestamp('L3_Process: start of Post Processing')
         self.config.logger.info('Post-processing with resolution %d m', self.config.resolution)
 
@@ -104,6 +136,10 @@ class L3_Process(object):
         return self._l3Synthesis.postProcessing()
 
 def main(args=None):
+    ''' Processes command line,
+        initializes the config and product modules and starts sequentially
+        the L2A and L3 processing.
+    '''
     import argparse
     descr = processorName +', '+ processorVersion +', created: '+ processorDate + \
         ', supporting Level-1C product version: ' + productVersion + '.'
@@ -111,7 +147,7 @@ def main(args=None):
     parser = argparse.ArgumentParser(description=descr)
     parser.add_argument('directory', help='Directory where the Level-2A input files are located')
     parser.add_argument('--resolution', type=int, choices=[10, 20, 60], help='Target resolution, must be 10, 20 or 60 [m]')
-    parser.add_argument('--clean', action='store_true', help='Cleans the history of processed files and starts from scratch')
+    parser.add_argument('--clean', action='store_true', help='Removes all processed files in target directory. Be careful!')
     args = parser.parse_args()
 
     # SIITBX-49: directory should not end with '/':
@@ -128,7 +164,7 @@ def main(args=None):
         return False
 
     if args.resolution == None:
-        resolution = 60.0
+        resolution = 60
     else:
         resolution = args.resolution
 
@@ -137,7 +173,15 @@ def main(args=None):
     processedTiles = ''
     result = False
     processedFn = directory + '/' + 'processed'
-
+    
+    if args.clean:
+        stdoutWrite('Cleaning target directory ...\n')    
+        shutil.rmtree(config.targetDir)
+        try:
+            os.remove(processedFn)
+        except:
+            stdoutWrite('No history file present ...\n')    
+    
     HelloWorld = processorName +', '+ processorVersion +', created: '+ processorDate
     stdoutWrite('\n%s started ...\n' % HelloWorld)    
     upList = sorted(os.listdir(directory))

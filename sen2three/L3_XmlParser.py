@@ -13,7 +13,6 @@ class L3_XmlParser(Borg):
         self._root = None
         self._tree = None
         self._scheme = None
-        
         try:
             doc = objectify.parse(config.configFn)
             root = doc.getroot()

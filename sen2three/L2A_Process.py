@@ -1,15 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: iso-8859-15 -*-
 
-from tables import *
 import sys, os
-import fnmatch
-from time import time
 
-from L3_Config import L3_Config
-from L2A_Tables import L2A_Tables
 from L2A_SceneClass import L2A_SceneClass
-from L3_Library import stdoutWrite
 from L3_XmlParser import L3_XmlParser
 
 class L2A_Process(object):

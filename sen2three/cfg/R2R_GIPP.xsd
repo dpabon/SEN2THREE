@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+    xmlns="https://psd-12.sentinel2.eo.esa.int/PSD/S2_PDI_Level-1C_Tile_Metadata.xsd"
+    xmlns:dimap="https://psd-12.sentinel2.eo.esa.int/DICO/1.0/PDGS/dimap/"
+    targetNamespace="https://psd-12.sentinel2.eo.esa.int/PSD/S2_PDI_Level-1C_Tile_Metadata.xsd"
+    elementFormDefault="qualified" version="12">
+
+	<xs:element name="Log_Level">
+		<xs:simpleType>
+			<xs:restriction base="xs:string">
+				<xs:enumeration value="NOTSET"/>
+				<xs:enumeration value="DEBUG"/>
+				<xs:enumeration value="INFO"/>
+				<xs:enumeration value="WARNING"/>
+				<xs:enumeration value="ERROR"/>
+				<xs:enumeration value="CRITICAL"/>
+			</xs:restriction>
+		</xs:simpleType>
+	</xs:element>
+	<xs:element name="UP_Scheme_3">
+		<xs:simpleType>
+			<xs:restriction base="xs:string">
+			</xs:restriction>
+		</xs:simpleType>
+	</xs:element>
+	<xs:element name="DS_Scheme_1C">
+		<xs:simpleType>
+			<xs:restriction base="xs:string">
+			</xs:restriction>
+		</xs:simpleType>
+	</xs:element>
+	<xs:element name="DS_Scheme_2A">
+		<xs:simpleType>
+			<xs:restriction base="xs:string">
+			</xs:restriction>
+		</xs:simpleType>
+	</xs:element>
+	<xs:element name="GIPP_Scheme">
+		<xs:simpleType>
+			<xs:restriction base="xs:string">
+			</xs:restriction>
+		</xs:simpleType>
+	</xs:element>
+	<xs:element name="UP_Scheme_1C">
+		<xs:simpleType>
+			<xs:restriction base="xs:string">
+			</xs:restriction>
+		</xs:simpleType>
+	</xs:element>
+	<xs:element name="UP_Scheme_2A">
+		<xs:simpleType>
+			<xs:restriction base="xs:string">
+			</xs:restriction>
+		</xs:simpleType>
+	</xs:element>
+	<xs:element name="Tile_Scheme_3">
+		<xs:simpleType>
+			<xs:restriction base="xs:string">
+			</xs:restriction>
+		</xs:simpleType>
+	</xs:element>
+	<xs:element name="Common_Section">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="Log_Level"/>
+				<xs:element ref="UP_Scheme_1C"/>
+				<xs:element ref="UP_Scheme_2A"/>
+				<xs:element ref="UP_Scheme_3"/>
+				<xs:element ref="Tile_Scheme_1C"/>
+				<xs:element ref="Tile_Scheme_2A"/>
+				<xs:element ref="Tile_Scheme_3"/>
+				<xs:element ref="DS_Scheme_1C"/>
+				<xs:element ref="DS_Scheme_2A"/>
+				<xs:element ref="GIPP_Scheme"/>				
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="Tile_Scheme_1C">
+		<xs:simpleType>
+			<xs:restriction base="xs:string">
+			</xs:restriction>
+		</xs:simpleType>
+	</xs:element>
+	<xs:element name="Tile_Scheme_2A">
+		<xs:simpleType>
+			<xs:restriction base="xs:string">
+			</xs:restriction>
+		</xs:simpleType>
+	</xs:element>
+    <xs:element name="Target_Directory">
+        <xs:simpleType>
+            <xs:restriction base="xs:string">
+            </xs:restriction>
+        </xs:simpleType>
+    </xs:element>
+</xs:schema>
