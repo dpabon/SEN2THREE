@@ -2,9 +2,9 @@
 <R2R_Ground_Image_Processing_Parameter xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="R2R_GIPP.xsd">
 
   <Common_Section>
-    <Log_Level>DEBUG</Log_Level>
+    <Log_Level>INFO</Log_Level>
     <!-- NOTSET, DEBUG, INFO, WARNING, ERROR, CRITICAL -->
-    <Target_Directory>/Users/uwe/Development/workspace/testdata/RAD</Target_Directory>
+    <Target_Directory>DEFAULT</Target_Directory>
     <!-- should be either a directory or 'DEFAULT'. If default, target will be created at root of L1C product -->
     <UP_Scheme_1C>S2_User_Product_Level-1C_Metadata.xsd</UP_Scheme_1C>
     <UP_Scheme_2A>S2_User_Product_Level-2A_Metadata.xsd</UP_Scheme_2A>
