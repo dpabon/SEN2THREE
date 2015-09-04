@@ -1,3 +1,8 @@
 [console_scripts]
 L3_Process = sen2three.L3_Process:main
+L3_Process-01.00.00 = sen2three.L3_Process:main
+L3_Process-1.0.0 = sen2three.L3_Process:main
+R2R_Convert = sen2three.R2R_Convert:main
+R2R_Convert-01.00.00 = sen2three.R2R_Convert:main
+R2R_Convert-1.0.0 = sen2three.R2R_Convert:main
 
