@@ -124,12 +124,9 @@ class L3_XmlParser(Borg):
             stdoutWrite('Metadata is valid.\n')                
             return True
         except etree.XMLSyntaxError, err:
-            stderrWrite('Error in validation:\n')
-            stderrWrite('- Schema file: %s\n' % self._scheme)
-            stderrWrite('- Details: %s\n\n' % str(err))
-            stderrWrite('Application will be forced to terminate,\n')
-            stderrWrite('Please correct the errors and restart.\n')
-            sys.exit(-1)
+            stdoutWrite('Metadata file is invalid, see logfile for details.\n')
+            self._config.logger.error('Schema file: %s' % self._scheme)
+            self._config.logger.error('Details: %s' % str(err))
             return False
 
     def append(self, key, value):

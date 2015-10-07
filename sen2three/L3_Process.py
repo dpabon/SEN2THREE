@@ -133,6 +133,9 @@ class L3_Process(object):
                 self.config.product.postprocess()
         if res == False:
             return res
+        res = self.tables.createPreviewImage('L3')
+        if res == False:
+            return res
         return self._l3Synthesis.postProcessing()
 
 def main(args=None):
@@ -176,7 +179,10 @@ def main(args=None):
     
     if args.clean:
         stdoutWrite('Cleaning target directory ...\n')    
-        shutil.rmtree(config.targetDir)
+        try:
+            shutil.rmtree(config.targetDir)
+        except:
+            pass
         try:
             os.remove(processedFn)
         except:
@@ -232,10 +238,10 @@ def main(args=None):
             if fnmatch.fnmatch(tile, L2A_mask) == False:
                 continue
             # ignore already processed tiles:
-            if product.tileExists(tile) == True:
+            if product.tileExists(tile):
                 continue
             tStart = time()
-            nrTilesProcessed = len(processedTiles.split())
+            nrTilesProcessed = product.getNrTilesProcessed(tile)
             config.updateTile(tile, nrTilesProcessed)
             tables = L3_Tables(config)
             tables.init()

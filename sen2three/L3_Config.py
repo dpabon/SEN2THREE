@@ -905,7 +905,7 @@ class L3_Config(Borg):
     def readGipp(self):
         xp = L3_XmlParser(self, 'GIPP')
         xp.export()
-        # xp.validate()
+        xp.validate()
         try:
             doc = objectify.parse(self._configFn)
             root = doc.getroot()
@@ -1225,7 +1225,7 @@ class L3_Config(Borg):
         report = dirname + '/QI_DATA/' + report
 
         if((os.path.isfile(self._fnLog)) == False):
-            self.tracer.fatal('Missing file: ' + self._fnLog)
+            self.logger.fatal('Missing file: ' + self._fnLog)
             self.exitError()
 
         f = open(self._fnLog, 'a')

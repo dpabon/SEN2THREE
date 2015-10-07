@@ -711,9 +711,15 @@ class L3_Product(Borg):
         L3_TARGET_ID = L3_TARGET_ID.replace('L2A_', 'L03_')
         L3_TARGET_ID = L3_TARGET_ID.replace(L3_TARGET_ID[47:62], self.config.minTime)
         L3_TARGET_ID = L3_TARGET_ID.replace(L3_TARGET_ID[63:78], self.config.maxTime)
-        targetDir = self.config.targetDir
-        if targetDir != 'DEFAULT':
+        
+        if self.config.targetDir != 'DEFAULT':
             targetDir = self.config.targetDir
+            if(os.path.exists(targetDir) == False):
+                os.mkdir(targetDir)
+        else:
+            targetDir = dirname
+            self.config.targetDir = targetDir
+            
         L3_TARGET_DIR = targetDir + '/' + L3_TARGET_ID
         self.L3_TARGET_DIR = L3_TARGET_DIR
         self.L3_TARGET_ID = L3_TARGET_ID
@@ -1079,6 +1085,19 @@ class L3_Product(Borg):
             pass
         
         return False
+
+    def getNrTilesProcessed(self, tileId):
+        tileId = tileId[-13:] + '_' + str(self.config.resolution)
+        processedFn = self.config.sourceDir + '/' + 'processed'
+
+        try: # read list of tiles already processed
+            f = open(processedFn, 'r')
+            processedTiles = f.read()
+            return processedTiles.count(tileId)+1
+        except:
+            pass
+
+        return 1
 
     def appendTile(self, tileId):
         processedTile = tileId + '\n'

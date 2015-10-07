@@ -17,6 +17,7 @@ import os
 import glob
 import glymur
 from PIL import Image
+from scipy.ndimage.interpolation import zoom
 
 from numpy import *
 from tables import *
@@ -224,7 +225,7 @@ class L3_Tables(Borg):
         self._L2A_Tile_WVP_File = self._L2A_bandDir        + pre + '_WVP' + post + '_' + str(self._resolution) + 'm.jp2'
         self._L2A_Tile_CLD_File = self._L2A_QualityDataDir + pre + '_CLD' + post + '_' + str(self._resolution) + 'm.jp2'
         self._L2A_Tile_SNW_File = self._L2A_QualityDataDir + pre + '_SNW' + post + '_' + str(self._resolution) + 'm.jp2'
-        self._L2A_Tile_PVI_File = self._L2A_QualityDataDir + pre + '_PVI' + post + '.png'
+        self._L2A_Tile_PVI_File = self._L2A_QualityDataDir + pre + '_PVI' + post + '.jp2'
         self._L2A_Tile_SCL_File = self._L2A_ImgDataDir     + pre + '_SCL' + post + '_' + str(self._resolution) + 'm.jp2'        
 
         pre = L3_TILE_ID_SHORT[:9]
@@ -235,7 +236,7 @@ class L3_Tables(Borg):
         self._L3_Tile_CLD_File = self._L3_QualityDataDir + pre + '_CLD' + post + '_' + str(self._resolution) + 'm.jp2'
         self._L3_Tile_SNW_File = self._L3_QualityDataDir + pre + '_SNW' + post + '_' + str(self._resolution) + 'm.jp2'
         self._L3_Tile_MSC_File = self._L3_QualityDataDir + pre + '_MSC' + post + '_' + str(self._resolution) + 'm.jp2'
-        self._L3_Tile_PVI_File = self._L3_QualityDataDir + pre + '_PVI' + post + '_' + str(self.config.nrTilesProcessed) + '.png'
+        self._L3_Tile_PVI_File = self._L3_QualityDataDir + pre + '_PVI' + post + '_' + str(self.config.nrTilesProcessed) + '.jp2'
         self._L3_Tile_PLT_File = self._L3_QualityDataDir + pre + '_PLT' + post + '_' + str(self.config.nrTilesProcessed) + '.png'
         self._L3_Tile_SCL_File = self._L3_QualityDataDir + pre + '_SCL' + post + '_' + str(self._resolution) + 'm.jp2'
 
@@ -728,9 +729,9 @@ class L3_Tables(Borg):
             self.initDatabase()
             self.importBandList('L3')
             return
-        if(self.config.resolution == 60):            
-            self.createPreviewImage('L3')
-            self.createPreviewImage('L2A')
+        #if(self.config.resolution == 60):            
+        self.createPreviewImage('L3')
+        self.createPreviewImage('L2A')
         return
 
     def exportTile(self, L3_TILE_ID):
@@ -772,7 +773,7 @@ class L3_Tables(Borg):
         self._L3_Tile_CLD_File = self._L3_QualityDataDir + pre + '_CLD' + post + '_' + str(self._resolution) + 'm.jp2'
         self._L3_Tile_SNW_File = self._L3_QualityDataDir + pre + '_SNW' + post + '_' + str(self._resolution) + 'm.jp2'
         self._L3_Tile_MSC_File = self._L3_QualityDataDir + pre + '_MSC' + post + '_' + str(self._resolution) + 'm.jp2'
-        self._L3_Tile_PVI_File = self._L3_QualityDataDir + pre + '_PVI' + post + '_' + str(self.config.nrTilesProcessed) + '.png'
+        self._L3_Tile_PVI_File = self._L3_QualityDataDir + pre + '_PVI' + post + '_' + str(self.config.nrTilesProcessed) + '.jp2'
         self._L3_Tile_PLT_File = self._L3_QualityDataDir + pre + '_PLT' + post + '_' + str(self.config.nrTilesProcessed) + '.png'
         self._L3_Tile_SCL_File = self._L3_QualityDataDir + pre + '_SCL' + post + '_' + str(self._resolution) + 'm.jp2'
 
@@ -845,14 +846,10 @@ class L3_Tables(Borg):
         '''
         self.verifyProductId(productLevel)
         bandName = self.getBandNameFromIndex(bandIndex)
-        if (bandName == 'SCL') | (bandName == 'CLD') | \
-           (bandName == 'SNW') | (bandName == 'PRV') | (bandName == 'MSC'):
-            dataType = uint8  
         try:
             h5file = open_file(self._imageDatabase)
             node = h5file.getNode('/' + productLevel, bandName)
             if (node.dtype != dataType):
-                print bandName, dataType, node.dtype
                 self.config.logger.fatal('Wrong data type, must be: ' + str(node.dtype))
                 result = False
                 self.config.exitError()
@@ -877,10 +874,9 @@ class L3_Tables(Borg):
         ''' 
         # convert JPEG-2000 input file to H5 file format
         self.verifyProductId(self._productLevel)
-        indataset = glymur.Jp2k(filename)
-        # to suppress the rounding error for TPZF testdata:
         warnings.filterwarnings("ignore")
-        nrows = indataset.shape[0]
+        kwargs = {"tilesize": (2048, 2048), "prog": "RPCL"}
+        indataset = glymur.Jp2k(filename, **kwargs)  
         ncols = indataset.shape[1]
         indataArr = indataset[:]
         indataset = None
@@ -944,10 +940,10 @@ class L3_Tables(Borg):
             bandIndex = [1,2,3,7,14,30]
 
         elif(self._resolution == 20):
-            bandIndex = [1,2,3,4,5,6,8,11,12]
+            bandIndex = [1,2,3,4,5,6,8,11,12,14,30]
 
         elif(self._resolution == 60):
-            bandIndex = [0,1,2,3,4,5,6,8,9,11,12] # 14,30
+            bandIndex = [0,1,2,3,4,5,6,8,9,11,12,14,30]
 
         #prepare the xml export
         Granules = objectify.Element('Granules')
@@ -1016,15 +1012,24 @@ class L3_Tables(Borg):
             self.config.logger.fatal('must be a 2 dimensional array')
             self.config.exitError()
             return False
+        '''
+        src_nrows = arr.shape[0]
+        src_ncols = arr.shape[1]
+        tgt_ncols = 343.0
+        tgt_nrows = 343.0
 
+        zoomX = float64(tgt_ncols)/float64(src_ncols)
+        zoomY = float64(tgt_nrows)/float64(src_nrows)
+        arr = zoom(arr, ([zoomX,zoomY]), order=0)        
+        '''
         arrclip = arr.copy()
-        _min = 0.0
-        _max = 500
+        min_ = 0.0
+        max_ = 250
         scale = 255.0
-        arr = clip(arrclip, _min, _max)
-        scaledArr = uint8(arr*scale/_max)
+        arr = clip(arrclip, min_, max_)
+        #SIITBX-50: wrong scale was used: 
+        scaledArr = uint8(arr*scale/max_)
         return scaledArr
-
 
     def setBand(self, productLevel, bandIndex, arr):
         ''' Set a single band from numpy array to H5 database.
@@ -1139,10 +1144,6 @@ class L3_Tables(Borg):
             
         '''
         self.config.logger.debug('Creating Preview Image')
-        if(self._resolution != 60):
-            self.config.logger.fatal('wrong resolution for this procedure, must be 60m')
-            self.config.exitError()
-            return False
         if productLevel == 'L2A':
             filename = self._L2A_Tile_PVI_File            
         else:
@@ -1162,7 +1163,9 @@ class L3_Tables(Borg):
 
         try:
             out = Image.merge('RGB', (r,g,b))
-            out.save(filename, 'PNG')
+            a = array(out)
+            kwargs = {"tilesize": (2048, 2048), "prog": "RPCL"}
+            glymur.Jp2k(filename, a.astype(uint8), **kwargs)   
             self.config.logger.debug('Preview Image created')
             return True
         except:

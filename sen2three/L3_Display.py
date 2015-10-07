@@ -38,21 +38,12 @@ class L3_Display(object):
         self._tables = tables
         mosaic = self._tables.getBand('L3', self._tables.MSC)
         scenec = self._tables.getBand('L3', self._tables.SCL)
-        nr, nc = scenec.shape
-        ratio = float(nr)/float(nc)
         fig = self._plot.figure()
         fig.canvas.set_window_title(self._config.product.L2A_TILE_ID)   
-        #fig.patch.set_facecolor('white')
-        if ratio > 2.5:
-            ax1 = self._plot.subplot2grid((2,3), (0,0), rowspan=2) 
-            ax2 = self._plot.subplot2grid((2,3), (0,1), rowspan=2) 
-            ax3 = self._plot.subplot2grid((2,3), (0,2))
-            ax4 = self._plot.subplot2grid((2,3), (1,2))
-        else:
-            ax1 = self._plot.subplot2grid((2,2), (0,0)) 
-            ax2 = self._plot.subplot2grid((2,2), (1,0)) 
-            ax3 = self._plot.subplot2grid((2,2), (0,1))
-            ax4 = self._plot.subplot2grid((2,2), (1,1))            
+        ax1 = self._plot.subplot2grid((2,2), (0,0)) 
+        ax2 = self._plot.subplot2grid((2,2), (1,0)) 
+        ax3 = self._plot.subplot2grid((2,2), (0,1))
+        ax4 = self._plot.subplot2grid((2,2), (1,1))            
         
         validData = [mosaic != self._noData]
         idxMoif = itemfreq(mosaic[validData])[:,0]
@@ -63,13 +54,13 @@ class L3_Display(object):
         yMoifCount = float32(yMoif.sum())
         yMoif = yMoif.astype(float32)/yMoifCount * 100.0
         scenecData = [scenec != self._noData]
-        classes = ('Sat','Dark','Cls','Soil','Veg','Water','LPC','MPC','HPC','Cir','Snw')
-        yScif = zeros(len(classes), dtype=float32)
+        classes = ('Sat','Dark','ClS','Soil','Veg','Water','LPC','MPC','HPC','Cir','Snw')
+        yScif = zeros(len(classes)+1, dtype=float32)
         idxScif = itemfreq(scenec[scenecData])[:,0]
         yScif[idxScif] = itemfreq(scenec[scenecData])[:,1]
         yScifCount = float32(yScif.sum())
         yScif = yScif.astype(float32)/yScifCount * 100.0
-        xScif = arange(1,12)                
+        xScif = arange(1,13)                
         if len(xMoif) < 3:
             xticks = [1,2]
             xmax = 3

@@ -66,11 +66,11 @@ class L2A_Tables(Borg):
             self._nBands = 4
             bandDir = '/R10m'
         elif(self._resolution == 20):
-            self._bandIndex = [0,1,2,3,4,5,6,8,9,10,11,12]
+            self._bandIndex = [1,2,3,4,5,6,8,11,12]
             self._nBands = 9
             bandDir = '/R20m'
         elif(self._resolution == 60):
-            self._bandIndex = [0,1,2,3,4,5,6,8,9,10,11,12]
+            self._bandIndex = [0,1,2,3,4,5,6,8,9,11,12]
             self._nBands = 11
             bandDir = '/R60m'
 
