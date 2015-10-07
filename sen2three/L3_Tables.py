@@ -1,22 +1,10 @@
 #!/usr/bin/env python
+# -*- coding: iso-8859-15 -*-
 
-"""
-.. module:: sen2three.L3_Tables
-   :platform: Unix, Mac-OSX, Windows
-   :synopsis: Level-3 IO module
-
-.. moduleauthor:: umwilm
-
-
-"""
-
-import fnmatch
-import subprocess
-import threading
-import os
-import glob
+import os, fnmatch
 import glymur
 from PIL import Image
+from scipy import ndimage
 
 from numpy import *
 from tables import *
@@ -25,23 +13,7 @@ from tables.description import *
 from distutils.dir_util import mkpath
 from distutils.file_util import copy_file
 from L3_XmlParser import L3_XmlParser
-from L3_Borg import Borg
 from L3_Library import showImage
-
-try:
-    from osgeo import gdal,osr
-    from osgeo.gdalconst import *
-    gdal.TermProgress = gdal.TermProgress_nocb
-except ImportError:
-    import gdal,osr
-    from gdalconst import *
-# SIITBX-47: to suppress user warning due to the fact that 
-# http://trac.osgeo.org/gdal/ticket/5480 is not implemented
-# in the current openJPEG driver for windows used by ANACONDA:
-gdal.PushErrorHandler('CPLQuietErrorHandler')
-
-threadLock = threading.Lock()
-
 
 class Particle(IsDescription):
     bandName = StringCol(8)
@@ -51,79 +23,7 @@ class Particle(IsDescription):
     rasterYSize = UInt16Col()
     rasterCount = UInt8Col()
 
-
-class gdalThreadRead(threading.Thread):
-    def __init__(self, bandIndex, tables, filename):
-        threading.Thread.__init__(self)
-        self._bandIndex = bandIndex
-        self._tables = tables
-        self._config = tables.config
-        self._filename = filename
-
-    def run(self):
-        command = 'gdal_translate '
-        filename = self._filename
-        tmpfile = self._tables._L3_bandDir + '/.tmpfile_' + '%02d.tif' % self._bandIndex
-        if os.name == 'posix':
-            DEV0 = ' > /dev/null'
-        else:
-            DEV0 = ' > NUL'
-        
-        callstr = command + filename + ' ' + tmpfile + DEV0
-        if(subprocess.call(callstr, shell=True) != 0):
-            self._config.logger.fatal('shell execution error using gdal_translate')
-            self._config.exitError()
-            return False
-        
-        with threadLock:
-            if(os.path.isfile(tmpfile)):
-                os.remove(tmpfile)
-        return True
-
-
-class gdalThreadWrite(threading.Thread):
-    def __init__(self, bandIndex, tables, filename):
-        threading.Thread.__init__(self)
-        self._bandIndex = bandIndex
-        self._config = tables.config
-        self._tables = tables
-        self._filename = filename
-
-    def run(self):
-        if os.name == 'posix':
-            DEV0 = ' > /dev/null'
-        else:
-            DEV0 = ' > NUL'
-        tables = self._tables
-        tmpfile = tables.L3_bandDir + '/.tmpfile_' + '%02d.tif' % self._bandIndex
-        option2 = ' UInt16 '    
-            
-        if os.name == 'posix':
-            callstr = 'gdal_translate -of JPEG2000 -ot' + option2 + tmpfile + ' ' + self._filename + DEV0
-        else: # windows
-            callstr = 'geojasper -f ' + tmpfile + ' -F ' + self._filename + ' -T jp2 > NUL'
-            
-        if(subprocess.call(callstr, shell=True) != 0):
-            self._config.logger.fatal('shell execution error using gdal_translate')
-            self._config.exitError()
-            return False
-            
-        if(os.path.isfile(tmpfile)):
-            os.remove(tmpfile) 
-
-        self._filename = os.path.basename(self._filename.strip('.jp2'))
-        with threadLock:
-            '''
-            imageId = L3_UserProduct.IMAGE_IDType()
-            imageId.set_valueOf_(self._filename)
-            tables.granuleType.add_IMAGE_ID(imageId)
-            '''
-        bandName = tables.getBandNameFromIndex(self._bandIndex)
-        self._config.logger.debug('Band: ' + bandName + ' converted')    
-        return
-        
-
-class L3_Tables(Borg):
+class L3_Tables(object):
     ''' A support class, managing the conversion of the JPEG-2000 based input data
         to an internal format based on HDF5 (pyTables). Provide a high performance
         access to the image data for all bands of all tiles to be processed.
@@ -133,13 +33,14 @@ class L3_Tables(Borg):
 
     '''
 
-    def __init__(self, config):
-        self.config = config
+    def __init__(self, product):
+        self._product = product
+        self._config = product.config
 
-        AUX_DATA = '/AUX_DATA'
-        IMG_DATA = '/IMG_DATA'
-        QI_DATA = '/QI_DATA'
-        GRANULE = '/GRANULE'
+        AUX_DATA = 'AUX_DATA'
+        IMG_DATA = 'IMG_DATA'
+        QI_DATA = 'QI_DATA'
+        GRANULE = 'GRANULE'
 
         if os.name == 'posix':
             self._DEV0 = ' > /dev/null'
@@ -147,19 +48,19 @@ class L3_Tables(Borg):
             self._DEV0 = ' > NUL'
 
         # Resolution:
-        self._resolution = int(config.resolution)
+        self._resolution = int(self._config.resolution)
         if(self._resolution == 10):
             self._bandIndex = [1,2,3,7]
             self._nBands = 4
-            bandDir = '/R10m'
+            bandDir = 'R10m'
         elif(self._resolution == 20):
             self._bandIndex = [1,2,3,4,5,6,8,11,12]
             self._nBands = 9
-            bandDir = '/R20m'
+            bandDir = 'R20m'
         elif(self._resolution == 60):
             self._bandIndex = [0,1,2,3,4,5,6,8,9,11,12]
             self._nBands = 11
-            bandDir = '/R60m'
+            bandDir = 'R60m'
 
         BANDS = bandDir
         self._rows = None
@@ -169,84 +70,79 @@ class L3_Tables(Borg):
         # generate new Tile ID:
         # check whether a tile with same ORBIT ID already exists, if yes use this folder.
         # else create a new tile folder with corresponding orbit ID
-        L2A_TILE_ID = config.product.L2A_TILE_ID
+        L2A_TILE_ID = self._config.L2A_TILE_ID
         L3_TILE_MSK = 'S2A_*_TL_*'
         ORBIT_ID = L2A_TILE_ID[-13:-7]
         L3_TILE_ID = ''
-        L3_TARGET_ID = config.product.L3_TARGET_ID
-        tiles = config.targetDir + '/' + L3_TARGET_ID + GRANULE
+        L3_TARGET_ID = self._config.L3_TARGET_ID
+        tiles = os.path.join(self._config.targetDir, L3_TARGET_ID, GRANULE)
         files = sorted(os.listdir(tiles))
         for L3_TILE_ID in files:       
-            if fnmatch.fnmatch(L3_TILE_ID, L3_TILE_MSK) == True:
+            if fnmatch.fnmatch(L3_TILE_ID, L3_TILE_MSK):
                 break
         if ORBIT_ID in L3_TILE_ID:
         # target exists, will be used:
-            config.product.reinitL2A_Tile()
-            config.product.reinitL3_Tile(L3_TILE_ID)
+            product.reinitL2A_Tile()
+            product.reinitL3_Tile(L3_TILE_ID)
         else:
-            config.product.createL3_Tile(L2A_TILE_ID)
-        L2A_UP_ID = config.product.L2A_UP_ID
-        L3_TILE_ID = config.product.L3_TILE_ID
-        L2A_TILE_ID_SHORT = '/' + L2A_TILE_ID[:55]
-        L3_TILE_ID_SHORT = '/' + config.product.L3_TILE_ID[:55]            
-        L2A_TILE_ID = config.sourceDir + '/' + L2A_UP_ID + GRANULE + '/' + L2A_TILE_ID
-        L3_TILE_ID = config.targetDir + '/' + L3_TARGET_ID + GRANULE + '/' + L3_TILE_ID
-        self._L2A_ImgDataDir = L2A_TILE_ID + IMG_DATA
-        self._L3_ImgDataDir = L3_TILE_ID + IMG_DATA
-        self._L2A_bandDir = self._L2A_ImgDataDir + BANDS
-        self._L3_bandDir = self._L3_ImgDataDir + BANDS
+            product.createL3_Tile(L2A_TILE_ID)
 
-        if(os.path.exists(self._L3_bandDir) == False):
+        L2A_UP_ID = self._config.L2A_UP_ID
+        L3_TILE_ID = self._config.L3_TILE_ID
+        L2A_TILE_ID_SHORT = L2A_TILE_ID[:55]
+        L3_TILE_ID_SHORT = self._config.L3_TILE_ID[:55]
+        L2A_TILE_ID = os.path.join(self._config.sourceDir, L2A_UP_ID, GRANULE, L2A_TILE_ID)
+        L3_TILE_ID = os.path.join(self._config.targetDir, L3_TARGET_ID, GRANULE, L3_TILE_ID)
+        self._L2A_ImgDataDir = os.path.join(L2A_TILE_ID, IMG_DATA)
+        self._L3_ImgDataDir = os.path.join(L3_TILE_ID, IMG_DATA)
+        self._L2A_bandDir = os.path.join(self._L2A_ImgDataDir, BANDS)
+        self._L3_bandDir = os.path.join(self._L3_ImgDataDir, BANDS)
+
+        if not os.path.exists(self._L3_bandDir):
             mkpath(self._L3_bandDir)
 
-        self._L2A_QualityDataDir = L2A_TILE_ID + QI_DATA
-        self._L3_QualityDataDir = L3_TILE_ID + QI_DATA
-        self._L3_AuxDataDir = L3_TILE_ID + AUX_DATA
+        self._L2A_QualityDataDir = os.path.join(L2A_TILE_ID, QI_DATA)
+        self._L3_QualityDataDir = os.path.join(L3_TILE_ID, QI_DATA)
+        self._L3_AuxDataDir = os.path.join(L3_TILE_ID, AUX_DATA)
 
-        if(os.path.exists(self._L3_AuxDataDir) == False):
+        if not os.path.exists(self._L3_AuxDataDir):
             mkpath(self._L3_AuxDataDir)
             # copy configuration to AUX dir:
-            dummy, basename = os.path.split(config.product.L3_TILE_MTD_XML)
+            basename = os.path.basename(self._config.L3_TILE_MTD_XML)
             fnAux = basename.replace('_MTD_', '_GIP_')
-            target = self._L3_AuxDataDir + '/' + fnAux
-            copy_file(config.configFn, target)
+            target = os.path.join(self._L3_AuxDataDir, fnAux)
+            copy_file(self._config.configFn, target)
 
-        if(os.path.exists(self._L3_QualityDataDir) == False):
+        if not os.path.exists(self._L3_QualityDataDir):
             mkpath(self._L3_QualityDataDir)
 
         #
         # the File structure:
         #-------------------------------------------------------
-        pre = L2A_TILE_ID_SHORT[:9]
-        post = L2A_TILE_ID_SHORT[13:]
-        self._L2A_Tile_BND_File = self._L2A_bandDir + L2A_TILE_ID_SHORT + '_BXX_' + str(self._resolution) + 'm.jp2'
-        self._L2A_Tile_AOT_File = self._L2A_bandDir        + pre + '_AOT' + post + '_' + str(self._resolution) + 'm.jp2'
-        self._L2A_Tile_WVP_File = self._L2A_bandDir        + pre + '_WVP' + post + '_' + str(self._resolution) + 'm.jp2'
-        self._L2A_Tile_CLD_File = self._L2A_QualityDataDir + pre + '_CLD' + post + '_' + str(self._resolution) + 'm.jp2'
-        self._L2A_Tile_SNW_File = self._L2A_QualityDataDir + pre + '_SNW' + post + '_' + str(self._resolution) + 'm.jp2'
-        self._L2A_Tile_PVI_File = self._L2A_QualityDataDir + pre + '_PVI' + post + '.png'
-        self._L2A_Tile_SCL_File = self._L2A_ImgDataDir     + pre + '_SCL' + post + '_' + str(self._resolution) + 'm.jp2'        
+        pre = L2A_TILE_ID_SHORT[:8]
+        post = L2A_TILE_ID_SHORT[12:]
+        self._L2A_Tile_BND_File = os.path.join(self._L2A_bandDir, L2A_TILE_ID_SHORT + '_BXX_' + str(self._resolution) + 'm.jp2')
+        self._L2A_Tile_AOT_File = os.path.join(self._L2A_bandDir,        pre + '_AOT' + post + '_' + str(self._resolution) + 'm.jp2')
+        self._L2A_Tile_WVP_File = os.path.join(self._L2A_bandDir,        pre + '_WVP' + post + '_' + str(self._resolution) + 'm.jp2')
+        self._L2A_Tile_CLD_File = os.path.join(self._L2A_QualityDataDir, pre + '_CLD' + post + '_' + str(self._resolution) + 'm.jp2')
+        self._L2A_Tile_SNW_File = os.path.join(self._L2A_QualityDataDir, pre + '_SNW' + post + '_' + str(self._resolution) + 'm.jp2')
+        self._L2A_Tile_PVI_File = os.path.join(self._L2A_QualityDataDir, pre + '_PVI' + post + '.jp2')
+        self._L2A_Tile_SCL_File = os.path.join(self._L2A_ImgDataDir,     pre + '_SCL' + post + '_' + str(self._resolution) + 'm.jp2')
 
-        pre = L3_TILE_ID_SHORT[:9]
-        post = L3_TILE_ID_SHORT[13:]
-        self._L3_Tile_BND_File = self._L3_bandDir + L3_TILE_ID_SHORT + '_BXX_' + str(self._resolution) + 'm.jp2'
-        self._L3_Tile_AOT_File = self._L3_bandDir        + pre + '_AOT' + post + '_' + str(self._resolution) + 'm.jp2'
-        self._L3_Tile_WVP_File = self._L3_bandDir        + pre + '_WVP' + post + '_' + str(self._resolution) + 'm.jp2'
-        self._L3_Tile_CLD_File = self._L3_QualityDataDir + pre + '_CLD' + post + '_' + str(self._resolution) + 'm.jp2'
-        self._L3_Tile_SNW_File = self._L3_QualityDataDir + pre + '_SNW' + post + '_' + str(self._resolution) + 'm.jp2'
-        self._L3_Tile_MSC_File = self._L3_QualityDataDir + pre + '_MSC' + post + '_' + str(self._resolution) + 'm.jp2'
-        self._L3_Tile_PVI_File = self._L3_QualityDataDir + pre + '_PVI' + post + '_' + str(self.config.nrTilesProcessed) + '.png'
-        self._L3_Tile_PLT_File = self._L3_QualityDataDir + pre + '_PLT' + post + '_' + str(self.config.nrTilesProcessed) + '.png'
-        self._L3_Tile_SCL_File = self._L3_QualityDataDir + pre + '_SCL' + post + '_' + str(self._resolution) + 'm.jp2'
+        pre = L3_TILE_ID_SHORT[:8]
+        post = L3_TILE_ID_SHORT[12:]
+        self._L3_Tile_BND_File = os.path.join(self._L3_bandDir, L3_TILE_ID_SHORT + '_BXX_' + str(self._resolution) + 'm.jp2')
+        self._L3_Tile_AOT_File = os.path.join(self._L3_bandDir,        pre + '_AOT' + post + '_' + str(self._resolution) + 'm.jp2')
+        self._L3_Tile_WVP_File = os.path.join(self._L3_bandDir,        pre + '_WVP' + post + '_' + str(self._resolution) + 'm.jp2')
+        self._L3_Tile_CLD_File = os.path.join(self._L3_QualityDataDir, pre + '_CLD' + post + '_' + str(self._resolution) + 'm.jp2')
+        self._L3_Tile_SNW_File = os.path.join(self._L3_QualityDataDir, pre + '_SNW' + post + '_' + str(self._resolution) + 'm.jp2')
+        self._L3_Tile_MSC_File = os.path.join(self._L3_QualityDataDir, pre + '_MSC' + post + '_' + str(self._resolution) + 'm.jp2')
+        self._L3_Tile_PVI_File = os.path.join(self._L3_QualityDataDir, pre + '_PVI' + post + '_' + str(self._config.getNrTilesProcessed()+1) + '.jp2')
+        self._L3_Tile_PLT_File = os.path.join(self._L3_QualityDataDir, pre + '_PLT' + post + '_' + str(self._config.getNrTilesProcessed()+1) + '.png')
+        self._L3_Tile_SCL_File = os.path.join(self._L3_QualityDataDir, pre + '_SCL' + post + '_' + str(self._resolution) + 'm.jp2')
 
-        self._imageDatabase = self._L3_bandDir + '/.database.h5'
-        self._TmpFile = self._L3_bandDir + '/.tmpfile_'
-
-        # Geodata from image metadata:
-        self._cornerCoordinates = None
-        self._geoTransformation = None
-        self._geoExtent = None
-        self._projectionRef = None
+        self._imageDatabase = os.path.join(self._L3_bandDir, '.database.h5')
+        self._TmpFile = os.path.join(self._L3_bandDir, '.tmpfile_')
 
         # Product Levels:
         self._productLevel = ['L1C','L2A','L3']
@@ -295,7 +191,7 @@ class L3_Tables(Borg):
         self._ELE = 29
         self._MSC = 30
 
-        config.logger.debug('Module L3_Tables initialized with resolution %d' % self._resolution)
+        self._config.logger.debug('Module L3_Tables initialized with resolution %d' % self._resolution)
 
         return
 
@@ -333,42 +229,6 @@ class L3_Tables(Borg):
 
     def del_aot(self):
         del self._AOT
-
-
-    def get_corner_coordinates(self):
-        return self._cornerCoordinates
-
-
-    def get_geo_extent(self):
-        return self._geoExtent
-
-
-    def get_projection(self):
-        return self._projection
-
-
-    def set_corner_coordinates(self, value):
-        self._cornerCoordinates = value
-
-
-    def set_geo_extent(self, value):
-        self._geoExtent = value
-
-
-    def set_projection(self, value):
-        self._projection = value
-
-
-    def del_corner_coordinates(self):
-        del self._cornerCoordinates
-
-
-    def del_geo_extent(self):
-        del self._geoExtent
-
-
-    def del_projection(self):
-        del self._projection
 
 
     def getBandNameFromIndex(self, bandIndex):
@@ -432,6 +292,17 @@ class L3_Tables(Borg):
     def del_config(self):
         del self._config
 
+
+    def get_product(self):
+        return self._product
+
+
+    def set_product(self, value):
+        self._product = value
+
+
+    def del_product(self):
+        del self._product
 
     def get_b01(self):
         return self._B01
@@ -662,57 +533,10 @@ class L3_Tables(Borg):
     L3_Tile_PLT_File = property(get_l_3_tile_plt_file, set_l_3_tile_plt_file, del_l_3_tile_plt_file)
 
     config = property(get_config, set_config, del_config)
+    product = property(get_product, set_product, del_product)
     bandIndex = property(get_band_bandIndex, set_band_bandIndex, del_band_bandIndex)
     nBands = property(get_n_bands, set_n_bands, del_n_bands)
     dbName = property(get_db_name, set_db_name, del_db_name)
-    cornerCoordinates = property(get_corner_coordinates, set_corner_coordinates, del_corner_coordinates)
-    geoExtent = property(get_geo_extent, set_geo_extent, del_geo_extent)
-    projection = property(get_projection, set_projection, del_projection)
-
-    def reprojectCoords(self,coords,src_srs,tgt_srs):
-        ''' Reproject a list of x,y coordinates.
-        
-            :param coords: List of [[x,y],...[x,y]] coordinates
-            :type coords: C{tuple/list}
-            :param src_srs: OSR SpatialReference object
-            :type src_srs: C{osr.SpatialReference}
-            :param tgt_srs: OSR SpatialReference object
-            :type tgt_srs: C{osr.SpatialReference}
-            :return: List of transformed [[x,y],...[x,y]] coordinates
-            :rtype: C{tuple/list}
-            
-        '''
-        trans_coords=[]
-        transform = osr.CoordinateTransformation( src_srs, tgt_srs)
-        for x,y in coords:
-            x,y,z = transform.TransformPoint(x,y)
-            trans_coords.append([x,y])
-        return trans_coords
-
-    def getExtent(self, gt,cols,rows):
-        ''' Return list of corner coordinates from an osgeo geotransform.
-        
-            :param gt: geotransform
-            :type gt: C{tuple/list}
-            :param cols: number of columns in the dataset
-            :type cols: C{int}
-            :param rows: number of rows in the dataset
-            :type rows: C{int}
-            :return: coordinates of each corner
-            :rtype: C{[float,...,float]}
-
-        '''
-        ext=[]
-        xarr=[0,cols]
-        yarr=[0,rows]
-
-        for px in xarr:
-            for py in yarr:
-                x=gt[0]+(px*gt[1])+(py*gt[2])
-                y=gt[3]+(px*gt[4])+(py*gt[5])
-                ext.append([x,y])
-            yarr.reverse()
-        return ext
     
     def init(self):
         ''' Checks the existence of a L3 target database for the processed tile.
@@ -723,14 +547,13 @@ class L3_Tables(Borg):
         try:
             h5file = open_file(self._imageDatabase)
             h5file.close()
-            self.importBandList('L2A')
         except:
             self.initDatabase()
             self.importBandList('L3')
+            if (self.config.resolution == 60):
+                self.createPreviewImage('L3')
             return
-        if(self.config.resolution == 60):            
-            self.createPreviewImage('L3')
-            self.createPreviewImage('L2A')
+        self.importBandList('L2A')
         return
 
     def exportTile(self, L3_TILE_ID):
@@ -741,42 +564,42 @@ class L3_Tables(Borg):
            
         '''
 
-        AUX_DATA = '/AUX_DATA'
-        IMG_DATA = '/IMG_DATA'
-        QI_DATA = '/QI_DATA'
-        GRANULE = '/GRANULE'
+        AUX_DATA = 'AUX_DATA'
+        IMG_DATA = 'IMG_DATA'
+        QI_DATA = 'QI_DATA'
+        GRANULE = 'GRANULE'
         # Resolution:
         self._resolution = int(self.config.resolution)
-        if(self._resolution == 10):
-            bandDir = '/R10m'
-        elif(self._resolution == 20):
-            bandDir = '/R20m'
-        elif(self._resolution == 60):
-            bandDir = '/R60m'
+        if self._resolution == 10:
+            bandDir = 'R10m'
+        elif self._resolution == 20:
+            bandDir = 'R20m'
+        elif self._resolution == 60:
+            bandDir = 'R60m'
         BANDS = bandDir
-        L3_TARGET_ID = self.config.product.L3_TARGET_ID
-        L3_TILE_ID_SHORT = '/' + L3_TILE_ID[:55]            
-        L3_TILE_ID = self.config.targetDir + '/' + L3_TARGET_ID + GRANULE + '/' + L3_TILE_ID
-        self._L3_ImgDataDir = L3_TILE_ID + IMG_DATA
-        self._L3_bandDir = self._L3_ImgDataDir + BANDS
-        self._L3_QualityDataDir = L3_TILE_ID + QI_DATA
-        self._L3_AuxDataDir = L3_TILE_ID + AUX_DATA
+        L3_TARGET_ID = self.config.L3_TARGET_ID
+        L3_TILE_ID_SHORT = L3_TILE_ID[:55]
+        L3_TILE_ID = os.path.join(self.config.targetDir, L3_TARGET_ID, GRANULE, L3_TILE_ID)
+        self._L3_ImgDataDir = os.path.join(L3_TILE_ID, IMG_DATA)
+        self._L3_bandDir = os.path.join(self._L3_ImgDataDir, BANDS)
+        self._L3_QualityDataDir = os.path.join(L3_TILE_ID, QI_DATA)
+        self._L3_AuxDataDir = os.path.join(L3_TILE_ID, AUX_DATA)
         #
         # the File structure:
         #-------------------------------------------------------
-        pre = L3_TILE_ID_SHORT[:9]
-        post = L3_TILE_ID_SHORT[13:]
-        self._L3_Tile_BND_File = self._L3_bandDir + L3_TILE_ID_SHORT + '_BXX_' + str(self._resolution) + 'm.jp2'
-        self._L3_Tile_AOT_File = self._L3_bandDir        + pre + '_AOT' + post + '_' + str(self._resolution) + 'm.jp2'
-        self._L3_Tile_WVP_File = self._L3_bandDir        + pre + '_WVP' + post + '_' + str(self._resolution) + 'm.jp2'
-        self._L3_Tile_CLD_File = self._L3_QualityDataDir + pre + '_CLD' + post + '_' + str(self._resolution) + 'm.jp2'
-        self._L3_Tile_SNW_File = self._L3_QualityDataDir + pre + '_SNW' + post + '_' + str(self._resolution) + 'm.jp2'
-        self._L3_Tile_MSC_File = self._L3_QualityDataDir + pre + '_MSC' + post + '_' + str(self._resolution) + 'm.jp2'
-        self._L3_Tile_PVI_File = self._L3_QualityDataDir + pre + '_PVI' + post + '_' + str(self.config.nrTilesProcessed) + '.png'
-        self._L3_Tile_PLT_File = self._L3_QualityDataDir + pre + '_PLT' + post + '_' + str(self.config.nrTilesProcessed) + '.png'
-        self._L3_Tile_SCL_File = self._L3_QualityDataDir + pre + '_SCL' + post + '_' + str(self._resolution) + 'm.jp2'
+        pre = L3_TILE_ID_SHORT[:8]
+        post = L3_TILE_ID_SHORT[12:]
+        self._L3_Tile_BND_File = os.path.join(self._L3_bandDir, L3_TILE_ID_SHORT + '_BXX_' + str(self._resolution) + 'm.jp2')
+        self._L3_Tile_AOT_File = os.path.join(self._L3_bandDir, pre + '_AOT' + post + '_' + str(self._resolution) + 'm.jp2')
+        self._L3_Tile_WVP_File = os.path.join(self._L3_bandDir, pre + '_WVP' + post + '_' + str(self._resolution) + 'm.jp2')
+        self._L3_Tile_CLD_File = os.path.join(self._L3_QualityDataDir, pre + '_CLD' + post + '_' + str(self._resolution) + 'm.jp2')
+        self._L3_Tile_SNW_File = os.path.join(self._L3_QualityDataDir, pre + '_SNW' + post + '_' + str(self._resolution) + 'm.jp2')
+        self._L3_Tile_MSC_File = os.path.join(self._L3_QualityDataDir, pre + '_MSC' + post + '_' + str(self._resolution) + 'm.jp2')
+        self._L3_Tile_PVI_File = os.path.join(self._L3_QualityDataDir, pre + '_PVI' + post + '_' + str(self.config.getNrTilesProcessed()+1) + '.jp2')
+        self._L3_Tile_PLT_File = os.path.join(self._L3_QualityDataDir, pre + '_PLT' + post + '_' + str(self.config.getNrTilesProcessed()+1) + '.png')
+        self._L3_Tile_SCL_File = os.path.join(self._L3_QualityDataDir, pre + '_SCL' + post + '_' + str(self._resolution) + 'm.jp2')
 
-        self._imageDatabase = self._L3_bandDir + '/.database.h5'
+        self._imageDatabase = os.path.join(self._L3_bandDir, '.database.h5')
         self.config.logger.debug('Module L3_Tables reinitialized with resolution %d' % self._resolution)
         self.exportBandList('L3')
         return
@@ -819,16 +642,49 @@ class L3_Tables(Borg):
                 if fnmatch.fnmatch(filename, filemask) == False:
                     continue
                 self.importBand(i, filename)  
-        if os.path.isfile(self._L2A_Tile_AOT_File):
-            self.importBand(self._AOT, self._L2A_Tile_AOT_File)
-        if os.path.isfile(self._L2A_Tile_CLD_File):
-            self.importBand(self._CLD, self._L2A_Tile_CLD_File)
-        if os.path.isfile(self._L2A_Tile_SNW_File):
-            self.importBand(self._SNW, self._L2A_Tile_SNW_File)
-        if os.path.isfile(self._L2A_Tile_SCL_File):
-            self.importBand(self._SCL, self._L2A_Tile_SCL_File)
-        return
-    
+
+        # not used for the moment:
+        # if os.path.isfile(self._L2A_Tile_CLD_File):
+        #     self.importBand(self._CLD, self._L2A_Tile_CLD_File)
+        # if os.path.isfile(self._L2A_Tile_SNW_File):
+        #     self.importBand(self._SNW, self._L2A_Tile_SNW_File)
+
+        if self.config.resolution > 10:
+            if os.path.isfile(self._L2A_Tile_AOT_File):
+                self.importBand(self.AOT, self._L2A_Tile_AOT_File)
+            if os.path.isfile(self._L2A_Tile_SCL_File):
+                self.importBand(self.SCL, self._L2A_Tile_SCL_File)
+            return
+        else: # 10m bands only: perform an up sampling of SCL from 20 m channels to 10:
+            self.config.logger.info('perform up sampling of SCL from 20m channels to 10m')
+            srcResolution = '_20m'
+
+            sourceDir = self._L2A_bandDir.replace('R10m', 'R20m')
+            dirs = sorted(os.listdir(sourceDir))
+            bandName = 'AOT'
+            channel = 17
+            filemask = '*_' + bandName + '_L2A_*' + srcResolution + '.jp2'
+            for filename in dirs:
+                if not fnmatch.fnmatch(filename, filemask):
+                    continue
+                res = self.importBand(channel, os.path.join(sourceDir, filename))
+                if res == False:
+                    return False
+                break
+
+            # scene class is in different directory:
+            sourceDir = self._L2A_ImgDataDir
+            dirs = sorted(os.listdir(sourceDir))
+            bandName = 'SCL'
+            channel = 14
+            filemask = '*_' + bandName + '_L2A_*' + srcResolution + '.jp2'
+            for filename in dirs:
+                if not fnmatch.fnmatch(filename, filemask):
+                    continue
+                res = self.importBand(channel, os.path.join(sourceDir, filename))
+                if res == False:
+                    return False
+                break
 
     def getBand(self, productLevel, bandIndex, dataType=uint16):
         ''' Get a single band from database.
@@ -845,14 +701,10 @@ class L3_Tables(Borg):
         '''
         self.verifyProductId(productLevel)
         bandName = self.getBandNameFromIndex(bandIndex)
-        if (bandName == 'SCL') | (bandName == 'CLD') | \
-           (bandName == 'SNW') | (bandName == 'PRV') | (bandName == 'MSC'):
-            dataType = uint8  
         try:
             h5file = open_file(self._imageDatabase)
             node = h5file.getNode('/' + productLevel, bandName)
             if (node.dtype != dataType):
-                print bandName, dataType, node.dtype
                 self.config.logger.fatal('Wrong data type, must be: ' + str(node.dtype))
                 result = False
                 self.config.exitError()
@@ -874,15 +726,23 @@ class L3_Tables(Borg):
             :return: false if error occurred during import.
             :rtype: boolean
             
-        ''' 
+        '''
+        from skimage.transform import resize as skit_resize
         # convert JPEG-2000 input file to H5 file format
         self.verifyProductId(self._productLevel)
-        indataset = glymur.Jp2k(filename)
-        # to suppress the rounding error for TPZF testdata:
         warnings.filterwarnings("ignore")
-        nrows = indataset.shape[0]
+        kwargs = {"tilesize": (2048, 2048), "prog": "RPCL"}
+        indataset = glymur.Jp2k(filename, **kwargs)
         ncols = indataset.shape[1]
         indataArr = indataset[:]
+
+        if (self.config.resolution == 10) and (bandIndex == self.SCL) or (bandIndex == self.AOT):
+            # upsampling is required, order 3 is for cubic spline:
+            size = self.getBandSize('L3', self.B02)
+            ncols = size[0]
+            indataArr = (skit_resize(indataArr.astype(uint16), size, order=3) * 65535.).round().astype(uint16)
+        if indataArr.max() > 10000 and bandIndex < 13:
+            indataArr = uint16(indataArr / 10.0 + 0.5)
         indataset = None
         # Create new arrays:
         database = self._imageDatabase
@@ -892,7 +752,7 @@ class L3_Tables(Borg):
             if self.testBand(self._productLevel, bandIndex) == True:
                 self.delBand(self._productLevel, bandIndex)
             h5file = open_file(database, mode='a')
-            if(h5file.__contains__('/' + nodeStr)) == False:
+            if not (h5file.__contains__('/' + nodeStr)):
                 self.config.logger.fatal('table initialization, wrong node %s:' % nodeStr)
                 self.config.exitError()
                 return False
@@ -944,15 +804,15 @@ class L3_Tables(Borg):
             bandIndex = [1,2,3,7,14,30]
 
         elif(self._resolution == 20):
-            bandIndex = [1,2,3,4,5,6,8,11,12]
+            bandIndex = [1,2,3,4,5,6,8,11,12,14,30]
 
         elif(self._resolution == 60):
-            bandIndex = [0,1,2,3,4,5,6,8,9,11,12] # 14,30
+            bandIndex = [0,1,2,3,4,5,6,8,9,11,12,14,30]
 
         #prepare the xml export
         Granules = objectify.Element('Granules')
-        Granules.attrib['granuleIdentifier'] = self.config.product.L3_TILE_ID
-        Granules.attrib['datastripIdentifier'] = self.config.product.L3_DS_ID
+        Granules.attrib['granuleIdentifier'] = self.config.L3_TILE_ID
+        Granules.attrib['datastripIdentifier'] = self.config.L3_DS_ID
         Granules.attrib['imageFormat'] = 'JPEG2000'
         gl = objectify.Element('Granule_List')
         gl.append(Granules)
@@ -965,15 +825,21 @@ class L3_Tables(Borg):
             else:
                 filename = self._L3_Tile_BND_File.replace('BXX', bandName)
             band = self.getBand(productLevel, index)
+
+            # Median Filter:
+            mf = self.config.medianFilter
+            if(mf > 0):
+                band = ndimage.filters.median_filter(band, (mf,mf))
+
             kwargs = {"tilesize": (2048, 2048), "prog": "RPCL"}
             glymur.Jp2k(filename, band.astype(uint16), **kwargs)            
             self.config.logger.info('Band ' + bandName + ' exported')
             self.config.timestamp('L3_Tables: band ' + bandName + ' exported')
             filename = os.path.basename(filename.strip('.jp2'))
-            imageId = etree.Element('IMAGE_ID_2A')
+            imageId = etree.Element('IMAGE_ID_3')
             imageId.text = filename
             Granules.append(imageId)
-        '''
+
         xp = L3_XmlParser(self.config, 'UP03')
         pi = xp.getTree('General_Info', 'L3_Product_Info')
         po = pi.L3_Product_Organisation
@@ -982,24 +848,42 @@ class L3_Tables(Borg):
         
         # update on tile level
         xp = L3_XmlParser(self.config, 'T03')
-        ti = xp.getTree()
-        xmlParser.root.General_Info.TILE_ID.valueOf_ = self.config.product.L3_TILE_ID
-        xmlParser.root.General_Info.DATASTRIP_ID.valueOf_ =self.config.product.L3_DS_ID
+        gi = xp.getRoot('General_Info')
+        tiOld = xp.getTree('General_Info', 'TILE_ID_3')
+        tiNew = etree.Element('TILE_ID_3')
+        tiNew.text = self.config.L3_TILE_ID
+        gi.replace(tiOld, tiNew)
+        dsOld = xp.getTree('General_Info', 'DATASTRIP_ID_3')
+        dsNew = etree.Element('DATASTRIP_ID_3')
+        dsNew.text = self.config.L3_DS_ID
+        gi.replace(dsOld, dsNew)
 
         # clean up and post processing actions:
-            qiiL3 = xmlParser.root.Quality_Indicators_Info
-            qiiL3.PVI_FILENAME = os.path.basename(self._L3_Tile_PVI_File)
-            qiiL3 = xmlParser.root.Quality_Indicators_Info
-            qiList = L3_Tile.A_L3_Pixel_Level_QI_LIST()
-            qiiL3.L3_Pixel_Level_QI = qiList
-        xmlParser.export()
-        '''
-        globdir = self.config.product.L3_TARGET_ID + '/GRANULE/' + self.config.product.L3_TILE_ID + '/*/*.jp2.aux.xml'
-        for filename in glob.glob(globdir):
-            os.remove(filename)
-        globdir = self.config.product.L3_TARGET_ID + '/GRANULE/' + self.config.product.L3_TILE_ID + '/*/*/*.jp2.aux.xml'
-        for filename in glob.glob(globdir):
-            os.remove(filename)
+        pxlQI = objectify.Element('L3_Mosaic_QI')
+        pxlQI.attrib['resolution'] = str(self.config.resolution)
+        pxlQI.append(objectify.Element('PVI_FILENAME'))
+        pxlQI.append(objectify.Element('L3_TILE_CLASSIFICATION_MASK'))
+        pxlQI.append(objectify.Element('L3_TILE_MOSAIC_MASK'))
+
+        pxlQI.PVI_FILENAME = os.path.basename(self._L3_Tile_PVI_File).replace('.jp2', '')
+        pxlQI.L3_TILE_CLASSIFICATION_MASK = os.path.basename(self._L3_Tile_SCL_File).replace('.jp2', '')
+        pxlQI.L3_TILE_MOSAIC_MASK = os.path.basename(self._L3_Tile_MSC_File).replace('.jp2', '')
+
+        qiiL3 = xp.getTree('Quality_Indicators_Info', 'L3_Pixel_Level_QI')
+        qiiL3Len = len(qiiL3)
+        for i in range(qiiL3Len):
+            if int(qiiL3[i].attrib['resolution']) == self.config.resolution:
+                qiiL3[i].clear()
+                qiiL3[i] = pxlQI
+                break
+        xp.export()
+
+        # globdir = self.config.L3_TARGET_ID + '/GRANULE/' + self.config.L3_TILE_ID + '/*/*.jp2.aux.xml'
+        # for filename in glob.glob(globdir):
+        #     os.remove(filename)
+        # globdir = self.config.L3_TARGET_ID + '/GRANULE/' + self.config.L3_TILE_ID + '/*/*/*.jp2.aux.xml'
+        # for filename in glob.glob(globdir):
+        #     os.remove(filename)
         self.config.timestamp(productLevel + '_Tables: stop export')
         return True
 
@@ -1016,15 +900,24 @@ class L3_Tables(Borg):
             self.config.logger.fatal('must be a 2 dimensional array')
             self.config.exitError()
             return False
+        '''
+        src_nrows = arr.shape[0]
+        src_ncols = arr.shape[1]
+        tgt_ncols = 343.0
+        tgt_nrows = 343.0
 
+        zoomX = float64(tgt_ncols)/float64(src_ncols)
+        zoomY = float64(tgt_nrows)/float64(src_nrows)
+        arr = zoom(arr, ([zoomX,zoomY]), order=0)        
+        '''
         arrclip = arr.copy()
-        _min = 0.0
-        _max = 500
+        min_ = 0.0
+        max_ = 250
         scale = 255.0
-        arr = clip(arrclip, _min, _max)
-        scaledArr = uint8(arr*scale/_max)
+        arr = clip(arrclip, min_, max_)
+        #SIITBX-50: wrong scale was used: 
+        scaledArr = uint8(arr*scale/max_)
         return scaledArr
-
 
     def setBand(self, productLevel, bandIndex, arr):
         ''' Set a single band from numpy array to H5 database.
@@ -1139,10 +1032,6 @@ class L3_Tables(Borg):
             
         '''
         self.config.logger.debug('Creating Preview Image')
-        if(self._resolution != 60):
-            self.config.logger.fatal('wrong resolution for this procedure, must be 60m')
-            self.config.exitError()
-            return False
         if productLevel == 'L2A':
             filename = self._L2A_Tile_PVI_File            
         else:
@@ -1151,6 +1040,13 @@ class L3_Tables(Borg):
         b = self.getBand(productLevel, self.B02)
         g = self.getBand(productLevel, self.B03)
         r = self.getBand(productLevel, self.B04)
+
+        # Median Filter:
+        mf = self.config.medianFilter
+        if (mf > 0):
+            b = ndimage.filters.median_filter(b, (mf, mf))
+            g = ndimage.filters.median_filter(g, (mf, mf))
+            r = ndimage.filters.median_filter(r, (mf, mf))
 
         b = self.scaleImgArray(b)
         g = self.scaleImgArray(g)
@@ -1162,7 +1058,9 @@ class L3_Tables(Borg):
 
         try:
             out = Image.merge('RGB', (r,g,b))
-            out.save(filename, 'PNG')
+            a = array(out)
+            kwargs = {"tilesize": (2048, 2048), "prog": "RPCL"}
+            glymur.Jp2k(filename, a.astype(uint8), **kwargs)   
             self.config.logger.debug('Preview Image created')
             return True
         except:
@@ -1218,7 +1116,7 @@ class L3_Tables(Borg):
             :return: true if band exists, else false.            
             :rtype: boolean
             
-        '''        
+        '''
         self.verifyProductId(productLevel)
         bandName = self.getBandNameFromIndex(bandIndex)
         try:

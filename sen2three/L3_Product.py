@@ -1,76 +1,47 @@
 #!/usr/bin/env python
-'''
-    :module: L3_Product.
-    :imports: L3_XmlParser, L3_Library. 
-'''
-import os, fnmatch
+# -*- coding: iso-8859-15 -*-
+
+import os, fnmatch, tables, shutil
 from time import strftime
 from datetime import datetime
 from distutils.dir_util import copy_tree
 from distutils.file_util import copy_file
-from lxml import objectify
-
-from L3_Borg import Borg
+from lxml import etree, objectify
+from numpy import *
 from L3_XmlParser import L3_XmlParser
 from L3_Library import stderrWrite
 
-class L3_Product(Borg):
+class Particle(tables.IsDescription):
+    TILE_ID = tables.StringCol(itemsize=9)
+    RESOLUTION = tables.UInt32Col()
+    TILES_COUNT = tables.UInt32Col()
+    TOTAL_PIXELS = tables.UInt32Col()
+    DATA_PIXELS = tables.UInt32Col()
+    NODATA_PIXELS = tables.UInt32Col()
+    GOOD_PIXELS = tables.UInt32Col()
+    BAD_PIXELS = tables.UInt32Col()
+    SAT_DEF_PIXELS = tables.UInt32Col()
+    DARK_PIXELS = tables.UInt32Col()
+    CLOUD_SHADOWS = tables.UInt32Col()
+    VEGETATION = tables.UInt32Col()
+    BARE_SOILS = tables.UInt32Col()
+    WATER = tables.UInt32Col()
+    LOW_PROBA_CLOUDS = tables.UInt32Col()
+    MED_PROBA_CLOUDS = tables.UInt32Col()
+    HIGH_PROBA_CLOUDS = tables.UInt32Col()
+    THIN_CIRRUS = tables.UInt32Col()
+    SNOW_ICE = tables.UInt32Col()
+
+class L3_Product(object):
     '''
-            :param config: the config object for the current tile (via __init__)
-            :type config: a reference to the L3_Config object
+        :param config: the config object for the current tile (via __init__)
+        :type config: a reference to the L3_Config object
+
     '''
+
     _shared = {}
     def __init__(self, config):
-        self.config = config 
-        self._L2A_INSPIRE_XML = None
-        self._L2A_MANIFEST_SAFE = None
-        
-        self._L1C_UP_MTD_XML = None
-        self._L1C_DS_MTD_XML = None
-        self._L1C_TILE_MTD_XML = None
-        self._L1C_UP_ID = None
-        self._L1C_DS_ID = None
-        self._L1C_TILE_ID = None
-        self._L1C_UP_DIR = None
-        
-        self._L2A_UP_MTD_XML = None
-        self._L2A_DS_MTD_XML = None
-        self._L2A_TILE_MTD_XML = None
-        self._L2A_UP_ID = None        
-        self._L2A_DS_ID = None
-        self._L2A_TILE_ID = None
-        self._L2A_UP_DIR = None
-
-        self._L3_TARGET_MTD_XML = None
-        self._L3_DS_MTD_XML = None
-        self._L3_TILE_MTD_XML = None    
-        self._L3_TARGET_ID = None        
-        self._L3_DS_ID = None
-        self._L3_TILE_ID = None
-
-    def get_l_2_a_up_dir(self):
-        return self._L2A_UP_DIR
-
-
-    def get_l_1_c_up_dir(self):
-        return self._L1C_UP_DIR
-
-
-    def set_l_2_a_up_dir(self, value):
-        self._L2A_UP_DIR = value
-
-
-    def set_l_1_c_up_dir(self, value):
-        self._L1C_UP_DIR = value
-
-
-    def del_l_2_a_up_dir(self):
-        del self._L2A_UP_DIR
-
-
-    def del_l_1_c_up_dir(self):
-        del self._L1C_UP_DIR
-
+        self._config = config
 
 
     def get_config(self):
@@ -84,590 +55,59 @@ class L3_Product(Borg):
     def del_config(self):
         del self._config
 
-
-    def get_l_2_a_inspire_xml(self):
-        return self._L2A_INSPIRE_XML
-
-
-    def get_l_2_a_manifest_safe(self):
-        return self._L2A_MANIFEST_SAFE
-
-
-    def get_l_1_c_up_mtd_xml(self):
-        return self._L1C_UP_MTD_XML
-
-
-    def get_l_1_c_ds_mtd_xml(self):
-        return self._L1C_DS_MTD_XML
-
-
-    def get_l_1_c_tile_mtd_xml(self):
-        return self._L1C_TILE_MTD_XML
-
-
-    def get_l_1_c_up_id(self):
-        return self._L1C_UP_ID
-
-
-    def get_l_1_c_ds_id(self):
-        return self._L1C_DS_ID
-
-
-    def get_l_1_c_tile_id(self):
-        return self._L1C_TILE_ID
-
-
-    def get_l_2_a_up_mtd_xml(self):
-        return self._L2A_UP_MTD_XML
-
-
-    def get_l_2_a_ds_mtd_xml(self):
-        return self._L2A_DS_MTD_XML
-
-
-    def get_l_2_a_tile_mtd_xml(self):
-        return self._L2A_TILE_MTD_XML
-
-
-    def get_l_2_a_up_id(self):
-        return self._L2A_UP_ID
-
-
-    def get_l_2_a_ds_id(self):
-        return self._L2A_DS_ID
-
-
-    def get_l_2_a_tile_id(self):
-        return self._L2A_TILE_ID
-
-
-    def get_l_3_target_mtd_xml(self):
-        return self._L3_TARGET_MTD_XML
-
-
-    def get_l_3_ds_mtd_xml(self):
-        return self._L3_DS_MTD_XML
-
-
-    def get_l_3_tile_mtd_xml(self):
-        return self._L3_TILE_MTD_XML
-
-
-    def get_l_3_target_id(self):
-        return self._L3_TARGET_ID
-
-
-    def get_l_3_ds_id(self):
-        return self._L3_DS_ID
-
-
-    def get_l_3_tile_id(self):
-        return self._L3_TILE_ID
-
-
-    def get_l_3_target_dir(self):
-        return self._L3_TARGET_DIR
-
-
-    def set_l_2_a_inspire_xml(self, value):
-        self._L2A_INSPIRE_XML = value
-
-
-    def set_l_2_a_manifest_safe(self, value):
-        self._L2A_MANIFEST_SAFE = value
-
-
-    def set_l_1_c_up_mtd_xml(self, value):
-        self._L1C_UP_MTD_XML = value
-
-
-    def set_l_1_c_ds_mtd_xml(self, value):
-        self._L1C_DS_MTD_XML = value
-
-
-    def set_l_1_c_tile_mtd_xml(self, value):
-        self._L1C_TILE_MTD_XML = value
-
-
-    def set_l_1_c_up_id(self, value):
-        self._L1C_UP_ID = value
-
-
-    def set_l_1_c_ds_id(self, value):
-        self._L1C_DS_ID = value
-
-
-    def set_l_1_c_tile_id(self, value):
-        self._L1C_TILE_ID = value
-
-
-    def set_l_2_a_up_mtd_xml(self, value):
-        self._L2A_UP_MTD_XML = value
-
-
-    def set_l_2_a_ds_mtd_xml(self, value):
-        self._L2A_DS_MTD_XML = value
-
-
-    def set_l_2_a_tile_mtd_xml(self, value):
-        self._L2A_TILE_MTD_XML = value
-
-
-    def set_l_2_a_up_id(self, value):
-        self._L2A_UP_ID = value
-
-
-    def set_l_2_a_ds_id(self, value):
-        self._L2A_DS_ID = value
-
-
-    def set_l_2_a_tile_id(self, value):
-        self._L2A_TILE_ID = value
-
-
-    def set_l_3_target_mtd_xml(self, value):
-        self._L3_TARGET_MTD_XML = value
-
-
-    def set_l_3_ds_mtd_xml(self, value):
-        self._L3_DS_MTD_XML = value
-
-
-    def set_l_3_tile_mtd_xml(self, value):
-        self._L3_TILE_MTD_XML = value
-
-
-    def set_l_3_target_id(self, value):
-        self._L3_TARGET_ID = value
-
-
-    def set_l_3_ds_id(self, value):
-        self._L3_DS_ID = value
-
-
-    def set_l_3_tile_id(self, value):
-        self._L3_TILE_ID = value
-
-
-    def set_l_3_target_dir(self, value):
-        self._L3_TARGET_DIR = value
-
-
-    def del_l_2_a_inspire_xml(self):
-        del self._L2A_INSPIRE_XML
-
-
-    def del_l_2_a_manifest_safe(self):
-        del self._L2A_MANIFEST_SAFE
-
-
-    def del_l_1_c_up_mtd_xml(self):
-        del self._L1C_UP_MTD_XML
-
-
-    def del_l_1_c_ds_mtd_xml(self):
-        del self._L1C_DS_MTD_XML
-
-
-    def del_l_1_c_tile_mtd_xml(self):
-        del self._L1C_TILE_MTD_XML
-
-
-    def del_l_1_c_up_id(self):
-        del self._L1C_UP_ID
-
-
-    def del_l_1_c_ds_id(self):
-        del self._L1C_DS_ID
-
-
-    def del_l_1_c_tile_id(self):
-        del self._L1C_TILE_ID
-
-
-    def del_l_2_a_up_mtd_xml(self):
-        del self._L2A_UP_MTD_XML
-
-
-    def del_l_2_a_ds_mtd_xml(self):
-        del self._L2A_DS_MTD_XML
-
-
-    def del_l_2_a_tile_mtd_xml(self):
-        del self._L2A_TILE_MTD_XML
-
-
-    def del_l_2_a_up_id(self):
-        del self._L2A_UP_ID
-
-
-    def del_l_2_a_ds_id(self):
-        del self._L2A_DS_ID
-
-
-    def del_l_2_a_tile_id(self):
-        del self._L2A_TILE_ID
-
-
-    def del_l_3_target_mtd_xml(self):
-        del self._L3_TARGET_MTD_XML
-
-
-    def del_l_3_ds_mtd_xml(self):
-        del self._L3_DS_MTD_XML
-
-
-    def del_l_3_tile_mtd_xml(self):
-        del self._L3_TILE_MTD_XML
-
-
-    def del_l_3_target_id(self):
-        del self._L3_TARGET_ID
-
-
-    def del_l_3_ds_id(self):
-        del self._L3_DS_ID
-
-
-    def del_l_3_tile_id(self):
-        del self._L3_TILE_ID
-
-
-    def del_l_3_target_dir(self):
-        del self._L3_TARGET_DIR
-
     config = property(get_config, set_config, del_config)
-    L2A_INSPIRE_XML = property(get_l_2_a_inspire_xml, set_l_2_a_inspire_xml, del_l_2_a_inspire_xml)
-    L2A_MANIFEST_SAFE = property(get_l_2_a_manifest_safe, set_l_2_a_manifest_safe, del_l_2_a_manifest_safe)
-    L1C_UP_MTD_XML = property(get_l_1_c_up_mtd_xml, set_l_1_c_up_mtd_xml, del_l_1_c_up_mtd_xml)
-    L1C_DS_MTD_XML = property(get_l_1_c_ds_mtd_xml, set_l_1_c_ds_mtd_xml, del_l_1_c_ds_mtd_xml)
-    L1C_TILE_MTD_XML = property(get_l_1_c_tile_mtd_xml, set_l_1_c_tile_mtd_xml, del_l_1_c_tile_mtd_xml)
-    L1C_UP_ID = property(get_l_1_c_up_id, set_l_1_c_up_id, del_l_1_c_up_id)
-    L1C_DS_ID = property(get_l_1_c_ds_id, set_l_1_c_ds_id, del_l_1_c_ds_id)
-    L1C_TILE_ID = property(get_l_1_c_tile_id, set_l_1_c_tile_id, del_l_1_c_tile_id)
-    L2A_UP_MTD_XML = property(get_l_2_a_up_mtd_xml, set_l_2_a_up_mtd_xml, del_l_2_a_up_mtd_xml)
-    L2A_DS_MTD_XML = property(get_l_2_a_ds_mtd_xml, set_l_2_a_ds_mtd_xml, del_l_2_a_ds_mtd_xml)
-    L2A_TILE_MTD_XML = property(get_l_2_a_tile_mtd_xml, set_l_2_a_tile_mtd_xml, del_l_2_a_tile_mtd_xml)
-    L2A_UP_ID = property(get_l_2_a_up_id, set_l_2_a_up_id, del_l_2_a_up_id)
-    L2A_DS_ID = property(get_l_2_a_ds_id, set_l_2_a_ds_id, del_l_2_a_ds_id)
-    L2A_TILE_ID = property(get_l_2_a_tile_id, set_l_2_a_tile_id, del_l_2_a_tile_id)
-    L3_TARGET_MTD_XML = property(get_l_3_target_mtd_xml, set_l_3_target_mtd_xml, del_l_3_target_mtd_xml)
-    L3_DS_MTD_XML = property(get_l_3_ds_mtd_xml, set_l_3_ds_mtd_xml, del_l_3_ds_mtd_xml)
-    L3_TILE_MTD_XML = property(get_l_3_tile_mtd_xml, set_l_3_tile_mtd_xml, del_l_3_tile_mtd_xml)
-    L3_TARGET_ID = property(get_l_3_target_id, set_l_3_target_id, del_l_3_target_id)
-    L3_DS_ID = property(get_l_3_ds_id, set_l_3_ds_id, del_l_3_ds_id)
-    L3_TILE_ID = property(get_l_3_tile_id, set_l_3_tile_id, del_l_3_tile_id)
-    L3_TARGET_DIR = property(get_l_3_target_dir, set_l_3_target_dir, del_l_3_target_dir)
-    L2A_UP_DIR = property(get_l_2_a_up_dir, set_l_2_a_up_dir, del_l_2_a_up_dir)
-    L1C_UP_DIR = property(get_l_1_c_up_dir, set_l_1_c_up_dir, del_l_1_c_up_dir)
-
-    def createL2A_UserProduct(self, L1C_PRODUCT_ID):        
-        L1C_UP_MASK = '*1C_*'
-        L1C_UP_DIR = self.config.sourceDir + '/' + L1C_PRODUCT_ID
-        self._L1C_UP_DIR = L1C_UP_DIR
-        if os.path.exists(L1C_UP_DIR) == False:
-            stderrWrite('directory "%s" does not exist.\n' % L1C_UP_DIR)
-            self.config.exitError()
-            return False
-
-        # detect the filename for the datastrip metadata:
-        L1C_DS_DIR = L1C_UP_DIR + '/DATASTRIP/'
-        if os.path.exists(L1C_DS_DIR) == False:
-            stderrWrite('directory "%s" does not exist.\n' % L1C_DS_DIR)
-            self.config.exitError()
-            return False
-
-        L1C_DS_MASK = '*_L1C_*'
-        dirlist = sorted(os.listdir(L1C_DS_DIR))
-        found = False
-        
-        for dirname in dirlist:
-            if(fnmatch.fnmatch(dirname, L1C_DS_MASK) == True):
-                found = True
-                break
-        
-        if found == False:
-            stderrWrite('No metadata in datastrip\n.')
-            self.config.exitError()
-
-        L1C_DS_DIR += dirname
-        L1C_DS_MTD_XML = (dirname[:-7]+'.xml').replace('_MSI_', '_MTD_')
-        self.L1C_DS_MTD_XML = L1C_DS_DIR + '/' + L1C_DS_MTD_XML
-
-        dirname, basename = os.path.split(L1C_UP_DIR)
-        if(fnmatch.fnmatch(basename, L1C_UP_MASK) == False):
-            stderrWrite('%s: identifier "*1C_*" is missing.\n' % basename)
-            self.config.exitError()
-            return False
-
-        GRANULE = L1C_UP_DIR + '/GRANULE'
-        if os.path.exists(GRANULE) == False:
-            stderrWrite('directory "%s" does not exist.\n' % GRANULE)
-            self.config.exitError()
-            return False
-        
-        #
-        # the product (directory) structure:
-        #-------------------------------------------------------
-        L2A_UP_ID = basename[:4] + 'USER' + basename[8:]
-        L2A_UP_ID = L2A_UP_ID.replace('1C_', '2A_')            
-        L2A_UP_DIR = dirname + '/' + L2A_UP_ID
-        self._L2A_UP_DIR = L2A_UP_DIR
-        self.L2A_UP_ID = L2A_UP_ID
-
-        L1C_INSPIRE_XML = L1C_UP_DIR + '/INSPIRE.xml'
-        L1C_MANIFEST_SAFE = L1C_UP_DIR + '/manifest.safe'
-
-        L2A_INSPIRE_XML = L2A_UP_DIR + '/INSPIRE.xml'
-        L2A_MANIFEST_SAFE = L2A_UP_DIR + '/manifest.safe'
-
-        AUX_DATA = '/AUX_DATA'
-        DATASTRIP = '/DATASTRIP'
-        GRANULE = '/GRANULE'
-        HTML = '/HTML'
-        REP_INFO = '/rep_info'
-        firstInit = False
-
-        if(os.path.exists(L2A_UP_DIR + GRANULE) == False):
-            copy_tree(L1C_UP_DIR + AUX_DATA, L2A_UP_DIR + AUX_DATA)
-            copy_tree(L1C_UP_DIR + DATASTRIP, L2A_UP_DIR + DATASTRIP)
-            copy_tree(L1C_UP_DIR + HTML, L2A_UP_DIR + HTML)
-            copy_tree(L1C_UP_DIR + REP_INFO, L2A_UP_DIR + REP_INFO)
-            # remove the L1C xsds:
-            S2_mask = 'S2_*.xsd'
-            repdir = L2A_UP_DIR + REP_INFO
-            filelist = os.listdir(repdir)
-            for filename in filelist:
-                if(fnmatch.fnmatch(filename, S2_mask) == True):
-                    os.remove(repdir + '/' + filename)
-            copy_file(L1C_INSPIRE_XML, L2A_INSPIRE_XML)
-            copy_file(L1C_MANIFEST_SAFE, L2A_MANIFEST_SAFE)
-            os.mkdir(L2A_UP_DIR + GRANULE)
-            firstInit = True
-
-        self.L1C_INSPIRE_XML = L1C_INSPIRE_XML
-        self.L2A_INSPIRE_XML = L2A_INSPIRE_XML
-        self.L1C_MANIFEST_SAFE = L1C_MANIFEST_SAFE
-        self.L2A_MANIFEST_SAFE = L2A_MANIFEST_SAFE
-
-        #create user product:
-        S2A_mask = 'S2A_*.xml'
-        filelist = sorted(os.listdir(L1C_UP_DIR))
-        found = False
-        for filename in filelist:
-            if(fnmatch.fnmatch(filename, S2A_mask) == True):
-                found = True
-                break
-        if found == False:
-            stderrWrite('No metadata for user product.\n')
-            self.config.exitError()
-
-        # prepare L2A User Product metadata file
-        fn_L1C = L1C_UP_DIR  + '/' + filename
-        fn_L2A = filename[:4] + 'USER' + filename[8:]
-        fn_L2A = fn_L2A.replace('L1C_', 'L2A_')
-        fn_L2A = L2A_UP_DIR + '/' + fn_L2A
-        self.L1C_UP_MTD_XML = fn_L1C
-        self.L2A_UP_MTD_XML = fn_L2A
-        if firstInit == True:
-            # copy L2A schemes from config_dir into rep_info:    
-            xp = L3_XmlParser(self.config, 'GIPP')
-            cs = xp.getRoot('Common_Section')
-            upScheme2a = cs.UP_Scheme_2A.text
-            tileScheme2a = cs.Tile_Scheme_2A.text
-            dsScheme2a = cs.DS_Scheme_2A.text
-            copy_file(self.config.configDir + upScheme2a, L2A_UP_DIR + REP_INFO + '/' + upScheme2a)
-            copy_file(self.config.configDir + tileScheme2a, L2A_UP_DIR + REP_INFO + '/' + tileScheme2a)
-            copy_file(self.config.configDir + dsScheme2a, L2A_UP_DIR + REP_INFO + '/' + dsScheme2a)
-            # copy L2A User Product metadata file:
-            copy_file(fn_L1C, fn_L2A)
-            # remove old L1C entries from L1C_UP_MTD_XML:
-            xp = L3_XmlParser(self.config, 'UP2A')
-            if(xp.convert() == False):
-                self.config.logger.fatal('error in converting user product metadata to level 2A')
-                self.exitError()
-            xp = L3_XmlParser(self.config, 'UP2A')
-            pi = xp.getTree('General_Info', 'L2A_Product_Info')
-            del pi.L2A_Product_Organisation.Granule_List[:]            
-            # update L2A entries from L1C_UP_MTD_XML:
-            pi.PRODUCT_URI = 'http://www.telespazio-vega.de'
-            pi.PROCESSING_LEVEL = 'Level-2Ap'
-            pi.PRODUCT_TYPE = 'S2MSI2Ap'
-            dt = datetime.utcnow()
-            pi.GENERATION_TIME = strftime('%Y-%m-%dT%H:%M:%SZ', dt.timetuple())
-            pi.PREVIEW_IMAGE_URL = 'http://www.telespazio-vega.de'
-            qo = pi.Query_Options
-            #qo.PREVIEW_IMAGE = True
-            #qo.METADATA_LEVEL = 'Standard'
-            qo.Aux_List.attrib['productLevel'] = 'Level-2Ap'
-            pic = xp.getTree('General_Info', 'L2A_Product_Image_Characteristics')              
-            L1C_TOA_QUANTIFICATION_VALUE =pic.L1C_L2A_Quantification_Values_List
-            qvl = objectify.Element('L1C_L2A_Quantification_Values_List')
-            qvl.L1C_TOA_QUANTIFICATION_VALUE = L1C_TOA_QUANTIFICATION_VALUE
-            qvl.L2A_BOA_QUANTIFICATION_VALUE = str(self.config.L2A_BOA_QUANTIFICATION_VALUE)
-            qvl.L2A_BOA_QUANTIFICATION_VALUE.attrib['unit'] = 'none'
-            qvl.L2A_AOT_QUANTIFICATION_VALUE = str(self.config.L2A_AOT_QUANTIFICATION_VALUE)
-            qvl.L2A_AOT_QUANTIFICATION_VALUE.attrib['unit'] = 'none'
-            qvl.L2A_WVP_QUANTIFICATION_VALUE = str(self.config.L2A_WVP_QUANTIFICATION_VALUE)
-            qvl.L2A_WVP_QUANTIFICATION_VALUE.attrib['unit'] = 'cm'
-            pic.L1C_L2A_Quantification_Values_List = qvl
-            
-            scl = objectify.Element('L2A_Scene_Classification_List')
-            scid = objectify.Element('L2A_Scene_Classification_ID')    
-            scid.L2A_SCENE_CLASSIFICATION_TEXT = 'SC_NODATA'
-            scid.L2A_SCENE_CLASSIFICATION_INDEX = '0'
-            scl.append(scid)
-            
-            scid = objectify.Element('L2A_Scene_Classification_ID')              
-            scid.L2A_SCENE_CLASSIFICATION_TEXT = 'SC_SATURATED_DEFECTIVE'
-            scid.L2A_SCENE_CLASSIFICATION_INDEX = '1'
-            scl.append(scid)
-
-            scid = objectify.Element('L2A_Scene_Classification_ID')                  
-            scid.L2A_SCENE_CLASSIFICATION_TEXT = 'SC_DARK_FEATURE_SHADOW'
-            scid.L2A_SCENE_CLASSIFICATION_INDEX = '2'
-            scl.append(scid)
-
-            scid = objectify.Element('L2A_Scene_Classification_ID')                  
-            scid.L2A_SCENE_CLASSIFICATION_TEXT = 'SC_CLOUD_SHADOW'
-            scid.L2A_SCENE_CLASSIFICATION_INDEX = '3'
-            scl.append(scid)        
-            
-            scid = objectify.Element('L2A_Scene_Classification_ID')      
-            scid.L2A_SCENE_CLASSIFICATION_TEXT = 'SC_VEGETATION'
-            scid.L2A_SCENE_CLASSIFICATION_INDEX = '4'
-            scl.append(scid)
-
-            scid = objectify.Element('L2A_Scene_Classification_ID')                      
-            scid.L2A_SCENE_CLASSIFICATION_TEXT = 'SC_BARE_SOIL_DESERT'
-            scid.L2A_SCENE_CLASSIFICATION_INDEX = '5'
-            scl.append(scid)
-                            
-            scid = objectify.Element('L2A_Scene_Classification_ID')                  
-            scid.L2A_SCENE_CLASSIFICATION_TEXT = 'SC_WATER'
-            scid.L2A_SCENE_CLASSIFICATION_INDEX = '6'
-            scl.append(scid)
-                    
-            scid = objectify.Element('L2A_Scene_Classification_ID')                  
-            scid.L2A_SCENE_CLASSIFICATION_TEXT = 'SC_CLOUD_LOW_PROBA'
-            scid.L2A_SCENE_CLASSIFICATION_INDEX = '7'
-            scl.append(scid)
-            
-            scid = objectify.Element('L2A_Scene_Classification_ID')                              
-            scid.L2A_SCENE_CLASSIFICATION_TEXT = 'SC_CLOUD_MEDIUM_PROBA'
-            scid.L2A_SCENE_CLASSIFICATION_INDEX = '8'
-            scl.append(scid)
-            
-            scid = objectify.Element('L2A_Scene_Classification_ID')                              
-            scid.L2A_SCENE_CLASSIFICATION_TEXT = 'SC_CLOUD_HIGH_PROBA'
-            scid.L2A_SCENE_CLASSIFICATION_INDEX = '9'
-            scl.append(scid)
-            
-            scid = objectify.Element('L2A_Scene_Classification_ID')                  
-            scid.L2A_SCENE_CLASSIFICATION_TEXT = 'SC_THIN_CIRRUS'
-            scid.L2A_SCENE_CLASSIFICATION_INDEX = '10'
-            scl.append(scid)
-            
-            scid = objectify.Element('L2A_Scene_Classification_ID')                            
-            scid.L2A_SCENE_CLASSIFICATION_TEXT = 'SC_SNOW_ICE'
-            scid.L2A_SCENE_CLASSIFICATION_INDEX = '11'
-            scl.append(scid) 
-            pic.append(scl)
-
-            auxinfo = xp.getRoot('L2A_Auxiliary_Data_Info')
-            auxdata = objectify.Element('Aux_Data')   
-            gipp = objectify.Element('L2A_GIPP_List')
-            auxdata.append(gipp)
-            auxdata.L2A_PRODUCTION_DEM_TYPE = self.config.getStr('Common_Section', 'DEM_Reference')
-            auxdata.L2A_LIBRADTRAN_LUTS = 'NONE'
-            auxdata.L2A_SNOW_CLIMATOLOGY = self.config.getStr('Scene_Classification', 'Snow_Map_Reference')
-            auxinfo.append(auxdata)
-            xp.export()
-
-        #create datastrip ID:
-        L2A_DS_DIR = self._L2A_UP_DIR + DATASTRIP
-        dirlist = sorted(os.listdir(L2A_DS_DIR))
-        S2A_mask = 'S2A_*'
-        found = False
-        for dirname in dirlist:
-            if(fnmatch.fnmatch(dirname, S2A_mask) == True):
-                found = True
-                break
-        if found == False:
-            stderrWrite('No subdirectory in datastrip.\n')
-            self.exitError()
-
-        L1C_DS_ID = dirname
-        L2A_DS_ID = L1C_DS_ID[:4] + 'USER' + L1C_DS_ID[8:]
-        L2A_DS_ID = L2A_DS_ID.replace('L1C_', 'L2A_')
-        self.L2A_DS_ID = L2A_DS_ID
-
-        olddir = L2A_DS_DIR + '/' + L1C_DS_ID
-        newdir = L2A_DS_DIR + '/' + L2A_DS_ID
-
-        if firstInit == True:
-            os.rename(olddir, newdir)
-
-        #find datastrip metadada, rename and change it:
-        L2A_DS_DIR = newdir
-        filelist = sorted(os.listdir(L2A_DS_DIR))
-        found = False
-        for filename in filelist:
-            if(fnmatch.fnmatch(filename, S2A_mask) == True):
-                found = True
-                break
-        if found == False:
-            stderrWrite('No metadata in datastrip\n.')
-            self.exitError()
-
-        LXX_DS_MTD_XML = filename
-        L2A_DS_MTD_XML = LXX_DS_MTD_XML[:4] + 'USER' + LXX_DS_MTD_XML[8:]
-        L2A_DS_MTD_XML = L2A_DS_MTD_XML.replace('L1C_', 'L2A_')
-
-        oldfile = L2A_DS_DIR + '/' + LXX_DS_MTD_XML
-        newfile = L2A_DS_DIR + '/' + L2A_DS_MTD_XML
-        self.L2A_DS_MTD_XML = newfile
-        if firstInit == True:
-            os.rename(oldfile, newfile)
-            xp = L3_XmlParser(self.config, 'DS2A')
-            if(xp.convert() == False):
-                self.config.logger.fatal('error in converting datastrip metadata to level 2A')
-                self.exitError()
-            xp = L3_XmlParser(self.config, 'DS2A')
-            ti = xp.getTree('Image_Data_Info', 'Tiles_Information')
-            del ti.Tile_List.Tile[:]
-            xp.export()
-                              
-        return sorted(os.listdir(L1C_UP_DIR + GRANULE))
 
     def existL3_TargetProduct(self):
+        ''' Check if an L3 target product already exists. If not,
+            trigger the creation, else trigger the reinitialisation of the existing one
+
+            :return: true if succesful
+            :rtype: bool
+
+        '''
         self.config.logger.info('Checking existence of L3 target product ...')
         L3_TARGET_MASK = '*L03_*'
-        L3_UP_ID = self.config.targetDir
+        L3_TARGET_DIR = self.config.targetDir
+        if L3_TARGET_DIR == 'DEFAULT':
+            L3_TARGET_DIR = self.config.sourceDir
+            self.config.targetDir = L3_TARGET_DIR
         try:
-            os.stat(L3_UP_ID)
+            os.stat(L3_TARGET_DIR)
         except:
-            os.mkdir(L3_UP_ID)       
-        dirlist = sorted(os.listdir(L3_UP_ID))
+            os.mkdir(L3_TARGET_DIR)
+        dirlist = sorted(os.listdir(L3_TARGET_DIR))
         for L3_TARGET_ID in dirlist:
-            if fnmatch.fnmatch(L3_TARGET_ID, L3_TARGET_MASK) == True:
+            if fnmatch.fnmatch(L3_TARGET_ID, L3_TARGET_MASK):
                 self.config.logger.info('L3 target product already exists.')
-                self.L3_TARGET_ID = L3_TARGET_ID
+                if self.config.cleanTarget:
+                    self.config.logger.info('Clean option selected: L3 target product will be cleaned.')
+                    l3Target = os.path.join(self.config.targetDir, L3_TARGET_ID)
+                    try:
+                        shutil.rmtree(l3Target)
+                    except:
+                        pass
+                    self.config.cleanTarget = False
+                    break
+                self.config.L3_TARGET_ID = L3_TARGET_ID
                 return self.reinitL3_TargetProduct()
             else:
                 continue
         # no L3 target exists, will be created:
-        self.config.logger.info('L3 target will be created.')
+        self.config.logger.info('L3 target product will be created.')
         return self.createL3_TargetProduct()
 
-        return False                                    
-
     def createL3_TargetProduct(self):
+        ''' Create the L3 target product.
+
+            :return: true if succesful
+            :rtype: bool
+
+        '''
         self.config.logger.info('Creating L3 target product ...')
         L2A_UP_MASK = '*2A_*'
-        L2A_UP_DIR = self.config.sourceDir + '/' + self.L2A_UP_ID
+        L2A_UP_DIR = os.path.join(self.config.sourceDir, self.config.L2A_UP_ID)
         # detect the filename for the datastrip metadata:
-        L2A_DS_DIR = L2A_UP_DIR + '/DATASTRIP/'
+        L2A_DS_DIR = os.path.join(L2A_UP_DIR, 'DATASTRIP')
         if os.path.exists(L2A_DS_DIR) == False:
             stderrWrite('directory "%s" does not exist.\n' % L2A_DS_DIR)
             self.config.exitError()
@@ -686,9 +126,9 @@ class L3_Product(Borg):
             stderrWrite('No metadata in datastrip\n.')
             self.config.exitError()
 
-        L2A_DS_DIR += dirname
+        L2A_DS_DIR = os.path.join(L2A_DS_DIR, dirname)
         L2A_DS_MTD_XML = (dirname[:-7]+'.xml').replace('_MSI_', '_MTD_')
-        self.L2A_DS_MTD_XML = L2A_DS_DIR + '/' + L2A_DS_MTD_XML
+        self.config.L2A_DS_MTD_XML = os.path.join(L2A_DS_DIR, L2A_DS_MTD_XML)
         xp = L3_XmlParser(self.config, 'DS2A')
         xp.export()
         xp.validate()
@@ -699,7 +139,7 @@ class L3_Product(Borg):
             self.config.exitError()
             return False
 
-        GRANULE = L2A_UP_DIR + '/GRANULE'
+        GRANULE = os.path.join(L2A_UP_DIR, 'GRANULE')
         if os.path.exists(GRANULE) == False:
             stderrWrite('directory "' + GRANULE + '" does not exist.')
             self.config.exitError()
@@ -711,36 +151,58 @@ class L3_Product(Borg):
         L3_TARGET_ID = L3_TARGET_ID.replace('L2A_', 'L03_')
         L3_TARGET_ID = L3_TARGET_ID.replace(L3_TARGET_ID[47:62], self.config.minTime)
         L3_TARGET_ID = L3_TARGET_ID.replace(L3_TARGET_ID[63:78], self.config.maxTime)
-        targetDir = self.config.targetDir
-        if targetDir != 'DEFAULT':
+
+        if self.config.targetDir != 'DEFAULT':
             targetDir = self.config.targetDir
-        L3_TARGET_DIR = targetDir + '/' + L3_TARGET_ID
-        self.L3_TARGET_DIR = L3_TARGET_DIR
-        self.L3_TARGET_ID = L3_TARGET_ID
+            if(os.path.exists(targetDir) == False):
+                os.mkdir(targetDir)
+        else:
+            targetDir = dirname
+            self.config.targetDir = targetDir
+            
+        L3_TARGET_DIR = os.path.join(targetDir, L3_TARGET_ID)
+        self.config.L3_TARGET_DIR = L3_TARGET_DIR
+        self.config.L3_TARGET_ID = L3_TARGET_ID
 
-        L2A_INSPIRE_XML = L2A_UP_DIR + '/INSPIRE.xml'
-        L2A_MANIFEST_SAFE = L2A_UP_DIR + '/manifest.safe'
+        L2A_INSPIRE_XML = os.path.join(L2A_UP_DIR, 'INSPIRE.xml')
+        L2A_MANIFEST_SAFE = os.path.join(L2A_UP_DIR, 'manifest.safe')
 
-        L3_INSPIRE_XML = L3_TARGET_DIR + '/INSPIRE.xml'
-        L3_MANIFEST_SAFE = L3_TARGET_DIR + '/manifest.safe'
+        L3_INSPIRE_XML = os.path.join(L3_TARGET_DIR, 'INSPIRE.xml')
+        L3_MANIFEST_SAFE = os.path.join(L3_TARGET_DIR, 'manifest.safe')
 
-        AUX_DATA = '/AUX_DATA'
-        DATASTRIP = '/DATASTRIP'
-        GRANULE = '/GRANULE'
-        HTML = '/HTML'
-        REP_INFO = '/rep_info'
- 
-        copy_tree(L2A_UP_DIR + AUX_DATA, L3_TARGET_DIR + AUX_DATA)
-        copy_tree(L2A_UP_DIR + DATASTRIP, L3_TARGET_DIR + DATASTRIP)
-        copy_tree(L2A_UP_DIR + HTML, L3_TARGET_DIR + HTML)
-        copy_tree(L2A_UP_DIR + REP_INFO, L3_TARGET_DIR + REP_INFO)
-        copy_file(L2A_INSPIRE_XML, L3_INSPIRE_XML)
-        copy_file(L2A_MANIFEST_SAFE, L3_MANIFEST_SAFE)
-        if(os.path.exists(L3_TARGET_DIR + GRANULE) == False):
-            os.mkdir(L3_TARGET_DIR + GRANULE)
+        AUX_DATA = 'AUX_DATA'
+        DATASTRIP = 'DATASTRIP'
+        GRANULE = 'GRANULE'
+        HTML = 'HTML'
+        REP_INFO = 'rep_info'
 
-        self.L3_INSPIRE_XML = L2A_INSPIRE_XML
-        self.L3_MANIFEST_SAFE = L2A_MANIFEST_SAFE
+        if os.name == 'nt':
+            # special treatment for windows for long pathnames:
+            L2A_UP_DIR_ = u'\\'.join([u'\\\\?', L2A_UP_DIR])
+            L2A_INSPIRE_XML_ = u'\\'.join([u'\\\\?', L2A_INSPIRE_XML])
+            L2A_MANIFEST_SAFE_ = u'\\'.join([u'\\\\?', L2A_MANIFEST_SAFE])
+            L3_TARGET_DIR_ = u'\\'.join([u'\\\\?', L3_TARGET_DIR])
+            L3_INSPIRE_XML_ = u'\\'.join([u'\\\\?', L3_INSPIRE_XML])
+            L3_MANIFEST_SAFE_ = u'\\'.join([u'\\\\?', L3_MANIFEST_SAFE])
+        else:
+            L2A_UP_DIR_ = L2A_UP_DIR
+            L2A_INSPIRE_XML_ = L2A_INSPIRE_XML
+            L2A_MANIFEST_SAFE_ = L2A_MANIFEST_SAFE
+            L3_TARGET_DIR_ = L3_TARGET_DIR
+            L3_INSPIRE_XML_ = L3_INSPIRE_XML
+            L3_MANIFEST_SAFE_ = L3_MANIFEST_SAFE
+
+        copy_tree(os.path.join(L2A_UP_DIR_, AUX_DATA), os.path.join(L3_TARGET_DIR_, AUX_DATA))
+        copy_tree(os.path.join(L2A_UP_DIR_, DATASTRIP), os.path.join(L3_TARGET_DIR_, DATASTRIP))
+        copy_tree(os.path.join(L2A_UP_DIR_, HTML), os.path.join(L3_TARGET_DIR_, HTML))
+        copy_tree(os.path.join(L2A_UP_DIR_, REP_INFO), os.path.join(L3_TARGET_DIR_, REP_INFO))
+        copy_file(L2A_INSPIRE_XML_, L3_INSPIRE_XML_)
+        copy_file(L2A_MANIFEST_SAFE_, L3_MANIFEST_SAFE_)
+        if not os.path.exists(os.path.join(L3_TARGET_DIR_, GRANULE)):
+            os.mkdir(os.path.join(L3_TARGET_DIR_, GRANULE))
+
+        self.config.L3_INSPIRE_XML = L2A_INSPIRE_XML_
+        self.config.L3_MANIFEST_SAFE = L2A_MANIFEST_SAFE_
 
         #create user product:
         S2A_mask = 'S2A_*'
@@ -755,24 +217,31 @@ class L3_Product(Borg):
             self.config.exitError()
 
         # prepare L3 User Product metadata file
-        fn_L2A = L2A_UP_DIR  + '/' + filename
+        fn_L2A = os.path.join(L2A_UP_DIR_, filename)
         fn_L3 = filename[:4] + 'USER' + filename[8:]
         fn_L3 = fn_L3.replace('L2A_', 'L03_')
-        fn_L3 = L3_TARGET_DIR + '/' + fn_L3
-        self.L2A_UP_MTD_XML = fn_L2A
+        fn_L3 = os.path.join(L3_TARGET_DIR_, fn_L3)
+        self.config.L2A_UP_MTD_XML = fn_L2A
         xp = L3_XmlParser(self.config, 'UP2A')
         xp.export()
         xp.validate()
-        self.L3_TARGET_MTD_XML = fn_L3
+        self.config.L3_TARGET_MTD_XML = fn_L3
         # copy L2A schemes from config_dir into rep_info:    
         xp = L3_XmlParser(self.config, 'GIPP')
         cs = xp.getRoot('Common_Section')
+
         upScheme2a = cs.UP_Scheme_2A.text
+        basename = os.path.basename(upScheme2a)
+        copy_file(os.path.join(self.config.configDir, upScheme2a), os.path.join(L3_TARGET_DIR_, REP_INFO, basename))
+
         tileScheme2a = cs.Tile_Scheme_2A.text
+        basename = os.path.basename(tileScheme2a)
+        copy_file(os.path.join(self.config.configDir, tileScheme2a), os.path.join(L3_TARGET_DIR_, REP_INFO, basename))
+
         dsScheme2a = cs.DS_Scheme_2A.text
-        copy_file(self.config.configDir + upScheme2a, L3_TARGET_DIR + REP_INFO + '/' + upScheme2a)
-        copy_file(self.config.configDir + tileScheme2a, L3_TARGET_DIR + REP_INFO + '/' + tileScheme2a)
-        copy_file(self.config.configDir + dsScheme2a, L3_TARGET_DIR + REP_INFO + '/' + dsScheme2a)
+        basename = os.path.basename(dsScheme2a)
+        copy_file(os.path.join(self.config.configDir, dsScheme2a), os.path.join(L3_TARGET_DIR_, REP_INFO, basename))
+
         # copy L3 User Product metadata file:
         copy_file(fn_L2A, fn_L3)
         
@@ -785,21 +254,37 @@ class L3_Product(Borg):
         xp = L3_XmlParser(self.config, 'UP03')
         pi = xp.getTree('General_Info', 'L3_Product_Info')        
         # update L2A entries from L2A_UP_MTD_XML:
-        pi.PRODUCT_URI = 'http://www.telespazio-vega.de'
+
+        # 2015-07-30T10:39:14.021Z
+        tmin = self.config.minTime
+        tmax = self.config.maxTime
+        pi.PRODUCT_START_TIME = tmin[:4]+'-'+tmin[4:6]+'-'+tmin[6:11]+':'+tmin[11:13]+':'+tmin[13:15]+'.000Z'
+        pi.PRODUCT_STOP_TIME = tmax[:4]+'-'+tmax[4:6]+'-'+tmax[6:11]+'-'+tmax[11:13]+':'+tmax[13:15]+'.000Z'
         pi.PROCESSING_LEVEL = 'Level-3p'
         pi.PRODUCT_TYPE = 'S2MSI3p'
         pi.PROCESSING_ALGORITHM = self.config.algorithm
         pi.RADIOMETRIC_PREFERENCE = self.config.radiometricPreference
         dt = datetime.utcnow()
         pi.GENERATION_TIME = strftime('%Y-%m-%dT%H:%M:%SZ', dt.timetuple())
-        pi.PREVIEW_IMAGE_URL = 'http://www.telespazio-vega.de'
         qo = pi.Query_Options
         del qo[:]
-        del pi.L3_Product_Organisation.Granule_List[:]  
+        del pi.L3_Product_Organisation.Granule_List[:]
+        aux = xp.getRoot('Auxiliary_Data_Info')
+        del aux[:]
+        l3auxData = xp.getTree('L3_Auxiliary_Data_Info', 'Aux_Data')
+        l3auxData.clear()
+        qii = xp.getRoot('Quality_Indicators_Info')
+        del qii[:]
+        l3icqi = xp.getTree('L3_Quality_Indicators_Info', 'Image_Content_QI')
+        del l3icqi[:]
+        l3qii = xp.getRoot('L3_Quality_Indicators_Info')
+        tree = objectify.Element('L3_Classification_QI')
+        tree.attrib['resolution'] = str(self.config.resolution)
+        l3qii.append(tree)
         xp.export()
 
         #create datastrip ID:
-        L3_DS_DIR = self.L3_TARGET_DIR + DATASTRIP
+        L3_DS_DIR = os.path.join(self.config.L3_TARGET_DIR, DATASTRIP)
         dirlist = sorted(os.listdir(L3_DS_DIR))
         found = False
         for dirname in dirlist:
@@ -813,10 +298,10 @@ class L3_Product(Borg):
         L2A_DS_ID = dirname
         L3_DS_ID = L2A_DS_ID[:4] + 'USER' + L2A_DS_ID[8:]
         L3_DS_ID = L3_DS_ID.replace('L2A_', 'L03_')
-        self.L3_DS_ID = L3_DS_ID
+        self.config.L3_DS_ID = L3_DS_ID
 
-        olddir = L3_DS_DIR + '/' + L2A_DS_ID
-        newdir = L3_DS_DIR + '/' + L3_DS_ID
+        olddir = os.path.join(L3_DS_DIR, L2A_DS_ID)
+        newdir = os.path.join(L3_DS_DIR, L3_DS_ID)
         os.rename(olddir, newdir)
 
         #find datastrip metadada, rename and change it:
@@ -834,9 +319,9 @@ class L3_Product(Borg):
         LXX_DS_MTD_XML = filename
         L3_DS_MTD_XML = LXX_DS_MTD_XML[:4] + 'USER' + LXX_DS_MTD_XML[8:]
         L3_DS_MTD_XML = L3_DS_MTD_XML.replace('L2A_', 'L03_')
-        oldfile = L3_DS_DIR + '/' + LXX_DS_MTD_XML
-        newfile = L3_DS_DIR + '/' + L3_DS_MTD_XML
-        self.L3_DS_MTD_XML = newfile
+        oldfile = os.path.join(L3_DS_DIR, LXX_DS_MTD_XML)
+        newfile = os.path.join(L3_DS_DIR, L3_DS_MTD_XML)
+        self.config.L3_DS_MTD_XML = newfile
 
         os.rename(oldfile, newfile)
         xp = L3_XmlParser(self.config, 'DS03')
@@ -848,51 +333,97 @@ class L3_Product(Borg):
         ti = xp.getTree('Image_Data_Info', 'Tiles_Information')
         del ti.Tile_List.Tile[:]
         xp.export()
+        self.createTable()
         return True
 
     def reinitL3_TargetProduct(self):
+        ''' Reinit the L3 target product
+
+            :return: true if succesful
+            :rtype: bool
+
+        '''
+
         L3_DS_ID = None
         L3_TARGET_MASK = '*L03_*'
         dirlist = sorted(os.listdir(self.config.targetDir))
         for L3_TARGET_ID in dirlist:
             if fnmatch.fnmatch(L3_TARGET_ID, L3_TARGET_MASK) == True:
-                self.L3_TARGET_ID = L3_TARGET_ID
-                self.L3_TARGET_DIR = self.config.targetDir + '/' + L3_TARGET_ID
+                self.config.L3_TARGET_ID = L3_TARGET_ID
+                self.config.L3_TARGET_DIR = os.path.join(self.config.targetDir, L3_TARGET_ID)
                 break
-        
+
+        # create user product:
+        S2A_mask = 'S2A_*'
+        filelist = sorted(os.listdir(self.config.L3_TARGET_DIR ))
+        found = False
+        for filename in filelist:
+            if (fnmatch.fnmatch(filename, S2A_mask) == True):
+                found = True
+                break
+        if found == False:
+            stderrWrite('No metadata for user product')
+            self.config.exitError()
+        self.config.L3_TARGET_MTD_XML = os.path.join(self.config.L3_TARGET_DIR, filename)
+
+        xp = L3_XmlParser(self.config, 'UP03')
+        l3qii = xp.getRoot('L3_Quality_Indicators_Info')
+        node = objectify.Element('L3_Classification_QI')
+        if self.insert(l3qii, node):
+            xp.export()
+
         L3_DS_MASK = '*_L03_DS_*'
-        L3_DS_DIR = self.config.targetDir + '/' + L3_TARGET_ID + '/DATASTRIP'
+        DATASTRIP = 'DATASTRIP'
+        L3_DS_DIR = os.path.join(self.config.targetDir, L3_TARGET_ID, DATASTRIP)
         dirlist = sorted(os.listdir(L3_DS_DIR))
         for L3_DS_ID in dirlist:
             if fnmatch.fnmatch(L3_DS_ID, L3_DS_MASK) == True:
-                self.L3_DS_ID = L3_DS_ID
+                self.config.L3_DS_ID = L3_DS_ID
                 break
         
-        if L3_DS_ID != None:
+        if L3_DS_ID is not None:
             L3_DS_MTD_XML = (L3_DS_ID[:-7]+'.xml').replace('_MSI_', '_MTD_')
-            self.L3_DS_MTD_XML = L3_DS_DIR + '/' + L3_DS_ID + '/' + L3_DS_MTD_XML
+            self.config.L3_DS_MTD_XML = os.path.join(L3_DS_DIR, L3_DS_ID, L3_DS_MTD_XML)
             return True
         
         return False
 
     def createL3_Tile(self, tileId):
+        ''' Create an L3 tile
+
+            :param tileId: the tile ID
+            :type tileId: string
+
+        '''
+
         L2A_TILE_ID = tileId
         L3_TILE_ID = L2A_TILE_ID.replace('L2A_', 'L03_')
-        self.L3_TILE_ID = L3_TILE_ID
-        sourceDir = self.config.sourceDir + '/'
-        L2A_UP_ID = self.L2A_UP_ID + '/'
-        L3_TARGET_DIR = self.L3_TARGET_DIR
-        GRANULE = '/GRANULE/'
-        QI_DATA = '/QI_DATA/'
+        self.config.L3_TILE_ID = L3_TILE_ID
+        sourceDir = self.config.sourceDir
+        L2A_UP_ID = self.config.L2A_UP_ID
+        L3_TARGET_DIR = self.config.L3_TARGET_DIR
+        GRANULE = 'GRANULE'
+        QI_DATA = 'QI_DATA'
         
-        L2A_TILE_ID = sourceDir + L2A_UP_ID + GRANULE + L2A_TILE_ID
-        L3_TILE_ID = L3_TARGET_DIR + GRANULE + L3_TILE_ID
+        L2A_TILE_ID = os.path.join(sourceDir, L2A_UP_ID, GRANULE, L2A_TILE_ID)
+        L3_TILE_ID = os.path.join(L3_TARGET_DIR, GRANULE, L3_TILE_ID)
 
-        os.mkdir(L3_TILE_ID)
-        os.mkdir(L3_TILE_ID + QI_DATA)
-        self.config.logger.info('new working directory is: ' + L3_TILE_ID)
+        if os.name == 'nt':
+            # special treatment for windows for long pathnames:
+            L2A_TILE_ID_ = u'\\'.join([u'\\\\?', L2A_TILE_ID])
+            L3_TILE_ID_ = u'\\'.join([u'\\\\?', L3_TILE_ID])
+        else:
+            L2A_TILE_ID_ = L2A_TILE_ID
+            L3_TILE_ID_ = L3_TILE_ID
 
-        filelist = sorted(os.listdir(L2A_TILE_ID))
+        try:
+            os.mkdir(L3_TILE_ID_)
+            os.mkdir(os.path.join(L3_TILE_ID_, QI_DATA))
+            self.config.logger.info('new working directory is: ' + L3_TILE_ID_)
+        except:
+            pass
+
+        filelist = sorted(os.listdir(L2A_TILE_ID_))
         found = False
         L2A_UP_MASK = '*_L2A_*'
         for filename in filelist:
@@ -903,16 +434,17 @@ class L3_Product(Borg):
             self.config.logger.fatal('No metadata in tile')
             self.config.exitError()
 
-        L2A_TILE_MTD_XML = L2A_TILE_ID + '/' + filename
+        assert isinstance(filename, object)
+        L2A_TILE_MTD_XML = os.path.join(L2A_TILE_ID_, filename)
         L3_TILE_MTD_XML = filename
         L3_TILE_MTD_XML = L3_TILE_MTD_XML.replace('L2A_', 'L03_')
-        L3_TILE_MTD_XML = L3_TILE_ID + '/' + L3_TILE_MTD_XML
+        L3_TILE_MTD_XML = os.path.join(L3_TILE_ID_, L3_TILE_MTD_XML)
         copy_file(L2A_TILE_MTD_XML, L3_TILE_MTD_XML)
-        self.L2A_TILE_MTD_XML = L2A_TILE_MTD_XML
+        self.config.L2A_TILE_MTD_XML = L2A_TILE_MTD_XML
         xp = L3_XmlParser(self.config, 'T2A')
         xp.export()
         xp.validate()
-        self.L3_TILE_MTD_XML = L3_TILE_MTD_XML
+        self.config.L3_TILE_MTD_XML = L3_TILE_MTD_XML
 
         #update tile and datastrip id in metadata file.
         if(self.config.resolution == 20) or (self.config.resolution == 60):
@@ -938,160 +470,439 @@ class L3_Product(Borg):
             except:
                 pass
             xp.export()
+
             # read updated file and append new items:
+            # create the first three enties of the Quality Measures:
             xp = L3_XmlParser(self.config, 'T03')
             root = xp.getRoot('Quality_Indicators_Info')
-            root.append(objectify.Element('L3_Pixel_Level_QI'))
-            tree = xp.getTree('Quality_Indicators_Info', 'L3_Pixel_Level_QI')
-            tree.append(objectify.Element('PVI_FILENAME'))     
-            tree.append(objectify.Element('L3_TILE_MOSAIC_MASK'))                 
-            tree.append(objectify.Element('L3_TILE_CLASSIFICATION_MASK'))
-            
-            root.append(objectify.Element('L3_Classification_QI'))         
-            tree = xp.getTree('Quality_Indicators_Info', 'L3_Classification_QI')
-            tree.append(objectify.Element('TOTAL_PIXEL_COUNT'))
-            tree.append(objectify.Element('DATA_PIXEL_COUNT'))
-            tree.append(objectify.Element('DATA_PIXEL_PERCENTAGE'))
-            tree.append(objectify.Element('NODATA_PIXEL_COUNT'))
-            tree.append(objectify.Element('NODATA_PIXEL_PERCENTAGE'))
-            tree.append(objectify.Element('GOOD_PIXEL_COUNT'))
-            tree.append(objectify.Element('GOOD_PIXEL_PERCENTAGE'))
-            tree.append(objectify.Element('BAD_PIXEL_COUNT'))
-            tree.append(objectify.Element('BAD_PIXEL_PERCENTAGE'))
-            tree.append(objectify.Element('SATURATED_DEFECTIVE_PIXEL_COUNT'))
-            tree.append(objectify.Element('SATURATED_DEFECTIVE_PIXEL_PERCENTAGE'))
-            tree.append(objectify.Element('DARK_FEATURES_COUNT'))
-            tree.append(objectify.Element('DARK_FEATURES_PERCENTAGE'))
-            tree.append(objectify.Element('CLOUD_SHADOWS_COUNT'))
-            tree.append(objectify.Element('CLOUD_SHADOW_PERCENTAGE'))
-            tree.append(objectify.Element('VEGETATION_COUNT'))
-            tree.append(objectify.Element('VEGETATION_PERCENTAGE'))
-            tree.append(objectify.Element('BARE_SOILS_COUNT'))
-            tree.append(objectify.Element('BARE_SOILS_PERCENTAGE'))
-            tree.append(objectify.Element('WATER_COUNT'))
-            tree.append(objectify.Element('WATER_PERCENTAGE'))
-            tree.append(objectify.Element('LOW_PROBA_CLOUDS_COUNT'))
-            tree.append(objectify.Element('LOW_PROBA_CLOUDS_PERCENTAGE'))
-            tree.append(objectify.Element('MEDIUM_PROBA_CLOUDS_COUNT'))
-            tree.append(objectify.Element('MEDIUM_PROBA_CLOUDS_PERCENTAGE'))
-            tree.append(objectify.Element('HIGH_PROBA_CLOUDS_COUNT'))
-            tree.append(objectify.Element('HIGH_PROBA_CLOUDS_PERCENTAGE'))
-            tree.append(objectify.Element('THIN_CIRRUS_COUNT'))
-            tree.append(objectify.Element('THIN_CIRRUS_PERCENTAGE'))
-            tree.append(objectify.Element('SNOW_ICE_COUNT'))
-            tree.append(objectify.Element('SNOW_ICE_PERCENTAGE'))
 
-            tree.TOTAL_PIXEL_COUNT = 0
-            tree.DATA_PIXEL_COUNT = 0
-            tree.DATA_PIXEL_PERCENTAGE = 0.0
-            tree.NODATA_PIXEL_COUNT = 0
-            tree.NODATA_PIXEL_PERCENTAGE = 0.0
-            tree.GOOD_PIXEL_COUNT = 0
-            tree.GOOD_PIXEL_PERCENTAGE = 0.0
-            tree.BAD_PIXEL_COUNT = 0
-            tree.BAD_PIXEL_PERCENTAGE = 0.0
-            tree.SATURATED_DEFECTIVE_PIXEL_COUNT = 0
-            tree.SATURATED_DEFECTIVE_PIXEL_PERCENTAGE = 0.0
-            tree.DARK_FEATURES_COUNT = 0
-            tree.DARK_FEATURES_PERCENTAGE = 0.0
-            tree.CLOUD_SHADOWS_COUNT = 0
-            tree.CLOUD_SHADOW_PERCENTAGE = 0.0
-            tree.VEGETATION_COUNT = 0
-            tree.VEGETATION_PERCENTAGE = 0.0
-            tree.BARE_SOILS_COUNT = 0
-            tree.BARE_SOILS_PERCENTAGE = 0.0
-            tree.WATER_COUNT = 0
-            tree.WATER_PERCENTAGE = 0.0
-            tree.LOW_PROBA_CLOUDS_COUNT = 0
-            tree.LOW_PROBA_CLOUDS_PERCENTAGE = 0.0
-            tree.MEDIUM_PROBA_CLOUDS_COUNT = 0
-            tree.MEDIUM_PROBA_CLOUDS_PERCENTAGE = 0.0
-            tree.HIGH_PROBA_CLOUDS_COUNT = 0
-            tree.HIGH_PROBA_CLOUDS_PERCENTAGE = 0.0
-            tree.THIN_CIRRUS_COUNT = 0
-            tree.THIN_CIRRUS_PERCENTAGE = 0.0
-            tree.SNOW_ICE_COUNT = 0
-            tree.SNOW_ICE_PERCENTAGE = 0.0
-            
-            root.append(objectify.Element('L3_Mosaic_QI_List'))
+            tree = objectify.Element('L3_Pixel_Level_QI')
+            tree.attrib['resolution'] = str(self.config.resolution)
+            root.append(tree)
+
+            tree = objectify.Element('L3_Classification_QI')
+            tree.attrib['resolution'] = str(self.config.resolution)
+            root.append(tree)
+
+            tree = objectify.Element('L3_Mosaic_QI')
+            tree.attrib['resolution'] = str(self.config.resolution)
+            root.append(tree)
+
             xp.export()
 
             #update tile id in ds metadata file.
             xp = L3_XmlParser(self.config, 'DS03')
             ti = xp.getTree('Image_Data_Info', 'Tiles_Information')
-            ti.Tile_List.append(objectify.Element('Tile', tileId = L3_TILE_ID))
+            ti.Tile_List.append(objectify.Element('Tile', tileId = os.path.basename(L3_TILE_ID)))
             xp.export()
         return
     
     def reinitL2A_Tile(self):
+        ''' Reinit an L2A tile
+
+            :param tileId: the tile ID
+            :type tileId: string
+
+        '''
+
         L2A_MTD_MASK = 'S2A_*_MTD_L2A_TL_*.xml'
-        L2A_SOURCE_DIR = self.config.sourceDir + '/'
-        L2A_UP_ID = self.L2A_UP_ID
-        GRANULE = '/GRANULE/'
-        L2A_TILE_ID = L2A_SOURCE_DIR + L2A_UP_ID + GRANULE + self.L2A_TILE_ID
+        L2A_SOURCE_DIR = self.config.sourceDir
+        L2A_UP_ID = self.config.L2A_UP_ID
+        GRANULE = 'GRANULE'
+        L2A_TILE_ID = os.path.join(L2A_SOURCE_DIR, L2A_UP_ID, GRANULE, self.config.L2A_TILE_ID)
         dirlist = sorted(os.listdir(L2A_TILE_ID))
         for L2A_TILE_MTD_XML in dirlist:
-            if(fnmatch.fnmatch(L2A_TILE_MTD_XML, L2A_MTD_MASK) == True):
-                self.L2A_TILE_MTD_XML = L2A_TILE_ID + '/' + L2A_TILE_MTD_XML
+            if fnmatch.fnmatch(L2A_TILE_MTD_XML, L2A_MTD_MASK):
+                self.config.L2A_TILE_MTD_XML = os.path.join(L2A_TILE_ID, L2A_TILE_MTD_XML)
                 break
         return
     
     def reinitL3_Tile(self, tileId):
+        ''' Reinit an L3 tile
+
+            :param tileId: the tile ID
+            :type tileId: string
+
+        '''
+
         L3_MTD_MASK = 'S2A_*_MTD_L03_TL_*.xml'
-        L3_TARGET_DIR = self.L3_TARGET_DIR + '/'
-        GRANULE = '/GRANULE/'
-        self.L3_TILE_ID = tileId
-        L3_TILE_ID = L3_TARGET_DIR + GRANULE + tileId
+        L3_TARGET_DIR = self.config.L3_TARGET_DIR
+        GRANULE = 'GRANULE'
+        self.config.L3_TILE_ID = tileId
+        L3_TILE_ID = os.path.join(L3_TARGET_DIR, GRANULE, tileId)
         dirlist = sorted(os.listdir(L3_TILE_ID))
         for L3_TILE_MTD_XML in dirlist:
-            if fnmatch.fnmatch(L3_TILE_MTD_XML, L3_MTD_MASK) == True:
-                self.L3_TILE_MTD_XML = L3_TILE_ID + '/' + L3_TILE_MTD_XML
+            if fnmatch.fnmatch(L3_TILE_MTD_XML, L3_MTD_MASK):
+                self.config.L3_TILE_MTD_XML = os.path.join(L3_TILE_ID, L3_TILE_MTD_XML)
                 break
+
+        # append the QI headers for the new resolutions:
+        xp = L3_XmlParser(self.config, 'T03')
+        qii = xp.getRoot('Quality_Indicators_Info')
+
+        node = objectify.Element('L3_Pixel_Level_QI')
+        if self.insert(qii, node):
+            xp.export()
+        node = objectify.Element('L3_Classification_QI')
+        if self.insert(qii, node):
+            xp.export()
+        node = objectify.Element('L3_Mosaic_QI')
+        if self.insert(qii, node):
+            xp.export()
+
         return
 
-    def postprocess(self):
-        # copy log to QI data as a report:
-        dirname, basename = os.path.split(self.L3_TILE_MTD_XML)
+    def insert(self, tree, node):
+        ''' A support class, inserting a new node at the correct location in the given tree.
+
+            :param tree: the QI subtree.
+            :type tree: an Objectify Element.
+            :param node: the QI node to insert.
+            :type node: an Objectify Element.
+            :return: true if succesful
+            :rtype: bool
+
+        '''
+
+        selfRes = self.config.resolution
+        node.attrib['resolution'] = str(selfRes)
+        maxRes = 60
+        count = -1
+
+        for e in tree.getchildren():
+            count += 1
+            if e.tag == node.tag:
+                for i in range(len(e)):
+                    resolution = int(e[i].attrib['resolution'])
+                    if selfRes == resolution:
+                        return False
+
+                i = len(e)
+                resolution = int(e[0].attrib['resolution'])
+                try:
+                    if selfRes < resolution:
+                        tree.insert(count, node)
+                        break
+                    elif selfRes < maxRes:
+                        tree.insert(count+1, node)
+                        break
+                    else:
+                        tree.insert(count+i, node)
+                        break
+                except:
+                    return False
+
+        return True
+
+    def updateUserProduct(self, userProduct):
+        ''' Update the current user product.
+            Check if at target product is present.
+
+            :param userProduct: the user product identifier.
+            :type userProduct: str
+            :return: true, if target product exists.
+            :rtype: boolean
+
+        '''
+        self.config.L2A_UP_ID = userProduct
+        if self.existL3_TargetProduct() == False:
+            stderrWrite('directory "%s" L3 target product is missing\n.' % self.config.targetDir)
+            self.config.exitError()
+        return True
+
+    def postProcessing(self):
+        ''' update the user product and product metadata,
+            copy the logfile to QI data as a report,
+            Check if at target product is present.
+
+        '''
+
+        self.updateProductMetadata()
+        xp = L3_XmlParser(self.config, 'UP03')
+        auxdata = xp.getTree('L3_Auxiliary_Data_Info', 'Aux_Data')
+        auxdata.clear()
+        dirname, basename = os.path.split(self.config.L3_TILE_MTD_XML)
+        fn1r = basename.replace('_MTD_', '_GIP_')
+        fn2r = fn1r.replace('.xml', '')
+        gippFn = etree.Element('GIPP_FILENAME', type='GIP_Level-3p', version=self.config.processorVersion)
+        gippFn.text = fn2r
+        gippList = objectify.Element('L3_GIPP_LIST')
+        gippList.append(gippFn)
+        auxdata.append(gippList)
+        xp.export()
+
+        dirname, basename = os.path.split(self.config.L3_TILE_MTD_XML)
         report = basename.replace('.xml', '_Report.xml')
-        report = dirname + '/QI_DATA/' + report
+        report = os.path.join(dirname, 'QI_DATA', report)
         
         if((os.path.isfile(self.config.fnLog)) == False):
             self.logger.fatal('Missing file: ' + self.config.fnLog)
             self.config.exitError()
 
         f = open(self.config.fnLog, 'a')
-        f.write('</Sen2Cor_Level-3_Report_File>')
+        f.write('</Sen2Three_Level-3_Report_File>')
         f.flush()
         f.close()
         copy_file(self.config.fnLog, report)
-        return
- 
-    def tileExists(self, tileId):
-        tileId = tileId + '_' + str(self.config.resolution)
-        processedFn = self.config.sourceDir + '/' + 'processed'
 
-        try: # read list of tiles already processed
-            f = open(processedFn, 'r')
-            processedTiles = f.read()
-            if tileId in processedTiles:
-                return True
-        except:
-            pass
-        
+        return
+
+    def createTable(self):
+        ''' Create a HDF5 table
+        '''
+
+        dbname = os.path.join(self.config.L3_TARGET_DIR, '.database.h5')
+        h5file = tables.open_file(dbname, mode="w", title='Product')
+        grp = h5file.create_group("/", 'group1', 'Statistics')
+        h5file.create_table(grp, 'classes', Particle, 'Classes')
+        h5file.close()
+        return
+
+    def updateTableRow(self, classification):
+        ''' Update the statistics of a row in the table.
+
+            :param classification: the statistics
+            :type classification: an Objectify element
+
+        '''
+        dbname = os.path.join(self.config.L3_TARGET_DIR, '.database.h5')
+        tileID = self.config.L3_TILE_ID[-13:-7] + '_' + str(self.config.resolution)
+        h5file = tables.open_file(dbname, mode='a')
+        table = h5file.root.group1.classes # default
+        tileFound = False
+
+        for row in table:
+            if row['TILE_ID'] == tileID:
+                tileFound = True
+                row['TILES_COUNT'] += 1
+                row['TOTAL_PIXELS'] = classification.TOTAL_PIXEL_COUNT.pyval
+                row['DATA_PIXELS'] = classification.DATA_PIXEL_COUNT.pyval
+                row['NODATA_PIXELS'] = classification.NODATA_PIXEL_COUNT.pyval
+                row['GOOD_PIXELS'] = classification.GOOD_PIXEL_COUNT.pyval
+                row['BAD_PIXELS'] = classification.BAD_PIXEL_COUNT.pyval
+                row['SAT_DEF_PIXELS'] = classification.SATURATED_DEFECTIVE_PIXEL_COUNT.pyval
+                row['DARK_PIXELS'] = classification.DARK_FEATURES_COUNT.pyval
+                row['CLOUD_SHADOWS'] = classification.CLOUD_SHADOWS_COUNT.pyval
+                row['VEGETATION'] = classification.VEGETATION_COUNT.pyval
+                row['BARE_SOILS'] = classification.BARE_SOILS_COUNT.pyval
+                row['WATER'] = classification.WATER_COUNT.pyval
+                row['LOW_PROBA_CLOUDS'] = classification.LOW_PROBA_CLOUDS_COUNT.pyval
+                row['MED_PROBA_CLOUDS'] = classification.MEDIUM_PROBA_CLOUDS_COUNT.pyval
+                row['HIGH_PROBA_CLOUDS'] = classification.HIGH_PROBA_CLOUDS_COUNT.pyval
+                row['THIN_CIRRUS'] = classification.THIN_CIRRUS_COUNT.pyval
+                row['SNOW_ICE'] = classification.SNOW_ICE_COUNT.pyval
+                row.update()
+
+        if not tileFound:
+            row = table.row
+            row['TILE_ID'] = tileID
+            row['RESOLUTION'] = self.config.resolution
+            row['TILES_COUNT'] = 1
+            row['TOTAL_PIXELS'] = classification.TOTAL_PIXEL_COUNT.pyval
+            row['DATA_PIXELS'] = classification.DATA_PIXEL_COUNT.pyval
+            row['NODATA_PIXELS'] = classification.NODATA_PIXEL_COUNT.pyval
+            row['GOOD_PIXELS'] = classification.GOOD_PIXEL_COUNT.pyval
+            row['BAD_PIXELS'] = classification.BAD_PIXEL_COUNT.pyval
+            row['SAT_DEF_PIXELS'] = classification.SATURATED_DEFECTIVE_PIXEL_COUNT.pyval
+            row['DARK_PIXELS'] = classification.DARK_FEATURES_COUNT.pyval
+            row['CLOUD_SHADOWS'] = classification.CLOUD_SHADOWS_COUNT.pyval
+            row['VEGETATION'] = classification.VEGETATION_COUNT.pyval
+            row['BARE_SOILS'] = classification.BARE_SOILS_COUNT.pyval
+            row['WATER'] = classification.WATER_COUNT.pyval
+            row['LOW_PROBA_CLOUDS'] = classification.LOW_PROBA_CLOUDS_COUNT.pyval
+            row['MED_PROBA_CLOUDS'] = classification.MEDIUM_PROBA_CLOUDS_COUNT.pyval
+            row['HIGH_PROBA_CLOUDS'] = classification.HIGH_PROBA_CLOUDS_COUNT.pyval
+            row['THIN_CIRRUS'] = classification.THIN_CIRRUS_COUNT.pyval
+            row['SNOW_ICE'] = classification.SNOW_ICE_COUNT.pyval
+            row.append()
+
+        table.flush()
+        h5file.close()
+        return
+
+    def checkCriteriaForTermination(self):
+        ''' Check if one of the two criteria for termination is reached:
+
+            :return: true if reached
+            :rtype: bool
+        '''
+
+        dbname = os.path.join(self.config.L3_TARGET_DIR, '.database.h5')
+        h5file = tables.open_file(dbname, mode='r')
+        table = h5file.root.group1.classes
+        dataPixelCount = 0
+        badPixelCount = 0
+        lowProbaCloudsCount = 0
+        medProbaCloudsCount = 0
+        hiProbaCloudsCount = 0
+        for row in table.iterrows():
+            if row['RESOLUTION'] == self.config.resolution:
+                dataPixelCount += row['DATA_PIXELS']
+                badPixelCount += row['BAD_PIXELS']
+                lowProbaCloudsCount += row['LOW_PROBA_CLOUDS']
+                medProbaCloudsCount += row['MED_PROBA_CLOUDS']
+                hiProbaCloudsCount += row['HIGH_PROBA_CLOUDS']
+
+        table.flush()
+        h5file.close()
+
+        dataPixelCount = float(dataPixelCount) * 0.01
+        badPixelPercentage = float32(badPixelCount) / dataPixelCount
+        lowProbaCloudsPercentage = float32(lowProbaCloudsCount) / dataPixelCount
+        medProbaCloudsPercentage = float32(medProbaCloudsCount) / dataPixelCount
+        hiProbaCloudsPercentage = float32(hiProbaCloudsCount) / dataPixelCount
+
+        if self.config.maxCloudProbability > lowProbaCloudsPercentage and \
+            self.config.maxCloudProbability > medProbaCloudsPercentage and \
+            self.config.maxCloudProbability > hiProbaCloudsPercentage:
+            self.config.timestamp('L3_Process: cloud probability reached configured limit')
+            return True
+        elif self.config.maxInvalidPixelsPercentage > badPixelPercentage:
+            self.config.timestamp('L3_Process: invalid pixel percentage reached configured limit')
+            return True
+
         return False
 
-    def appendTile(self, tileId):
-        processedTile = tileId + '\n'
-        processedFn = self.config.sourceDir + '/' + 'processed'
-        try:
-            f = open(processedFn, 'a')
-            f.write(processedTile)
-            f.flush()
-            f.close()
-        except:
-            stderrWrite('Could not update processed tile history.\n')
-            self.config.exitError()
-            return False               
-                
-        return True
+    def updateProductMetadata(self):
+        ''' Update the product metadata for each new synthesis.
+        '''
 
+        dbname = os.path.join(self.config.L3_TARGET_DIR, '.database.h5')
+        h5file = tables.open_file(dbname, mode='a')
+        table = h5file.root.group1.classes
+        
+        totalPixelCount = 0
+        dataPixelCount = 0
+        nodataPixelCount = 0
+        goodPixelCount = 0
+        badPixelCount = 0
+        satDefPixelCount = 0
+        darkFeaturesCount = 0
+        cloudShadowsCount = 0
+        vegetationCount = 0
+        bareSoilsCount = 0
+        waterCount = 0
+        lowProbaCloudsCount = 0
+        medProbaCloudsCount = 0
+        hiProbaCloudsCount = 0
+        thinCirrusCount = 0
+        snowIceCount = 0
+
+        for row in table.iterrows():
+            if row['RESOLUTION'] == self.config.resolution:
+                totalPixelCount += row['TOTAL_PIXELS']
+                dataPixelCount += row['DATA_PIXELS']
+                nodataPixelCount += row['NODATA_PIXELS']
+                goodPixelCount += row['GOOD_PIXELS']
+                badPixelCount += row['BAD_PIXELS']
+                satDefPixelCount += row['SAT_DEF_PIXELS']
+                darkFeaturesCount += row['DARK_PIXELS']
+                cloudShadowsCount +=row['CLOUD_SHADOWS']
+                vegetationCount += row['VEGETATION']
+                bareSoilsCount += row['BARE_SOILS']
+                waterCount += row['WATER']
+                lowProbaCloudsCount += row['LOW_PROBA_CLOUDS']
+                medProbaCloudsCount += row['MED_PROBA_CLOUDS']
+                hiProbaCloudsCount += row['HIGH_PROBA_CLOUDS']
+                thinCirrusCount += row['THIN_CIRRUS']
+                snowIceCount += row['SNOW_ICE']
+
+        table.flush()
+        h5file.close()
+
+        totalPixelCount = float(totalPixelCount) * 0.01
+        dataPixelCount = float(dataPixelCount) * 0.01
+        dataPixelPercentage = float32(dataPixelCount) / totalPixelCount * 100
+        nodataPixelPercentage = float32(nodataPixelCount) / totalPixelCount
+        goodPixelPercentage = float32(goodPixelCount) / dataPixelCount
+        badPixelPercentage = float32(badPixelCount) / dataPixelCount
+        satDefPixelPercentage = float32(satDefPixelCount) / dataPixelCount
+        darkFeaturesPercentage = float32(darkFeaturesCount) / dataPixelCount
+        cloudShadowsPercentage = float32(cloudShadowsCount) / dataPixelCount
+        vegetationPercentage = float32(vegetationCount) / dataPixelCount
+        bareSoilsPercentage = float32(bareSoilsCount) / dataPixelCount
+        waterPercentage = float32(waterCount) / dataPixelCount
+        lowProbaCloudsPercentage = float32(lowProbaCloudsCount) / dataPixelCount
+        medProbaCloudsPercentage = float32(medProbaCloudsCount) / dataPixelCount
+        hiProbaCloudsPercentage = float32(hiProbaCloudsCount) / dataPixelCount
+        thinCirrusPercentage = float32(thinCirrusCount) / dataPixelCount
+        snowIcePercentage = float32(snowIceCount) / dataPixelCount
+
+
+        classificationQI = objectify.Element('L3_Classification_QI')
+        classificationQI.attrib['resolution'] = str(self.config.resolution)
+        classificationQI.append(objectify.Element('TOTAL_PIXEL_COUNT'))
+        classificationQI.append(objectify.Element('DATA_PIXEL_COUNT'))
+        classificationQI.append(objectify.Element('DATA_PIXEL_PERCENTAGE'))
+        classificationQI.append(objectify.Element('NODATA_PIXEL_COUNT'))
+        classificationQI.append(objectify.Element('NODATA_PIXEL_PERCENTAGE'))
+        classificationQI.append(objectify.Element('GOOD_PIXEL_COUNT'))
+        classificationQI.append(objectify.Element('GOOD_PIXEL_PERCENTAGE'))
+        classificationQI.append(objectify.Element('BAD_PIXEL_COUNT'))
+        classificationQI.append(objectify.Element('BAD_PIXEL_PERCENTAGE'))
+        classificationQI.append(objectify.Element('SATURATED_DEFECTIVE_PIXEL_COUNT'))
+        classificationQI.append(objectify.Element('SATURATED_DEFECTIVE_PIXEL_PERCENTAGE'))
+        classificationQI.append(objectify.Element('DARK_FEATURES_COUNT'))
+        classificationQI.append(objectify.Element('DARK_FEATURES_PERCENTAGE'))
+        classificationQI.append(objectify.Element('CLOUD_SHADOWS_COUNT'))
+        classificationQI.append(objectify.Element('CLOUD_SHADOWS_PERCENTAGE'))
+        classificationQI.append(objectify.Element('VEGETATION_COUNT'))
+        classificationQI.append(objectify.Element('VEGETATION_PERCENTAGE'))
+        classificationQI.append(objectify.Element('BARE_SOILS_COUNT'))
+        classificationQI.append(objectify.Element('BARE_SOILS_PERCENTAGE'))
+        classificationQI.append(objectify.Element('WATER_COUNT'))
+        classificationQI.append(objectify.Element('WATER_PERCENTAGE'))
+        classificationQI.append(objectify.Element('LOW_PROBA_CLOUDS_COUNT'))
+        classificationQI.append(objectify.Element('LOW_PROBA_CLOUDS_PERCENTAGE'))
+        classificationQI.append(objectify.Element('MEDIUM_PROBA_CLOUDS_COUNT'))
+        classificationQI.append(objectify.Element('MEDIUM_PROBA_CLOUDS_PERCENTAGE'))
+        classificationQI.append(objectify.Element('HIGH_PROBA_CLOUDS_COUNT'))
+        classificationQI.append(objectify.Element('HIGH_PROBA_CLOUDS_PERCENTAGE'))
+        classificationQI.append(objectify.Element('THIN_CIRRUS_COUNT'))
+        classificationQI.append(objectify.Element('THIN_CIRRUS_PERCENTAGE'))
+        classificationQI.append(objectify.Element('SNOW_ICE_COUNT'))
+        classificationQI.append(objectify.Element('SNOW_ICE_PERCENTAGE'))
+
+        classificationQI.TOTAL_PIXEL_COUNT = int(totalPixelCount * 100)
+        classificationQI.DATA_PIXEL_COUNT = int(dataPixelCount * 100)
+        classificationQI.DATA_PIXEL_PERCENTAGE = dataPixelPercentage
+        classificationQI.NODATA_PIXEL_COUNT = nodataPixelCount
+        classificationQI.NODATA_PIXEL_PERCENTAGE = nodataPixelPercentage
+        classificationQI.GOOD_PIXEL_COUNT = goodPixelCount
+        classificationQI.GOOD_PIXEL_PERCENTAGE = goodPixelPercentage
+        classificationQI.BAD_PIXEL_COUNT = badPixelCount
+        classificationQI.BAD_PIXEL_PERCENTAGE = badPixelPercentage
+        classificationQI.SATURATED_DEFECTIVE_PIXEL_COUNT = satDefPixelCount
+        classificationQI.SATURATED_DEFECTIVE_PIXEL_PERCENTAGE = satDefPixelPercentage
+        classificationQI.DARK_FEATURES_COUNT = darkFeaturesCount
+        classificationQI.DARK_FEATURES_PERCENTAGE = darkFeaturesPercentage
+        classificationQI.CLOUD_SHADOWS_COUNT = cloudShadowsCount
+        classificationQI.CLOUD_SHADOWS_PERCENTAGE = cloudShadowsPercentage
+        classificationQI.VEGETATION_COUNT = vegetationCount
+        classificationQI.VEGETATION_PERCENTAGE = vegetationPercentage
+        classificationQI.BARE_SOILS_COUNT = bareSoilsCount
+        classificationQI.BARE_SOILS_PERCENTAGE = bareSoilsPercentage
+        classificationQI.WATER_COUNT = waterCount
+        classificationQI.WATER_PERCENTAGE = waterPercentage
+        classificationQI.LOW_PROBA_CLOUDS_COUNT = lowProbaCloudsCount
+        classificationQI.LOW_PROBA_CLOUDS_PERCENTAGE = lowProbaCloudsPercentage
+        classificationQI.MEDIUM_PROBA_CLOUDS_COUNT = medProbaCloudsCount
+        classificationQI.MEDIUM_PROBA_CLOUDS_PERCENTAGE = medProbaCloudsPercentage
+        classificationQI.HIGH_PROBA_CLOUDS_COUNT = hiProbaCloudsCount
+        classificationQI.HIGH_PROBA_CLOUDS_PERCENTAGE = hiProbaCloudsPercentage
+        classificationQI.THIN_CIRRUS_COUNT = thinCirrusCount
+        classificationQI.THIN_CIRRUS_PERCENTAGE = thinCirrusPercentage
+        classificationQI.SNOW_ICE_COUNT = snowIceCount
+        classificationQI.SNOW_ICE_PERCENTAGE = snowIcePercentage
+
+        xp = L3_XmlParser(self.config, 'UP03')
+        l3qi = xp.getTree('L3_Quality_Indicators_Info', 'L3_Classification_QI')
+        l3qiLen = len(l3qi)
+        for i in range(l3qiLen):
+            if int(l3qi[i].attrib['resolution']) == self.config.resolution:
+                l3qi[i].clear()
+                l3qi[i] = classificationQI
+                xp.export()
+                break
+
+        return True

@@ -1,17 +1,10 @@
 #!/usr/bin/env python
+# -*- coding: iso-8859-15 -*-
 
 from numpy import *
-from scipy import ndimage
-from scipy import stats
-from scipy.signal import medfilt2d
-from scipy.signal import medfilt
-from scipy.ndimage import map_coordinates
 from scipy import interpolate as sp
-from scipy import stats
-from scipy.ndimage.filters import uniform_filter
 from PIL import Image
-import time
-import os, sys, fnmatch
+import sys
 
 def stdoutWrite(s):
     sys.stdout.write(s)
@@ -24,6 +17,14 @@ def stderrWrite(s):
 
 
 def statistics(arr, comment = ''):
+    """ Debug routine for data statistics
+
+        :param arr: the object to be analyzed
+        :type arr: a numpy array
+        :return: the statistics
+        :rtype: string
+
+    """
     if len(arr) == 0:
         return False
     s = 'object:' + str(comment) + '\n'
@@ -39,6 +40,14 @@ def statistics(arr, comment = ''):
 
 
 def showImage(arr):
+    """ Debug routine for data display
+
+        :param arr: the image to be displayed
+        :type arr: a 2dim numpy array of unsigned int (16 bit)
+        :return: false, if no image
+        :rtype: boolean
+
+    """
     if(arr.ndim) != 2:
         sys.stderr.write('Must be a two dimensional array.\n')
         return False

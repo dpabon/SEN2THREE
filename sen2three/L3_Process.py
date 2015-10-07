@@ -1,23 +1,20 @@
 #!/usr/bin/env python
 # -*- coding: iso-8859-15 -*-
+
 processorName = 'Sentinel-2 Level 3 Prototype Processor (SEN2THREE)'
 processorVersion = '1.0.0'
-processorDate = '2015.09.15'
+processorDate = '2016.07.07'
 productVersion = '13'
 
 from tables import *
-import sys, os, shutil
+import sys, os
 import fnmatch
 from time import time
-
-from L3_Config import L3_Config
-from L2A_Tables import L2A_Tables
-from L3_Tables import L3_Tables
-from L3_Product import L3_Product
-from L2A_Process import L2A_Process
-from L3_Synthesis import L3_Synthesis
 from L3_Library import stdoutWrite, stderrWrite
-
+from L3_Config import L3_Config
+from L3_Product import L3_Product
+from L3_Tables import L3_Tables
+from L3_Synthesis import L3_Synthesis
 
 class L3_Process(object):
     ''' The main processor module, which coordinates the interaction between the other modules.
@@ -35,7 +32,7 @@ class L3_Process(object):
         '''
 
         self._config = config
-        self._l3Synthesis = L3_Synthesis(config)
+        self.l3Synthesis = L3_Synthesis(config)
 
     def get_tables(self):
         return self._tables
@@ -77,43 +74,38 @@ class L3_Process(object):
             
         '''
         self._tables = tables
+        product = tables.product
         astr = 'L3_Process: processing with resolution ' + str(self.config.resolution) + ' m'
         self.config.timestamp(astr)
         self.config.timestamp('L3_Process: start of Pre Processing')
-        if(self.preprocess() == False):
-            return False
+        if(self.preProcessing() == False):
+            return self, -1
         
         self.config.timestamp('L3_Process: start of Spatio Temporal Processing')
         self.config.logger.info('Performing Spatio Temporal Processing with resolution %d m', self.config.resolution)
-        if(self._l3Synthesis.process(self._tables) == False):
-            return False
+        if(self.l3Synthesis.process(self._tables) == False):
+            return self, -1
 
         # append processed tile to list
-        processedTile = self.config.product.L2A_TILE_ID + '_' + str(self.config.resolution) + '\n'
-        processedFn = self.config.sourceDir + '/' + 'processed'
-        try:
-            f = open(processedFn, 'a')
-            f.write(processedTile)
-            f.flush()
-            f.close()
-        except:
-            stderrWrite('Could not update processed tile history.\n')
-            self.config.exitError()
-            return False                 
-        return True
-    
-    def preprocess(self):
+        self.config.appendTile()
+        if product.checkCriteriaForTermination():
+            return self, 1
+        else:
+            return self, 0
+
+    def preProcessing(self):
         ''' Perform the L3 pre processing,
             currently empty.
         '''
+
         self.config.logger.info('Pre-processing with resolution %d m', self.config.resolution)
         return True
 
-    def postprocess(self):
+    def postProcessing(self):
         ''' Perform the L3 post processing,
             triggers the export of L3 product, tile metadata and bands
             
-            :return: true if export succeeds, false else.
+            :return: true if export succeeds, false else
             :rtype: bool
 
         '''
@@ -121,24 +113,92 @@ class L3_Process(object):
         self.config.timestamp('L3_Process: start of Post Processing')
         self.config.logger.info('Post-processing with resolution %d m', self.config.resolution)
 
-        GRANULE = self.config.targetDir + '/' + self.config.product.L3_TARGET_ID + '/GRANULE'
-        tilelist = sorted(os.listdir(GRANULE))
+        GRANULE = 'GRANULE'
+        GRANULE_DIR = os.path.join(self.config.targetDir, self.config.L3_TARGET_ID, GRANULE)
+        tilelist = sorted(os.listdir(GRANULE_DIR))
         L3_TILE_MSK = 'S2A_*_TL_*'
         res = False
         for tile in tilelist:
             if fnmatch.fnmatch(tile, L3_TILE_MSK) == False:
                 continue
             res = self.tables.exportTile(tile)
-            if(self.config.resolution == 60):
-                self.config.product.postprocess()
         if res == False:
             return res
-        return self._l3Synthesis.postProcessing()
+
+        self.l3Synthesis.postProcessing()
+        return True
+
+def doTheLoop(config):
+    ''' Initializes a product and processor object. Cycles through all input products and granules
+        and calls the sequential processing of the individual tiles if the criteria for processing are fulfilled.
+
+        :param config: the config object
+        :type config: a reference to the config object
+        :return: the processor object, for doing the preprocessing, -1 if processing error occurred.
+        :rtype: processor object or -1
+
+    '''
+    HelloWorld = processorName + ', ' + processorVersion + ', created: ' + processorDate
+    stdoutWrite('\n%s started ...\n' % HelloWorld)
+    dirlist = os.listdir(config.sourceDir)
+    upList = sorted(dirlist)
+    tileFilter = config.tileFilter
+
+    # Process all unprocessed L2A products:
+    L2A_mask = 'S2?_*L2A_*'
+    product = L3_Product(config)
+    processor = L3_Process(config)
+    proc = None
+    for L2A_UP_ID in upList:
+        if not fnmatch.fnmatch(L2A_UP_ID, L2A_mask):
+            continue
+        if not config.checkTimeRange(L2A_UP_ID):
+            continue
+
+        product.updateUserProduct(L2A_UP_ID)
+        GRANULE = os.path.join(config.sourceDir, L2A_UP_ID, 'GRANULE')
+        tilelist = sorted(os.listdir(GRANULE))
+        for tile in tilelist:
+            # process only L2A tiles:
+            if not fnmatch.fnmatch(tile, L2A_mask):
+                continue
+            # ignore already processed tiles:
+            if config.tileExists(tile):
+                continue
+            # apply tile filter:
+            if not config.tileIsSelected(tile, tileFilter):
+                continue
+            if not config.checkTileConsistency(GRANULE, tile):
+                continue
+
+            tStart = time()
+            product.config.L2A_TILE_ID = tile
+            tables = L3_Tables(product)
+            tables.init()
+            # no processing if first initialisation:
+            # check existence of Bands - B2 is always present:
+            if not tables.testBand('L2A', 2):
+                # append processed tile to list
+                if not config.appendTile():
+                    config.exitError()
+                continue
+            proc, result = processor.process(tables)
+            if result == -1:
+                stderrWrite('Application terminated with errors, see log file and traces.\n')
+                return result
+            elif result == 1:
+                return proc
+            elif result == 0:
+                tMeasure = time() - tStart
+                config.writeTimeEstimation(config.resolution, tMeasure)
+
+    return proc
+
 
 def main(args=None):
     ''' Processes command line,
         initializes the config and product modules and starts sequentially
-        the L2A and L3 processing.
+        the L3 processing
     '''
     import argparse
     descr = processorName +', '+ processorVersion +', created: '+ processorDate + \
@@ -146,8 +206,8 @@ def main(args=None):
      
     parser = argparse.ArgumentParser(description=descr)
     parser.add_argument('directory', help='Directory where the Level-2A input files are located')
-    parser.add_argument('--resolution', type=int, choices=[10, 20, 60], help='Target resolution, must be 10, 20 or 60 [m]')
-    parser.add_argument('--clean', action='store_true', help='Removes all processed files in target directory. Be careful!')
+    parser.add_argument('--resolution', type=int, choices=[10, 20, 60], help='Target resolution, can be 10, 20 or 60m. If omitted, all resolutions will be processed')
+    parser.add_argument('--clean', action='store_true', help='Removes the L3 product in the target directory before processing. Be careful!')
     args = parser.parse_args()
 
     # SIITBX-49: directory should not end with '/':
@@ -156,113 +216,46 @@ def main(args=None):
         directory = directory[:-1]
 
     # check if directory argument starts with a relative path. If not, expand: 
-    if(os.path.isabs(directory)) == False:
+    if not os.path.isabs(directory):
         cwd = os.getcwd()
         directory = os.path.join(cwd, directory)
-    elif os.path.exists(args.directory) == False:
-        stderrWrite('directory "%s" does not exist\n.' % args.directory)
+    directory = os.path.normpath(directory)
+    if not os.path.exists(directory):
+        stderrWrite('directory "%s" does not exist\n.' % directory)
         return False
 
-    if args.resolution == None:
-        resolution = 60
+    if not args.resolution:
+        resolutions = [60,20,10]
     else:
-        resolution = args.resolution
+        resolutions = [args.resolution]
 
-    config = L3_Config(resolution, directory)
-    config.init(processorVersion)
-    processedTiles = ''
-    result = False
-    processedFn = directory + '/' + 'processed'
-    
-    if args.clean:
-        stdoutWrite('Cleaning target directory ...\n')    
-        shutil.rmtree(config.targetDir)
-        try:
-            os.remove(processedFn)
-        except:
-            stdoutWrite('No history file present ...\n')    
-    
-    HelloWorld = processorName +', '+ processorVersion +', created: '+ processorDate
-    stdoutWrite('\n%s started ...\n' % HelloWorld)    
-    upList = sorted(os.listdir(directory))
-    
-    # Check if unprocessed L1C products exist. If yes, process first:
-    L1C_mask = 'S2?_*L1C_*'
-    product = L3_Product(config)
-    processor = L2A_Process(config)
-    for L1C_UP_ID in upList:
-        if(fnmatch.fnmatch(L1C_UP_ID, L1C_mask) == False):     
-            continue
-        if config.checkTimeRange(L1C_UP_ID) == False:
-            continue
-        tilelist = product.createL2A_UserProduct(L1C_UP_ID)
-        for tile in tilelist:
-            # process only L1C tiles:
-            if fnmatch.fnmatch(tile, L1C_mask) == False:
-                continue
-            # ignore already processed tiles:
-            if product.tileExists(tile) == True:
-                continue
-            # finally, process the remaining tiles:
-            stdoutWrite('\nL1C tile %s found, will be classified first ...\n' % tile)   
-            tStart = time()
-            tables = L2A_Tables(config, tile)
-            if processor.process(tables) == False:
-                config.exitError()
-                return False
-            tile += '_' + str(config.resolution)
-            if product.appendTile(tile) == False:
-                config.exitError()
-                return False                       
-    
-    # Now process all unprocessed L2A products:
-    L2A_mask = 'S2?_*L2A_*'    
-    processor = L3_Process(config)
-    for L2A_UP_ID in upList:
-        if(fnmatch.fnmatch(L2A_UP_ID, L2A_mask) == False):     
-            continue
-        if config.checkTimeRange(L2A_UP_ID) == False:
-            continue
-    
-        config.updateUserProduct(L2A_UP_ID)  
-        GRANULE = directory + '/' + L2A_UP_ID + '/GRANULE'
-        tilelist = sorted(os.listdir(GRANULE))
-        for tile in tilelist:
-            # process only L2A tiles:
-            if fnmatch.fnmatch(tile, L2A_mask) == False:
-                continue
-            # ignore already processed tiles:
-            if product.tileExists(tile) == True:
-                continue
-            tStart = time()
-            nrTilesProcessed = len(processedTiles.split())
-            config.updateTile(tile, nrTilesProcessed)
-            tables = L3_Tables(config)
-            tables.init()
-            # no processing if first initialisation:
-            # check existence of Bands - B2 is always present:
-            if tables.testBand('L2A', 2) == False:
-                # append processed tile to list
-                tile += '_' + str(config.resolution)
-                if product.appendTile(tile) == False:
-                    config.exitError()
-                continue
-            result = processor.process(tables)
-            if(result == False):
-                stderrWrite('Application terminated with errors, see log file and traces.\n')
-                return False
+    cleanDone = False # do only one clean up of target, if requested.
+    for resolution in resolutions:
+        config = L3_Config(resolution, directory)
+        result = False
+        processedFn = os.path.join(directory, 'processed')
 
-            tMeasure = time() - tStart
-            config.writeTimeEstimation(resolution, tMeasure)
+        if args.clean and not cleanDone:
+            stdoutWrite('Cleaning target directory ...\n')
+            config.cleanTarget = True
+            try:
+                os.remove(processedFn)
+            except:
+                stdoutWrite('No history file present ...\n')
+            cleanDone = True
 
-    if result == True:
-        result = processor.postprocess()
-        if(result == False):
+        config.init(processorVersion)
+        processor = doTheLoop(config)
+        if processor == -1:
             stderrWrite('Application terminated with errors, see log file and traces.\n')
-            return False
-                
-    stdoutWrite('\nApplication terminated successfully.\n')
-    return result
+            return 1
+        elif processor == None:
+            stdoutWrite('All tiles already processed.\n')
+        else:
+            processor.postProcessing()
+
+    stdoutWrite('Application terminated successfully.\n')
+    return 0
 
 if __name__ == "__main__":
     sys.exit(main() or 0)

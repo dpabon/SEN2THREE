@@ -1,15 +1,15 @@
-''' 
-    :Module: L3_Display.
-    :Imports: L3_Config, L3_Tables, L3_Library.
-'''
-from numpy import *
-import pylab as P
-from scipy.stats import itemfreq
+#!/usr/bin/env python
+# -*- coding: iso-8859-15 -*-
 
-from L3_Config import L3_Config
-from L3_Tables import L3_Tables
-from L3_Library import stdoutWrite, stderrWrite, showImage
-from boto.glacier.writer import resume_file_upload
+from numpy import *
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+plt.ioff()
+import matplotlib.colors as cl
+import pylab as P
+
+from scipy.stats import itemfreq
 
 class L3_Display(object):
     ''' A support class, for display of the scene classification and the mosaic map 
@@ -19,82 +19,103 @@ class L3_Display(object):
             :type config: a reference to the L3_Config object.
 
     '''
+
     def __init__(self, config):
         self._config = config
-        self._tables = None
         self._noData = config.classifier['NO_DATA']
         self._minTime = config.minTime
         self._maxTime = config.maxTime
         self._plot = P
-        self._plot.ion()
      
     def displayData(self, tables):
         ''' Performs the display of the scene classification and the mosaic map.
         
-            :param tables: the config object for the current tile (via __init__).
-            :type config: a reference to the L3_Tables object.
+            :param tables: the table object for the current tile (via __init__).
+            :type tables: a reference to the L3_Tables object.
 
         '''
-        self._tables = tables
-        mosaic = self._tables.getBand('L3', self._tables.MSC)
-        scenec = self._tables.getBand('L3', self._tables.SCL)
-        nr, nc = scenec.shape
-        ratio = float(nr)/float(nc)
+
+        # define the colormaps:
+        C1 = [[0.0, 0.0, 0.0],  # 0: NO_DATA, Black
+              [1.0, 0.0, 0.0],  # 1: Red
+              [0.0, 1.0, 0.0],  # 2: Green
+              [0.0, 0.0, 1.0],  # 3: Blue
+              [1.0, 1.0, 0.0],  # 4: Yellow
+              [0.0, 1.0, 1.0],  # 5:
+              [1.0, 0.0, 1.0],  # 6:
+              [0.5, 0.0, 0.0],  # 7:
+              [0.0, 0.5, 0.0],  # 8:
+              [0.0, 0.0, 0.5],  # 9:
+              [1.0, 0.5, 0.0],  # 10:
+              [0.0, 1.0, 0.5]]  # 11:
+        c1 = cl.ListedColormap(C1)
+
+        C2 = [[0.0, 0.0, 0.0],  # 0: NO_DATA, Black
+              [1.0, 0.0, 0.0],  # 1: DEFECTIVE, Red
+              [0.3, 0.3, 0.3],  # 2: SHADOW, Very Dark Gray
+              [0.5, 0.3, 0.0],  # 3: CLOUD_SHADOW, Brown
+              [0.0, 1.0, 0.0],  # 4: VEGETATION, Green
+              [1.0, 1.0, 0.0],  # 5: BARE_SOILS, Yellow
+              [0.0, 0.0, 1.0],  # 6: WATER, Blue
+              [0.4, 0.4, 0.4],  # 7: CLOUD_LOW_PROBA, Dark Gray
+              [0.6, 0.6, 0.6],  # 8: CLOUD_MED_PROBA, Light Gray
+              [1.0, 1.0, 1.0],  # 9: CLOUD_HI_PROBA, White
+              [0.5, 1.0, 1.0],  # 10: THIN_CIRRUS, Light Blue
+              [1.0, 0.5, 1.0]]  # 11: SNOW, Pink
+        c2 = cl.ListedColormap(C2)
+
+        mosaic = tables.getBand('L3', tables.MSC)
+        scenec = tables.getBand('L3', tables.SCL)
         fig = self._plot.figure()
-        fig.canvas.set_window_title(self._config.product.L2A_TILE_ID)   
-        #fig.patch.set_facecolor('white')
-        if ratio > 2.5:
-            ax1 = self._plot.subplot2grid((2,3), (0,0), rowspan=2) 
-            ax2 = self._plot.subplot2grid((2,3), (0,1), rowspan=2) 
-            ax3 = self._plot.subplot2grid((2,3), (0,2))
-            ax4 = self._plot.subplot2grid((2,3), (1,2))
-        else:
-            ax1 = self._plot.subplot2grid((2,2), (0,0)) 
-            ax2 = self._plot.subplot2grid((2,2), (1,0)) 
-            ax3 = self._plot.subplot2grid((2,2), (0,1))
-            ax4 = self._plot.subplot2grid((2,2), (1,1))            
+        fig.canvas.set_window_title(self._config.L2A_TILE_ID)
+        ax1 = self._plot.subplot2grid((2,2), (0,0)) 
+        ax2 = self._plot.subplot2grid((2,2), (1,0)) 
+        ax3 = self._plot.subplot2grid((2,2), (0,1))
+        ax4 = self._plot.subplot2grid((2,2), (1,1))            
         
-        validData = [mosaic != self._noData]
-        idxMoif = itemfreq(mosaic[validData])[:,0]
+        idxMoif = itemfreq(mosaic)[:,0]
         nClasses = idxMoif.max()
-        xMoif = arange(1,nClasses+1)
-        yMoif = zeros(nClasses, dtype=float32)
-        yMoif[idxMoif-1] = itemfreq(mosaic[validData])[:,1]
+        xMoif = arange(0,nClasses+1)
+        yMoif = zeros(nClasses+1, dtype=float32)
+        yMoif[idxMoif] = itemfreq(mosaic)[:,1]
         yMoifCount = float32(yMoif.sum())
         yMoif = yMoif.astype(float32)/yMoifCount * 100.0
-        scenecData = [scenec != self._noData]
-        classes = ('Sat','Dark','Cls','Soil','Veg','Water','LPC','MPC','HPC','Cir','Snw')
-        yScif = zeros(len(classes), dtype=float32)
+        scenecData = [scenec != 0]
+        classes = ('Sat','Dark','ClS','Soil','Veg','Water','LPC','MPC','HPC','Cir','Snw')
+        yScif = zeros(len(classes)+1, dtype=float32)
         idxScif = itemfreq(scenec[scenecData])[:,0]
         yScif[idxScif] = itemfreq(scenec[scenecData])[:,1]
         yScifCount = float32(yScif.sum())
         yScif = yScif.astype(float32)/yScifCount * 100.0
-        xScif = arange(1,12)                
+        xScif = arange(1,13)                
         if len(xMoif) < 3:
             xticks = [1,2]
             xmax = 3
         else:
             xticks = xMoif
             xmax = xMoif.max()+1
-        ax1.imshow(mosaic, interpolation='nearest')
+        ax1.imshow(mosaic, vmin=0, vmax=12, cmap=c1)
         ax1.set_xticks([0,mosaic.shape[1]])
         ax1.set_yticks([0,mosaic.shape[0]])
         ax1.set_xlabel('Tile Map')
-        ax2.imshow(scenec, interpolation='nearest')
+        ax2.imshow(scenec, vmin=0, vmax=11, cmap=c2)
         ax2.set_xticks([0,scenec.shape[1]])
         ax2.set_yticks([0,scenec.shape[0]])
         ax2.set_xlabel('Class Map')
         ax3.set_xlim([0, xmax])            
         ax3.set_xticks(xticks)
-        ax3.bar(xMoif, yMoif, align='center', alpha=0.4)
-        ax3.set_xlabel('Tile [#]')
+        ax3.bar(xMoif, yMoif, align='center', alpha=0.4, color=C1)
+        if self._config.algorithm == 'AVERAGE':
+            ax3.set_xlabel('Pixel Count [#]')
+        else:
+            ax3.set_xlabel('Tile [#]')
         ax3.set_ylabel('Frequency [%]')
-        ax4.set_xlim([0, 12])
-        ax4.bar(xScif, yScif, align='center', alpha=0.4)
+        ax4.set_xlim([0, 13])
+        ax4.bar(xScif, yScif, align='center', alpha=0.4, color=C2)
         ax4.set_xlabel('Class [#]')
         ax4.set_ylabel('Frequency [%]')
         self._plot.draw()
         self._plot.tight_layout()
-        self._plot.show(block=False)             
+        self._plot.show(block=False)
         self._plot.savefig(tables.L3_Tile_PLT_File, dpi=100)
         return

@@ -1,8 +1,6 @@
-'''
-Created on Feb 22, 2012
-The Borg Pattern for sharing states
-@author: umuellerwilm
-'''
+#!/usr/bin/env python
+# -*- coding: iso-8859-15 -*-
+
 class Borg(object):
     _shared = {}
     def __new__(cls, *p, **k):

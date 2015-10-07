@@ -1,52 +1,67 @@
 #!/usr/bin/env python
-''' 
-    :Module: L3_Config.
-    :Imports: L3_Config, L3_Tables, L3_Library.
-'''
+# -*- coding: iso-8859-15 -*-
 
 from numpy import *
-import sys, os, time
-import logging
+import sys, os, time, fnmatch
+import logging, inspect
 import ConfigParser
 from lxml import etree, objectify
 from time import strftime
 from datetime import datetime, date
-from distutils.file_util import copy_file
 
 from L3_Borg import Borg
 from L3_Library import stdoutWrite, stderrWrite
-from L3_Product import L3_Product
 from L3_XmlParser import L3_XmlParser
 
+
+def getScriptDir(follow_symlinks=True):
+    if getattr(sys, 'frozen', False):  # py2exe, PyInstaller, cx_Freeze
+        path = os.path.abspath(sys.executable)
+    else:
+        path = inspect.getabsfile(getScriptDir)
+    if follow_symlinks:
+        path = os.path.realpath(path)
+    return os.path.dirname(path)
+
+
 class L3_Config(Borg):
-    ''' Provide the configuration in and output of the GIPP.
+    ''' Provide the configuration input of the GIPP (via __init__).
         
     :param resolution: the requested resolution from command line.
     :type resolution: string
     :param sourceDir: the user product base directory.
     :type sourceDir: string
+    :param configFile: the path of the processors GIPP.
+    :type configFile: string
 
     '''
     _shared = {}
     def __init__(self, resolution, sourceDir=None, configFile='L3_GIPP'):
-        if(sourceDir):
-            self._home = os.environ['SEN2THREE_HOME'] + '/'
-            moduleDir = os.environ['SEN2THREE_BIN'] + '/'            
+
+        if (sourceDir):
+            try:
+                self._home = os.environ['SEN2THREE_HOME']
+            except:
+                self._home = os.path.dirname(getScriptDir())
+            try:
+                scriptDir = os.environ['SEN2THREE_BIN']
+            except:
+                scriptDir = getScriptDir()
+
             self._sourceDir = sourceDir
-            self._configDir = moduleDir + 'cfg/'
-            self._configFn = self._home + 'cfg/' + configFile + '.xml'
-            self._libDir = moduleDir + 'lib/'
-            self._logDir = self._home + 'log/'
+            self._configDir = os.path.join(scriptDir, 'cfg')
+            self._configFn = os.path.join(self._home, 'cfg', configFile + '.xml')
+            self._libDir = os.path.join(scriptDir, 'lib')
+            self._logDir = os.path.join(self._home, 'log')
             if not os.path.exists(self._logDir):
                 os.mkdir(self._logDir)
             self._processorVersion = None
-            self._product = L3_Product(self)
             self._tEstimation = 0.0
-            self._tEst60 = 100.0
-            self._tEst20 = 500.0
-            self._tEst10 = 1500.0
-            self._processingStatusFn = self._logDir + '/' + '.progress'
-            self._processingEstimationFn = self._configDir + '/' + '.estimation'
+            self._tEst60 = 150.0
+            self._tEst20 = self._tEst60 * 8.0
+            self._tEst10 = self._tEst60 * 8.0
+            self._processingStatusFn = os.path.join(self._logDir, '.progress')
+            self._processingEstimationFn = os.path.join(self._logDir, '.estimation')
             if os.path.isfile(self._processingEstimationFn) == False:
             # init processing estimation file:
                 config = ConfigParser.RawConfigParser()
@@ -89,16 +104,93 @@ class L3_Config(Borg):
             self._cirrusRemoval = True
             self._shadowRemoval = True
             self._snowRemoval = True
-            self._nrTilesProcessed = 0
             self._maxCloudProbability = None
             self._maxInvalidPixelsPercentage = None
-            self._minAerosolOptical_thickness = None
+            self._maxAerosolOpticalThickness = None
             self._maxSolarZenithAngle = None
+            self._medianFilter = None
             self._targetDir = None
+            self._cleanTarget = False
             self._c0 = None
             self._c1 = None
             self._e0 = None
             self._d2 = None
+            self._L2A_INSPIRE_XML = None
+            self._L2A_MANIFEST_SAFE = None
+            self._L2A_UP_MTD_XML = None
+            self._L2A_DS_MTD_XML = None
+            self._L2A_TILE_MTD_XML = None
+            self._L2A_UP_ID = None
+            self._L2A_DS_ID = None
+            self._L2A_TILE_ID = None
+            self._L2A_UP_DIR = None
+            self._L3_TARGET_MTD_XML = None
+            self._L3_DS_MTD_XML = None
+            self._L3_TILE_MTD_XML = None
+            self._L3_TARGET_ID = None
+            self._L3_DS_ID = None
+            self._L3_TILE_ID = None
+            self._cloudsPercentage = None
+            self._badPixelPercentage = None
+
+    def get_clouds_percentage(self):
+        return self._cloudsPercentage
+
+
+    def set_clouds_percentage(self, value):
+        self._cloudsPercentage = value
+
+
+    def del_clouds_percentage(self):
+        del self._cloudsPercentage
+
+
+    def get_bad_pixel_percentage(self):
+        return self._badPixelPercentage
+
+
+    def set_bad_pixel_percentage(self, value):
+        self._badPixelPercentage = value
+
+
+    def del_bad_pixel_percentage(self):
+        del self._badPixelPercentage
+
+
+    def get_tile_filter(self):
+        return self._tileFilter
+
+
+    def set_tile_filter(self, value):
+        self._tileFilter = value
+
+
+    def del_tile_filter(self):
+        del self._tileFilter
+
+
+    def get_clean_target(self):
+        return self._cleanTarget
+
+
+    def set_clean_target(self, value):
+        self._cleanTarget = value
+
+
+    def del_clean_target(self):
+        del self._cleanTarget
+
+
+    def get_median_filter(self):
+        return self._medianFilter
+
+
+    def set_median_filter(self, value):
+        self._medianFilter = value
+
+
+    def del_median_filter(self):
+        del self._medianFilter
 
     def get_rad_scale(self):
         return self._radScale
@@ -207,7 +299,7 @@ class L3_Config(Borg):
     def del_vza_arr(self):
         del self._vza_arr
 
-    
+
     def set_logLevel(self, level):
         self.logger.info('Log level will be updated to: %s', level)
         if (level == 'DEBUG'):
@@ -363,23 +455,23 @@ class L3_Config(Borg):
 
 
     def set_config_dir(self, value):
-        self._configDir = self.home + value + '/'       
+        self._configDir = value
 
 
     def set_bin_dir(self, value):
-        self._binDir = self.home + value + '/'
+        self._binDir = value
 
 
     def set_lib_dir(self, value):
-        self._libDir = self.home + value + '/'
+        self._libDir = value
 
 
     def set_log_dir(self, value):
-        self._logDir = self.home + value + '/'
+        self._logDir = value
 
 
     def set_config_fn(self, value):
-        self._configFn = self._configDir + value + '.xml'
+        self._configFn = value
 
 
     def set_processing_status_fn(self, value):
@@ -594,18 +686,6 @@ class L3_Config(Borg):
         return self._snowRemoval
 
 
-    def get_nr_tiles_processed(self):
-        return self._nrTilesProcessed
-
-
-    def set_nr_tiles_processed(self, value):
-        self._nrTilesProcessed = value
-
-
-    def del_nr_tiles_processed(self):
-        del self._nrTilesProcessed
-
-
     def get_max_cloud_probability(self):
         return self._maxCloudProbability
 
@@ -614,8 +694,8 @@ class L3_Config(Borg):
         return self._maxInvalidPixelsPercentage
 
 
-    def get_min_aerosol_optical_thickness(self):
-        return self._minAerosolOptical_thickness
+    def get_max_aerosol_optical_thickness(self):
+        return self._maxAerosolOpticalThickness
 
 
     def get_max_solar_zenith_angle(self):
@@ -658,8 +738,8 @@ class L3_Config(Borg):
         self._maxInvalidPixelsPercentage = value
 
 
-    def set_min_aerosol_optical_thickness(self, value):
-        self._minAerosolOptical_thickness = value
+    def set_max_aerosol_optical_thickness(self, value):
+        self._maxAerosolOpticalThickness = value
 
 
     def set_max_solar_zenith_angle(self, value):
@@ -702,8 +782,8 @@ class L3_Config(Borg):
         del self._maxInvalidPixelsPercentage
 
 
-    def del_min_aerosol_optical_thickness(self):
-        del self._minAerosolOptical_thickness
+    def del_max_aerosol_optical_thickness(self):
+        del self._maxAerosolOpticalThickness
 
 
     def del_max_solar_zenith_angle(self):
@@ -712,18 +792,6 @@ class L3_Config(Borg):
 
     def del_max_viewing_angle(self):
         del self._maxViewingAngle
-    
-    
-    def get_product(self):
-        return self._product
-
-
-    def set_product(self, value):
-        self._product = value
-
-
-    def del_product(self):
-        del self._product
 
 
     def get_fn_log(self):
@@ -809,86 +877,287 @@ class L3_Config(Borg):
     def del_e_0(self):
         del self._e0
 
-    fnLog = property(get_fn_log, set_fn_log, del_fn_log, "fnLog's docstring")
-    product = property(get_product, set_product, del_product, "product's docstring")
-    processorVersion = property(get_processor_version, set_processor_version, del_processor_version, "processorVersion's docstring")
-    minTime = property(get_min_time, set_min_time, del_min_time, "minTime's docstring")
-    maxTime = property(get_max_time, set_max_time, del_max_time, "maxTime's docstring")
-    algorithm = property(get_algorithm, set_algorithm, del_algorithm, "algorithm's docstring")
-    cirrusRemoval = property(get_cirrus_removal, set_cirrus_removal, del_cirrus_removal, "cirrusRemoval's docstring")
-    shadowRemoval = property(get_shadow_removal, set_shadow_removal, del_shadow_removal, "shadowRemoval's docstring")
-    snowRemoval = property(get_snow_removal, set_snow_removal, del_snow_removal, "snowRemoval's docstring")
-    nrTilesProcessed = property(get_nr_tiles_processed, set_nr_tiles_processed, del_nr_tiles_processed, "maxTilesProcessed's docstring")
-    maxCloudProbability = property(get_max_cloud_probability, set_max_cloud_probability, del_max_cloud_probability, "maxCloudProbability's docstring")
-    maxInvalidPixelsPercentage = property(get_max_invalid_pixels_percentage, set_max_invalid_pixels_percentage, del_max_invalid_pixels_percentage, "maxInvalidPixelsPercentage's docstring")
-    minAerosolOptical_thickness = property(get_min_aerosol_optical_thickness, set_min_aerosol_optical_thickness, del_min_aerosol_optical_thickness, "minAerosolOptical_thickness's docstring")
-    maxSolarZenithAngle = property(get_max_solar_zenith_angle, set_max_solar_zenith_angle, del_max_solar_zenith_angle, "maxSolarZenithAngle's docstring")
-    maxViewingAngle = property(get_max_viewing_angle, set_max_viewing_angle, del_max_viewing_angle, "maxViewingAngle's docstring")
-    resolution = property(get_resolution, set_resolution, del_resolution, "resolution's docstring")
-    shared = property(get_shared, set_shared, del_shared, "shared's docstring")
-    classifier = property(get_classifier, set_classifier, del_classifier,
-    ''' 
-        :property: a scene classifier.
-        :keys: 'NO_DATA', 'SATURATED_DEFECTIVE', 'DARK_FEATURES', 'CLOUD_SHADOWS', 'VEGETATION', 'BARE_SOILS', 'WATER', 'LOW_PROBA_CLOUDS', 'MEDIUM_PROBA_CLOUDS', 'HIGH_PROBA_CLOUDS','THIN_CIRRUS', 'SNOW_ICE', 'URBAN_AREAS'.
-        :type: dictionary
-        
-    ''')
-    home = property(get_home, set_home, del_home,
-    '''
-        :property: the home directory.
-        :type: string
+    def get_l_2_a_up_dir(self):
+        return self._L2A_UP_DIR
 
-    ''')
-    
-    sourceDir = property(get_source_dir, set_source_dir, del_source_dir, "sourceDir's docstring")
-    configDir = property(get_config_dir, set_config_dir, del_config_dir, "configDir's docstring")
-    binDir = property(get_bin_dir, set_bin_dir, del_bin_dir, "binDir's docstring")
-    libDir = property(get_lib_dir, set_lib_dir, del_lib_dir, "libDir's docstring")
-    logDir = property(get_log_dir, set_log_dir, del_log_dir, "logDir's docstring")
-    configFn = property(get_config_fn, set_config_fn, del_config_fn, "configFn's docstring")
-    processingStatusFn = property(get_processing_status_fn, set_processing_status_fn, del_processing_status_fn, "processingStatusFn's docstring")
-    processingEstimationFn = property(get_processing_estimation_fn, set_processing_estimation_fn, del_processing_estimation_fn, "processingEstimationFn's docstring")
-    ncols = property(get_ncols, set_ncols, del_ncols, "ncols's docstring")
-    nrows = property(get_nrows, set_nrows, del_nrows, "nrows's docstring")
-    nbnds = property(get_nbnds, set_nbnds, del_nbnds, "nbnds's docstring")
-    tTotal = property(get_t_total, set_t_total, del_t_total, "tTotal's docstring")
-    displayData = property(get_display_data, set_display_data, del_display_data, "displayData's docstring")
-    radiometricPreference = property(get_radiometric_preference, set_radiometric_preference, del_radiometric_preference, "radiometricPreference's docstring")
-    GIPP = property(get_gipp, set_gipp, del_gipp, "GIPP's docstring")
-    ECMWF = property(get_ecmwf, set_ecmwf, del_ecmwf, "ECMWF's docstring")
-    DEM = property(get_dem, set_dem, del_dem, "DEM's docstring")
-    L2A_BOA_QUANTIFICATION_VALUE = property(get_l_2_a_boa_quantification_value, set_l_2_a_boa_quantification_value, del_l_2_a_boa_quantification_value, "L2A_BOA_QUANTIFICATION_VALUE's docstring")
-    L2A_WVP_QUANTIFICATION_VALUE = property(get_l_2_a_wvp_quantification_value, set_l_2_a_wvp_quantification_value, del_l_2_a_wvp_quantification_value, "L2A_WVP_QUANTIFICATION_VALUE's docstring")
-    L2A_AOT_QUANTIFICATION_VALUE = property(get_l_2_a_aot_quantification_value, set_l_2_a_aot_quantification_value, del_l_2_a_aot_quantification_value, "L2A_AOT_QUANTIFICATION_VALUE's docstring")
-    dnScale = property(get_dn_scale, set_dn_scale, del_dn_scale, "dnScale's docstring")
-    radScale = property(get_rad_scale, set_rad_scale, del_rad_scale, "radScale's docstring")
-    timestamp = property(get_timestamp, set_timestamp, del_timestamp, "timestamp's docstring")
-    creationDate = property(get_creation_date, set_creation_date, del_creation_date, "creationDate's docstring")
-    acquisitionDate = property(get_acquisition_date, set_acquisition_date, del_acquisition_date, "acquisitionDate's docstring")
-    d2 = property(get_d_2, set_d_2, del_d_2, "d2's docstring")
-    c0 = property(get_c_0, set_c_0, del_c_0, "c0's docstring")
-    c1 = property(get_c_1, set_c_1, del_c_1, "c1's docstring")
-    e0 = property(get_e_0, set_e_0, del_e_0, "e0's docstring")
+
+    def set_l_2_a_up_dir(self, value):
+        self._L2A_UP_DIR = value
+
+
+    def del_l_2_a_up_dir(self):
+        del self._L2A_UP_DIR
+
+
+
+    def get_l_2_a_inspire_xml(self):
+        return self._L2A_INSPIRE_XML
+
+
+    def get_l_2_a_manifest_safe(self):
+        return self._L2A_MANIFEST_SAFE
+
+
+    def get_l_2_a_up_mtd_xml(self):
+        return self._L2A_UP_MTD_XML
+
+
+    def get_l_2_a_ds_mtd_xml(self):
+        return self._L2A_DS_MTD_XML
+
+
+    def get_l_2_a_tile_mtd_xml(self):
+        return self._L2A_TILE_MTD_XML
+
+
+    def get_l_2_a_up_id(self):
+        return self._L2A_UP_ID
+
+
+    def get_l_2_a_ds_id(self):
+        return self._L2A_DS_ID
+
+
+    def get_l_2_a_tile_id(self):
+        return self._L2A_TILE_ID
+
+
+    def get_l_3_target_mtd_xml(self):
+        return self._L3_TARGET_MTD_XML
+
+
+    def get_l_3_ds_mtd_xml(self):
+        return self._L3_DS_MTD_XML
+
+
+    def get_l_3_tile_mtd_xml(self):
+        return self._L3_TILE_MTD_XML
+
+
+    def get_l_3_target_id(self):
+        return self._L3_TARGET_ID
+
+
+    def get_l_3_ds_id(self):
+        return self._L3_DS_ID
+
+
+    def get_l_3_tile_id(self):
+        return self._L3_TILE_ID
+
+
+    def get_l_3_target_dir(self):
+        return self._L3_TARGET_DIR
+
+
+    def set_l_2_a_inspire_xml(self, value):
+        self._L2A_INSPIRE_XML = value
+
+
+    def set_l_2_a_manifest_safe(self, value):
+        self._L2A_MANIFEST_SAFE = value
+
+
+    def set_l_2_a_up_mtd_xml(self, value):
+        self._L2A_UP_MTD_XML = value
+
+
+    def set_l_2_a_ds_mtd_xml(self, value):
+        self._L2A_DS_MTD_XML = value
+
+
+    def set_l_2_a_tile_mtd_xml(self, value):
+        self._L2A_TILE_MTD_XML = value
+
+
+    def set_l_2_a_up_id(self, value):
+        self._L2A_UP_ID = value
+
+
+    def set_l_2_a_ds_id(self, value):
+        self._L2A_DS_ID = value
+
+
+    def set_l_2_a_tile_id(self, value):
+        self._L2A_TILE_ID = value
+
+
+    def set_l_3_target_mtd_xml(self, value):
+        self._L3_TARGET_MTD_XML = value
+
+
+    def set_l_3_ds_mtd_xml(self, value):
+        self._L3_DS_MTD_XML = value
+
+
+    def set_l_3_tile_mtd_xml(self, value):
+        self._L3_TILE_MTD_XML = value
+
+
+    def set_l_3_target_id(self, value):
+        self._L3_TARGET_ID = value
+
+
+    def set_l_3_ds_id(self, value):
+        self._L3_DS_ID = value
+
+
+    def set_l_3_tile_id(self, value):
+        self._L3_TILE_ID = value
+
+
+    def set_l_3_target_dir(self, value):
+        self._L3_TARGET_DIR = value
+
+
+    def del_l_2_a_inspire_xml(self):
+        del self._L2A_INSPIRE_XML
+
+
+    def del_l_2_a_manifest_safe(self):
+        del self._L2A_MANIFEST_SAFE
+
+
+    def del_l_2_a_up_mtd_xml(self):
+        del self._L2A_UP_MTD_XML
+
+
+    def del_l_2_a_ds_mtd_xml(self):
+        del self._L2A_DS_MTD_XML
+
+
+    def del_l_2_a_tile_mtd_xml(self):
+        del self._L2A_TILE_MTD_XML
+
+
+    def del_l_2_a_up_id(self):
+        del self._L2A_UP_ID
+
+
+    def del_l_2_a_ds_id(self):
+        del self._L2A_DS_ID
+
+
+    def del_l_2_a_tile_id(self):
+        del self._L2A_TILE_ID
+
+
+    def del_l_3_target_mtd_xml(self):
+        del self._L3_TARGET_MTD_XML
+
+
+    def del_l_3_ds_mtd_xml(self):
+        del self._L3_DS_MTD_XML
+
+
+    def del_l_3_tile_mtd_xml(self):
+        del self._L3_TILE_MTD_XML
+
+
+    def del_l_3_target_id(self):
+        del self._L3_TARGET_ID
+
+
+    def del_l_3_ds_id(self):
+        del self._L3_DS_ID
+
+
+    def del_l_3_tile_id(self):
+        del self._L3_TILE_ID
+
+
+    def del_l_3_target_dir(self):
+        del self._L3_TARGET_DIR
+
+    fnLog = property(get_fn_log, set_fn_log, del_fn_log)
+    processorVersion = property(get_processor_version, set_processor_version, del_processor_version)
+    minTime = property(get_min_time, set_min_time, del_min_time)
+    maxTime = property(get_max_time, set_max_time, del_max_time)
+    algorithm = property(get_algorithm, set_algorithm, del_algorithm)
+    cirrusRemoval = property(get_cirrus_removal, set_cirrus_removal, del_cirrus_removal)
+    shadowRemoval = property(get_shadow_removal, set_shadow_removal, del_shadow_removal)
+    snowRemoval = property(get_snow_removal, set_snow_removal, del_snow_removal)
+    maxCloudProbability = property(get_max_cloud_probability, set_max_cloud_probability, del_max_cloud_probability)
+    maxInvalidPixelsPercentage = property(get_max_invalid_pixels_percentage, set_max_invalid_pixels_percentage, del_max_invalid_pixels_percentage)
+    maxAerosolOpticalThickness = property(get_max_aerosol_optical_thickness, set_max_aerosol_optical_thickness, del_max_aerosol_optical_thickness)
+    maxSolarZenithAngle = property(get_max_solar_zenith_angle, set_max_solar_zenith_angle, del_max_solar_zenith_angle)
+    cloudsPercentage = property(get_clouds_percentage, set_clouds_percentage, del_clouds_percentage)
+    badPixelPercentage = property(get_bad_pixel_percentage, set_bad_pixel_percentage, del_bad_pixel_percentage)
+    maxViewingAngle = property(get_max_viewing_angle, set_max_viewing_angle, del_max_viewing_angle)
+    resolution = property(get_resolution, set_resolution, del_resolution)
+    shared = property(get_shared, set_shared, del_shared)
+    classifier = property(get_classifier, set_classifier, del_classifier)
+    tileFilter = property(get_tile_filter, set_tile_filter, del_tile_filter)
+    medianFilter = property(get_median_filter, set_median_filter, del_median_filter)
+    home = property(get_home, set_home, del_home)
+    sourceDir = property(get_source_dir, set_source_dir, del_source_dir)
+    configDir = property(get_config_dir, set_config_dir, del_config_dir)
+    binDir = property(get_bin_dir, set_bin_dir, del_bin_dir)
+    libDir = property(get_lib_dir, set_lib_dir, del_lib_dir)
+    logDir = property(get_log_dir, set_log_dir, del_log_dir)
+    configFn = property(get_config_fn, set_config_fn, del_config_fn)
+    processingStatusFn = property(get_processing_status_fn, set_processing_status_fn, del_processing_status_fn)
+    processingEstimationFn = property(get_processing_estimation_fn, set_processing_estimation_fn, del_processing_estimation_fn)
+    ncols = property(get_ncols, set_ncols, del_ncols)
+    nrows = property(get_nrows, set_nrows, del_nrows)
+    nbnds = property(get_nbnds, set_nbnds, del_nbnds)
+    tTotal = property(get_t_total, set_t_total, del_t_total)
+    displayData = property(get_display_data, set_display_data, del_display_data)
+    radiometricPreference = property(get_radiometric_preference, set_radiometric_preference, del_radiometric_preference)
+    GIPP = property(get_gipp, set_gipp, del_gipp)
+    ECMWF = property(get_ecmwf, set_ecmwf, del_ecmwf)
+    DEM = property(get_dem, set_dem, del_dem)
+    L2A_BOA_QUANTIFICATION_VALUE = property(get_l_2_a_boa_quantification_value, set_l_2_a_boa_quantification_value, del_l_2_a_boa_quantification_value)
+    L2A_WVP_QUANTIFICATION_VALUE = property(get_l_2_a_wvp_quantification_value, set_l_2_a_wvp_quantification_value, del_l_2_a_wvp_quantification_value)
+    L2A_AOT_QUANTIFICATION_VALUE = property(get_l_2_a_aot_quantification_value, set_l_2_a_aot_quantification_value, del_l_2_a_aot_quantification_value)
+    cleanTarget = property(get_clean_target, set_clean_target, del_clean_target)
+    dnScale = property(get_dn_scale, set_dn_scale, del_dn_scale)
+    radScale = property(get_rad_scale, set_rad_scale, del_rad_scale)
+    timestamp = property(get_timestamp, set_timestamp, del_timestamp)
+    creationDate = property(get_creation_date, set_creation_date, del_creation_date)
+    acquisitionDate = property(get_acquisition_date, set_acquisition_date, del_acquisition_date)
+    d2 = property(get_d_2, set_d_2, del_d_2)
+    c0 = property(get_c_0, set_c_0, del_c_0)
+    c1 = property(get_c_1, set_c_1, del_c_1)
+    e0 = property(get_e_0, set_e_0, del_e_0)
     loglevel = property(get_logLevel, set_logLevel)
-    logger = property(get_logger, set_logger, del_logger, "logger's docstring")
-    solaz = property(get_solaz, set_solaz, del_solaz, "solaz's docstring")
-    solaz_arr = property(get_solaz_arr, set_solaz_arr, del_solaz_arr, "solaz_arr's docstring")
-    solze = property(get_solze, set_solze, del_solze, "solze's docstring")
-    solze_arr = property(get_solze_arr, set_solze_arr, del_solze_arr, "solze_arr's docstring")
-    vaa_arr = property(get_vaa_arr, set_vaa_arr, del_vaa_arr, "vaa_arr's docstring")
-    vza_arr = property(get_vza_arr, set_vza_arr, del_vza_arr, "vza_arr's docstring")
-    targetDir = property(get_target_dir, set_target_dir, del_target_dir, "targetDir's docstring")    
-    
+    logger = property(get_logger, set_logger, del_logger)
+    solaz = property(get_solaz, set_solaz, del_solaz)
+    solaz_arr = property(get_solaz_arr, set_solaz_arr, del_solaz_arr)
+    solze = property(get_solze, set_solze, del_solze)
+    solze_arr = property(get_solze_arr, set_solze_arr, del_solze_arr)
+    vaa_arr = property(get_vaa_arr, set_vaa_arr, del_vaa_arr)
+    vza_arr = property(get_vza_arr, set_vza_arr, del_vza_arr)
+    targetDir = property(get_target_dir, set_target_dir, del_target_dir)    
+    L2A_INSPIRE_XML = property(get_l_2_a_inspire_xml, set_l_2_a_inspire_xml, del_l_2_a_inspire_xml)
+    L2A_MANIFEST_SAFE = property(get_l_2_a_manifest_safe, set_l_2_a_manifest_safe, del_l_2_a_manifest_safe)
+    L2A_UP_MTD_XML = property(get_l_2_a_up_mtd_xml, set_l_2_a_up_mtd_xml, del_l_2_a_up_mtd_xml)
+    L2A_DS_MTD_XML = property(get_l_2_a_ds_mtd_xml, set_l_2_a_ds_mtd_xml, del_l_2_a_ds_mtd_xml)
+    L2A_TILE_MTD_XML = property(get_l_2_a_tile_mtd_xml, set_l_2_a_tile_mtd_xml, del_l_2_a_tile_mtd_xml)
+    L2A_UP_ID = property(get_l_2_a_up_id, set_l_2_a_up_id, del_l_2_a_up_id)
+    L2A_DS_ID = property(get_l_2_a_ds_id, set_l_2_a_ds_id, del_l_2_a_ds_id)
+    L2A_TILE_ID = property(get_l_2_a_tile_id, set_l_2_a_tile_id, del_l_2_a_tile_id)
+    L3_TARGET_MTD_XML = property(get_l_3_target_mtd_xml, set_l_3_target_mtd_xml, del_l_3_target_mtd_xml)
+    L3_DS_MTD_XML = property(get_l_3_ds_mtd_xml, set_l_3_ds_mtd_xml, del_l_3_ds_mtd_xml)
+    L3_TILE_MTD_XML = property(get_l_3_tile_mtd_xml, set_l_3_tile_mtd_xml, del_l_3_tile_mtd_xml)
+    L3_TARGET_ID = property(get_l_3_target_id, set_l_3_target_id, del_l_3_target_id)
+    L3_DS_ID = property(get_l_3_ds_id, set_l_3_ds_id, del_l_3_ds_id)
+    L3_TILE_ID = property(get_l_3_tile_id, set_l_3_tile_id, del_l_3_tile_id)
+    L3_TARGET_DIR = property(get_l_3_target_dir, set_l_3_target_dir, del_l_3_target_dir)
+    L2A_UP_DIR = property(get_l_2_a_up_dir, set_l_2_a_up_dir, del_l_2_a_up_dir)
+
     
     def initLogger(self):
+        ''' Initialises the logging system.
+        '''
         dt = datetime.now()
         self._creationDate = strftime('%Y%m%dT%H%M%S', dt.timetuple())
         logname = 'L3_' + self._creationDate
         self._logger = logging.Logger(logname)
-        self._fnLog = self._logDir + logname + '_report.xml'
+        self._fnLog = os.path.join(self._logDir, logname + '_report.xml')
         f = open(self._fnLog, 'w')
         f.write('<?xml version="1.0" encoding="UTF-8"?>\n')
-        f.write('<Sen2Cor_Level-3_Report_File>\n')
+        f.write('<Sen2Three_Level-3_Report_File>\n')
         f.close()
         lHandler = logging.FileHandler(self._fnLog)
         lFormatter = logging.Formatter('<check>\n<inspection execution=\"%(asctime)s\" level=\"%(levelname)s\" module=\"%(module)s\" function=\"%(funcName)s\" line=\"%(lineno)d\"/>\n<message contentType=\"Text\">%(message)s</message>\n</check>')
@@ -903,9 +1172,11 @@ class L3_Config(Borg):
         return
 
     def readGipp(self):
+        ''' Reads the GIPP file and performs initialisation of the configuration properties.
+        '''
         xp = L3_XmlParser(self, 'GIPP')
         xp.export()
-        # xp.validate()
+        xp.validate()
         try:
             doc = objectify.parse(self._configFn)
             root = doc.getroot()
@@ -915,15 +1186,13 @@ class L3_Config(Borg):
         except:
             self._logger.fatal('Error in parsing configuration file.')
             self.exitError();
-            
-        if ('R2R_' in self.configFn) == True:
-            return True
-        # else:
+
         try:
             self._displayData = cs.Display_Data
             l3s = root.L3_Synthesis
             self._minTime = l3s.Min_Time.text
             self._maxTime = l3s.Max_Time.text
+            self._tileFilter = l3s.Tile_Filter.text.split()
             self._algorithm = l3s.Algorithm.text
             self._radiometricPreference = l3s.Radiometric_Preference.text
             self._cirrusRemoval = l3s.Cirrus_Removal.pyval
@@ -931,10 +1200,11 @@ class L3_Config(Borg):
             self._snowRemoval = l3s.Snow_Removal.pyval
             self._maxCloudProbability = l3s.Max_Cloud_Probability.pyval
             self._maxInvalidPixelsPercentage = l3s.Max_Invalid_Pixels_Percentage.pyval
-            self._minAerosolOptical_thickness = l3s.Min_Aerosol_Optical_Thickness.pyval
+            self._maxAerosolOpticalThickness = l3s.Max_Aerosol_Optical_Thickness.pyval
             self._maxSolarZenithAngle = l3s.Max_Solar_Zenith_Angle.pyval
+            self._medianFilter = l3s.Median_Filter.pyval
             
-            cl = root.Scene_Classification.Classificators
+            cl = root.Classificators
             self._classifier =  {'NO_DATA'              : cl.NO_DATA.pyval,
                                 'SATURATED_DEFECTIVE'   : cl.SATURATED_DEFECTIVE.pyval,
                                 'DARK_FEATURES'         : cl.DARK_FEATURES.pyval,
@@ -967,34 +1237,6 @@ class L3_Config(Borg):
         self.setTimeEstimation(self.resolution)
         return
 
-    def updateUserProduct(self, userProduct):
-        ''' Update the current user product.
-            Check if at target product is present.
-
-            :param userProduct: the user product identifier.
-            :type userProduct: str         
-            :return: true, if target product exists.
-            :rtype: boolean
-            
-        '''
-        self.product.L2A_UP_ID = userProduct
-        if self.product.existL3_TargetProduct() == False:
-            stderrWrite('directory "%s" L3 target product is missing\n.' % self.targetDir)
-            self.exitError()   
-        return True
-
-    def updateTile(self, tile, nrTilesProcessed):
-        ''' Update the current tile ID.
-
-            :param nrTilesProcessed: the number of processed tiles.
-            :type nrTilesProcessed: unsigned int    
-            
-        '''
-        self.nrTilesProcessed = nrTilesProcessed
-        self.product.L2A_TILE_ID = tile       
-        self.calcEarthSunDistance2(tile)
-        return
-
     def setTimeEstimation(self, resolution):
         ''' Set the time estimation for the current processing.
 
@@ -1002,19 +1244,66 @@ class L3_Config(Borg):
             :type resolution: unsigned int    
             
         '''
-        
+        try:
+            f = open(self.processingStatusFn, 'w')
+            f.write('0.0\n')
+            f.close()
+        except:
+            self.exitError('cannot create process status file: %s\n' % self.processingStatusFn)
+            return
+
+        factor = self.getNrTilesToProcess()
+
         config = ConfigParser.RawConfigParser(allow_no_value=True)
         config.read(self._processingEstimationFn)
-        self._tEst60 = config.getfloat('time estimation','t_est_60')
-        self._tEst20 = config.getfloat('time estimation','t_est_20')
-        self._tEst10 = config.getfloat('time estimation','t_est_10')
+        self._tEst60 = config.getfloat('time estimation','t_est_60') * factor
+        self._tEst20 = config.getfloat('time estimation','t_est_20') * factor
+        self._tEst10 = config.getfloat('time estimation','t_est_10') * factor
         if(resolution == 60):
             self._tEstimation = self._tEst60
         elif(resolution == 20):
             self._tEstimation = self._tEst20
         elif(resolution == 10):
             self._tEstimation = self._tEst10
+
         return
+
+    def getNrTilesToProcess(self):
+        ''' Get the number of tiles to process.
+
+            :return: number of processed tiles.
+            :rtype: unsigned int
+
+        '''
+        dirlist = os.listdir(self.sourceDir)
+        upList = sorted(dirlist)
+        tileFilter = self.tileFilter
+        L2A_mask = 'S2?_*L2A_*'
+        nrTiles = 0.0
+
+        for L2A_UP_ID in upList:
+            if not fnmatch.fnmatch(L2A_UP_ID, L2A_mask):
+                continue
+            if not self.checkTimeRange(L2A_UP_ID):
+                continue
+
+            GRANULE = os.path.join(self.sourceDir, L2A_UP_ID, 'GRANULE')
+            tilelist = sorted(os.listdir(GRANULE))
+            for tile in tilelist:
+                # process only L2A tiles:
+                if not fnmatch.fnmatch(tile, L2A_mask):
+                    continue
+                # ignore already processed tiles:
+                if self.tileExists(tile):
+                    continue
+                # apply tile filter:
+                if not self.tileIsSelected(tile, tileFilter):
+                    continue
+                if not self.checkTileConsistency(GRANULE, tile):
+                    continue
+                nrTiles += 1.0
+
+        return nrTiles
 
     def writeTimeEstimation(self, resolution, tMeasure):
         ''' Store the time estimation for the current processing.
@@ -1026,16 +1315,21 @@ class L3_Config(Borg):
             
         '''
         config = ConfigParser.RawConfigParser()
-        tMeasureAsString = str(tMeasure)
-        config.add_section('time estimation')
-        config.set('time estimation','t_est_60', self._tEst60)
-        config.set('time estimation','t_est_20', self._tEst20)
-        config.set('time estimation','t_est_10', self._tEst10)
-        if(resolution == 60):
+        config.read(self._processingEstimationFn)
+
+        if(self.resolution == 60):
+            tEst = config.getfloat('time estimation','t_est_60')
+            tMeasureAsString = str((tEst + tMeasure) / 2.0 )
             config.set('time estimation','t_est_60', tMeasureAsString)
-        elif(resolution == 20):
+
+        elif(self.resolution == 20):
+            tEst = config.getfloat('time estimation','t_est_20')
+            tMeasureAsString = str((tEst + tMeasure) / 2.0 )
             config.set('time estimation','t_est_20', tMeasureAsString)
-        elif(resolution == 10):
+
+        elif(self.resolution == 10):
+            tEst = config.getfloat('time estimation','t_est_10')
+            tMeasureAsString = str((tEst + tMeasure) / 2.0 )
             config.set('time estimation','t_est_10', tMeasureAsString)
 
         with open(self._processingEstimationFn, 'w') as configFile:
@@ -1053,16 +1347,24 @@ class L3_Config(Borg):
         tDelta = tNow - self._timestamp
         self._timestamp = tNow
         self.logger.info('Procedure: ' + procedure + ', elapsed time[s]: %0.3f' % tDelta.total_seconds())
-        if(self.logger.getEffectiveLevel()  != logging.NOTSET):
+        if(self.logger.getEffectiveLevel() != logging.NOTSET):
             stdoutWrite('Procedure %s, elapsed time[s]: %0.3f\n' % (procedure, tDelta.total_seconds()))
         #else:
         increment = tDelta.total_seconds() / self._tEstimation
-        self._tTotal += increment
-        tTotalPercentage = float32(self._tTotal * 100.0)
-        stdoutWrite('Progress[%%]: %03.2f : ' % tTotalPercentage)
-        #stdout.flush()
+        f = open(self._processingStatusFn, 'r')
+        tTotal = float(f.readline()) * 0.01
+        f.close()
+        tTotal += increment
+        if tTotal > 1.0:
+            tWeighted = 100.0 - exp(-tTotal)
+        elif tTotal > 0.98:
+            tWeighted = tTotal * 100.0 - exp(-tTotal)
+        else:
+            tWeighted = tTotal * 100.0
+
+        stdoutWrite('Progress[%%]: %03.2f : ' % tWeighted)
         f = open(self._processingStatusFn, 'w')
-        f.write(str(tTotalPercentage) + '\n')
+        f.write(str(tWeighted) + '\n')
         f.close()
         return
 
@@ -1080,7 +1382,7 @@ class L3_Config(Borg):
                 if ch in string:
                     string=string.replace(ch, '')
             return string
-        
+
         cfgMinTimeS = replace(self.minTime)
         cfgMaxTimeS = replace(self.maxTime)
         prdMinTimeS = userProduct[47:62]
@@ -1098,23 +1400,6 @@ class L3_Config(Borg):
             return False
         else:
             return True
-
-    def calcEarthSunDistance2(self, tileID):
-        ''' Calculate the earth sun distance for the given tile and ackquisition time.
-
-            :param tileID: the tile ID.
-            :type tileID: str
-            
-        '''
-        year =  int(tileID[25:29])
-        month = int(tileID[29:31])
-        day = int(tileID[31:33])
-        doy = date(year,month,day)
-        doy = int(doy.strftime('%j'))
-        exc_earth = 0.01673 # earth-sun distance in A.U.
-        dastr = 1.0 + exc_earth * sin(2 * pi * (doy - 93.5) / 365.)
-        self._d2 = dastr * dastr
-        return
 
     def readTileMetadata(self, tileID):
         ''' Read the metadata for the given tile ID.
@@ -1206,44 +1491,9 @@ class L3_Config(Borg):
         self.vza_arr = vza_arr.reshape(2,2)
         return
 
-    def postprocess(self):
-        ''' Update the metadata after processing is performed.
-        '''
-        xp = L3_XmlParser(self, 'UP2A')
-        auxdata = xp.getTree('L2A_Auxiliary_Data_Info', 'Aux_Data')
-        gipp = auxdata.L2A_GIPP_List
-        dirname, basename = os.path.split(self.product.L3_TILE_MTD_XML)
-        fn1r = basename.replace('_MTD_', '_GIP_')
-        fn2r = fn1r.replace('.xml', '')
-        gippFn = etree.Element('GIPP_FILENAME', type='GIP_Level-2Ap', version=self._processorVersion)
-        gippFn.text = fn2r
-        gipp.append(gippFn)
-        xp.export()
-
-        # copy log to QI data as a report:
-        report = basename.replace('.xml', '_Report.xml')
-        report = dirname + '/QI_DATA/' + report
-
-        if((os.path.isfile(self._fnLog)) == False):
-            self.tracer.fatal('Missing file: ' + self._fnLog)
-            self.exitError()
-
-        f = open(self._fnLog, 'a')
-        f.write('</Sen2Cor_Level-2A_Report_File>')
-        f.close()
-        copy_file(self._fnLog, report)
-               
-        '''
-        if os.path.exists(self._fnTrace):
-            os.remove(self._fnTrace)
-        if os.path.exists(self._fnLog):
-            os.remove(self._fnLog)
-        '''
-        return
-
     def parNotFound(self, parameter):
         ''' Throw a fatal error message if a configuration parameter is not found and terminate the application.
-        '''        
+        '''
         self.logger.fatal('Configuration parameter %s not found in %s', parameter, self._configFn)
         stderrWrite('Configuration parameter <%s> not found in %s\n' % (parameter, self._configFn))
         stderrWrite('Program is forced to terminate.')
@@ -1416,25 +1666,169 @@ class L3_Config(Borg):
                 node[i] = aStr
         else:
             return False
+        
+    def tileIsSelected(self, tile, tileFilter):
+        """ Low level routine for determine if tile should be processed
 
-    def getStringArray(self, node):
-        ''' Low level routine for getting a numpy array from a list of strings from configuration file.
-            Can be one or two dimensional.
+            :param tile: the current tile ID
+            :type tile: str
+            :param tileFilter: list of accepted tiles.
+            :type tileFilter: an array of strings
+            :return: false, if tile not in filter list
+            :rtype: boolean
 
-            :param node: the parameter node.
-            :type node: str
-            :return: the parameter array.
-            :rtype: numpy array
-            
-        '''        
-        nrows = len(node)
-        if nrows < 0:
+        """
+
+        if tileFilter == ['*']:
+            return True
+        for item in tileFilter:
+            if item in tile:
+                return True
+            else:
+                return False
+
+    def getNrTilesProcessed(self):
+        ''' Get the number of processed tiles.
+
+            :return: number of processed tiles.
+            :rtype: unsigned int
+
+        '''
+        tileId = self.L2A_TILE_ID
+        tileId = tileId[-13:-7] + '_' + str(self.resolution)
+        processedFn = os.path.join(self.sourceDir, 'processed')
+
+        try:  # read list already processed same tiles of same resolution
+            f = open(processedFn, 'r')
+            processedTiles = f.read()
+            f.close()
+            return processedTiles.count(tileId)
+        except:
+            return 0
+
+    def tileExists(self, tileId):
+        ''' Check if a tile is present in the product history.
+
+            :param tileId: the tile identifier.
+            :type tileId: str
+            :return: true, if present.
+            :rtype: boolean
+
+        '''
+
+        tileId = tileId[:-7] + '_' + str(self.resolution)
+        processedFn = os.path.join(self.sourceDir, 'processed')
+
+        try:  # read list of tiles already processed
+            f = open(processedFn, 'r')
+            processedTiles = f.read()
+            if tileId in processedTiles:
+                return True
+        except:
+            pass
+
+        return False
+
+    def appendTile(self):
+        ''' Append a tile to the product history.
+
+            :return: true, if operation successful.
+            :rtype: boolean
+
+        '''
+        tileId = self.L2A_TILE_ID
+        tileId = tileId[:-7] + '_' + str(self.resolution)
+        processedTile = tileId + '\n'
+        processedFn = os.path.join(self.sourceDir, 'processed')
+        try:
+            f = open(processedFn, 'a')
+            f.write(processedTile)
+            f.flush()
+            f.close()
+        except:
+            stderrWrite('Could not update processed tile history.\n')
+            self.exitError()
             return False
 
-        ncols = len(node[0].split())
-        a = zeros([nrows,ncols],dtype=str)
+        return True
 
-        for i in range(nrows):
-            a[i,:] = array(node[i].split(),dtype(str))
+    def checkTileConsistency(self, tilePath, tileId):
+        """ Low level routine for determine if tile should be processed
 
-        return a
+            :param tile: the current tile ID
+            :type tile: str
+            :return: true, if conditions are fulfilled
+            :rtype: boolean
+
+        """
+        test = True
+        GRANULE = 'GRANULE'
+        IMG_DATA = 'IMG_DATA'
+
+        if self._resolution == 10:
+            bandDir = 'R10m'
+        elif self._resolution == 20:
+            bandDir = 'R20m'
+        elif self._resolution == 60:
+            bandDir = 'R60m'
+        BANDS = bandDir
+
+        L2A_TileDir = os.path.join(tilePath, tileId)
+        L2A_ImgDataDir = os.path.join(L2A_TileDir, IMG_DATA)
+        L2A_BandDir = os.path.join(L2A_ImgDataDir, BANDS)
+
+        L2A_TILE_ID_SHORT = tileId[:55]
+        pre = L2A_TILE_ID_SHORT[:8]
+        post = L2A_TILE_ID_SHORT[12:]
+
+        L2A_Tile_B02_File = os.path.join(L2A_BandDir, L2A_TILE_ID_SHORT + '_B02_' + str(self.resolution) + 'm.jp2')
+
+        # 10m uses 20m scene classification:
+        if self.resolution == 10:
+            resolution = 20
+        else:
+            resolution = self.resolution
+        L2A_Tile_SCL_File = os.path.join(L2A_ImgDataDir, pre + '_SCL' + post + '_' + str(resolution) + 'm.jp2')
+
+        #check if band 2 is present:
+        if not os.path.exists(L2A_Tile_B02_File):
+            self.logger.error('Band 02 is not present, resolution will be ignored.')
+            test = False
+
+        # check if scene classification is present:
+        if not os.path.exists(L2A_Tile_SCL_File):
+            self.logger.error('Scene classification for resolution %d is not present, resolution will be ignored.' % self.resolution)
+            test = False
+
+        # check that AOT map is present if AOT algorithm is selected:
+        if test and self.algorithm == 'RADIOMETRIC_QUALITY' and self.radiometricPreference == 'AEROSOL_OPTICAL_THICKNESS':
+            test = self.checkAotMapIsPresent(L2A_ImgDataDir)
+
+        return test
+
+
+    def checkAotMapIsPresent(self, L2A_ImgDataDir):
+        ''' Tests if the input is a real or only a 'faked' L2A product. Atmospheric corrected L2A products have an
+            AOT map. For 'faked' L2A products the AOT cannot be used as a radiometric preference.
+
+            :param resolution: the current resolution being processed
+            :type resolution: unsigned int (60, 20, 10)
+            :return: true if map is present
+            :rtype: bool
+
+        '''
+
+        sourceDir = os.path.join(L2A_ImgDataDir, 'R' + str(self.resolution) + 'm')
+        try:
+            dirs = sorted(os.listdir(sourceDir))
+            filemask = '*_AOT_L2A_*' + '.jp2'
+            for filename in dirs:
+                if fnmatch.fnmatch(filename, filemask) == True:
+                    return True
+            self.logger.error('AOT map is not present, algorithm will be ignored.')
+            stderrWrite('AOT map is not present, algorithm will be ignored.\n')
+            return False
+        except:
+            self.logger.error('AOT map check failed, algorithm will be ignored.')
+            stderrWrite('AOT map check failed, algorithm will be ignored.\n')
+            return False
