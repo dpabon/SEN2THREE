@@ -39,6 +39,9 @@ class L3_Config(Borg):
     def __init__(self, resolution, sourceDir=None, configFile='L3_GIPP'):
 
         if (sourceDir):
+            if os.name == 'nt' and not '\\\\?\\' in sourceDir:
+                # special treatment for windows for long pathnames:
+                sourceDir = u'\\'.join([u'\\\\?', sourceDir])
             try:
                 self._home = os.environ['SEN2THREE_HOME']
             except:

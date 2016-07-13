@@ -32,6 +32,11 @@ class Particle(tables.IsDescription):
     THIN_CIRRUS = tables.UInt32Col()
     SNOW_ICE = tables.UInt32Col()
 
+class BestVal(tables.IsDescription):
+    AOT_MEAN = tables.Float32Col()
+    SZA_MEAN = tables.Float32Col()
+    DATE_TIME = tables.Float32Col()
+
 class L3_Product(object):
     '''
         :param config: the config object for the current tile (via __init__)
@@ -67,10 +72,13 @@ class L3_Product(object):
         '''
         self.config.logger.info('Checking existence of L3 target product ...')
         L3_TARGET_MASK = '*L03_*'
-        L3_TARGET_DIR = self.config.targetDir
-        if L3_TARGET_DIR == 'DEFAULT':
+        if self.config.targetDir == 'DEFAULT':
             L3_TARGET_DIR = self.config.sourceDir
             self.config.targetDir = L3_TARGET_DIR
+        else:
+            if os.name == 'nt' and not '\\\\?\\' in self.config.targetDir:
+                self.config.targetDir = u'\\'.join([u'\\\\?', self.config.targetDir])
+            L3_TARGET_DIR = self.config.targetDir
         try:
             os.stat(L3_TARGET_DIR)
         except:
@@ -121,17 +129,13 @@ class L3_Product(object):
             if(fnmatch.fnmatch(dirname, L2A_DS_MASK) == True):
                 found = True
                 break
-        
-        if found == False:
-            stderrWrite('No metadata in datastrip\n.')
-            self.config.exitError()
 
         L2A_DS_DIR = os.path.join(L2A_DS_DIR, dirname)
         L2A_DS_MTD_XML = (dirname[:-7]+'.xml').replace('_MSI_', '_MTD_')
-        self.config.L2A_DS_MTD_XML = os.path.join(L2A_DS_DIR, L2A_DS_MTD_XML)
-        xp = L3_XmlParser(self.config, 'DS2A')
-        xp.export()
-        xp.validate()
+        L2A_DS_MTD_XML = os.path.join(L2A_DS_DIR, L2A_DS_MTD_XML)
+        if found == False:
+            stderrWrite('No metadata in datastrip\n.')
+            self.config.exitError()
 
         dirname, basename = os.path.split(L2A_UP_DIR)
         if(fnmatch.fnmatch(basename, L2A_UP_MASK) == False):
@@ -154,12 +158,14 @@ class L3_Product(object):
 
         if self.config.targetDir != 'DEFAULT':
             targetDir = self.config.targetDir
+            if os.name == 'nt' and not '\\\\?\\' in targetDir:
+                targetDir = u'\\'.join([u'\\\\?', targetDir])
             if(os.path.exists(targetDir) == False):
                 os.mkdir(targetDir)
         else:
             targetDir = dirname
-            self.config.targetDir = targetDir
-            
+        self.config.targetDir = targetDir
+
         L3_TARGET_DIR = os.path.join(targetDir, L3_TARGET_ID)
         self.config.L3_TARGET_DIR = L3_TARGET_DIR
         self.config.L3_TARGET_ID = L3_TARGET_ID
@@ -176,33 +182,23 @@ class L3_Product(object):
         HTML = 'HTML'
         REP_INFO = 'rep_info'
 
-        if os.name == 'nt':
-            # special treatment for windows for long pathnames:
-            L2A_UP_DIR_ = u'\\'.join([u'\\\\?', L2A_UP_DIR])
-            L2A_INSPIRE_XML_ = u'\\'.join([u'\\\\?', L2A_INSPIRE_XML])
-            L2A_MANIFEST_SAFE_ = u'\\'.join([u'\\\\?', L2A_MANIFEST_SAFE])
-            L3_TARGET_DIR_ = u'\\'.join([u'\\\\?', L3_TARGET_DIR])
-            L3_INSPIRE_XML_ = u'\\'.join([u'\\\\?', L3_INSPIRE_XML])
-            L3_MANIFEST_SAFE_ = u'\\'.join([u'\\\\?', L3_MANIFEST_SAFE])
-        else:
-            L2A_UP_DIR_ = L2A_UP_DIR
-            L2A_INSPIRE_XML_ = L2A_INSPIRE_XML
-            L2A_MANIFEST_SAFE_ = L2A_MANIFEST_SAFE
-            L3_TARGET_DIR_ = L3_TARGET_DIR
-            L3_INSPIRE_XML_ = L3_INSPIRE_XML
-            L3_MANIFEST_SAFE_ = L3_MANIFEST_SAFE
+        self.config.L2A_DS_MTD_XML = L2A_DS_MTD_XML
+        xp = L3_XmlParser(self.config, 'DS2A')
+        xp.export()
+        xp.validate()
 
-        copy_tree(os.path.join(L2A_UP_DIR_, AUX_DATA), os.path.join(L3_TARGET_DIR_, AUX_DATA))
-        copy_tree(os.path.join(L2A_UP_DIR_, DATASTRIP), os.path.join(L3_TARGET_DIR_, DATASTRIP))
-        copy_tree(os.path.join(L2A_UP_DIR_, HTML), os.path.join(L3_TARGET_DIR_, HTML))
-        copy_tree(os.path.join(L2A_UP_DIR_, REP_INFO), os.path.join(L3_TARGET_DIR_, REP_INFO))
-        copy_file(L2A_INSPIRE_XML_, L3_INSPIRE_XML_)
-        copy_file(L2A_MANIFEST_SAFE_, L3_MANIFEST_SAFE_)
-        if not os.path.exists(os.path.join(L3_TARGET_DIR_, GRANULE)):
-            os.mkdir(os.path.join(L3_TARGET_DIR_, GRANULE))
+        copy_tree(os.path.join(L2A_UP_DIR, AUX_DATA), os.path.join(L3_TARGET_DIR, AUX_DATA))
+        copy_tree(os.path.join(L2A_UP_DIR, DATASTRIP), os.path.join(L3_TARGET_DIR, DATASTRIP))
+        copy_tree(os.path.join(L2A_UP_DIR, HTML), os.path.join(L3_TARGET_DIR, HTML))
+        copy_tree(os.path.join(L2A_UP_DIR, REP_INFO), os.path.join(L3_TARGET_DIR, REP_INFO))
+        copy_file(L2A_INSPIRE_XML, L3_INSPIRE_XML)
+        copy_file(L2A_MANIFEST_SAFE, L3_MANIFEST_SAFE)
+        if not os.path.exists(os.path.join(L3_TARGET_DIR, GRANULE)):
+            os.mkdir(os.path.join(L3_TARGET_DIR, GRANULE))
 
-        self.config.L3_INSPIRE_XML = L2A_INSPIRE_XML_
-        self.config.L3_MANIFEST_SAFE = L2A_MANIFEST_SAFE_
+        self.config.L3_INSPIRE_XML = L2A_INSPIRE_XML
+        self.config.L3_MANIFEST_SAFE = L2A_MANIFEST_SAFE
+        self.config.L3_TARGET_DIR = L3_TARGET_DIR
 
         #create user product:
         S2A_mask = 'S2A_*'
@@ -217,10 +213,10 @@ class L3_Product(object):
             self.config.exitError()
 
         # prepare L3 User Product metadata file
-        fn_L2A = os.path.join(L2A_UP_DIR_, filename)
+        fn_L2A = os.path.join(L2A_UP_DIR, filename)
         fn_L3 = filename[:4] + 'USER' + filename[8:]
         fn_L3 = fn_L3.replace('L2A_', 'L03_')
-        fn_L3 = os.path.join(L3_TARGET_DIR_, fn_L3)
+        fn_L3 = os.path.join(L3_TARGET_DIR, fn_L3)
         self.config.L2A_UP_MTD_XML = fn_L2A
         xp = L3_XmlParser(self.config, 'UP2A')
         xp.export()
@@ -232,15 +228,15 @@ class L3_Product(object):
 
         upScheme2a = cs.UP_Scheme_2A.text
         basename = os.path.basename(upScheme2a)
-        copy_file(os.path.join(self.config.configDir, upScheme2a), os.path.join(L3_TARGET_DIR_, REP_INFO, basename))
+        copy_file(os.path.join(self.config.configDir, upScheme2a), os.path.join(L3_TARGET_DIR, REP_INFO, basename))
 
         tileScheme2a = cs.Tile_Scheme_2A.text
         basename = os.path.basename(tileScheme2a)
-        copy_file(os.path.join(self.config.configDir, tileScheme2a), os.path.join(L3_TARGET_DIR_, REP_INFO, basename))
+        copy_file(os.path.join(self.config.configDir, tileScheme2a), os.path.join(L3_TARGET_DIR, REP_INFO, basename))
 
         dsScheme2a = cs.DS_Scheme_2A.text
         basename = os.path.basename(dsScheme2a)
-        copy_file(os.path.join(self.config.configDir, dsScheme2a), os.path.join(L3_TARGET_DIR_, REP_INFO, basename))
+        copy_file(os.path.join(self.config.configDir, dsScheme2a), os.path.join(L3_TARGET_DIR, REP_INFO, basename))
 
         # copy L3 User Product metadata file:
         copy_file(fn_L2A, fn_L3)
@@ -284,7 +280,7 @@ class L3_Product(object):
         xp.export()
 
         #create datastrip ID:
-        L3_DS_DIR = os.path.join(self.config.L3_TARGET_DIR, DATASTRIP)
+        L3_DS_DIR = os.path.join(L3_TARGET_DIR, DATASTRIP)
         dirlist = sorted(os.listdir(L3_DS_DIR))
         found = False
         for dirname in dirlist:
@@ -408,22 +404,14 @@ class L3_Product(object):
         L2A_TILE_ID = os.path.join(sourceDir, L2A_UP_ID, GRANULE, L2A_TILE_ID)
         L3_TILE_ID = os.path.join(L3_TARGET_DIR, GRANULE, L3_TILE_ID)
 
-        if os.name == 'nt':
-            # special treatment for windows for long pathnames:
-            L2A_TILE_ID_ = u'\\'.join([u'\\\\?', L2A_TILE_ID])
-            L3_TILE_ID_ = u'\\'.join([u'\\\\?', L3_TILE_ID])
-        else:
-            L2A_TILE_ID_ = L2A_TILE_ID
-            L3_TILE_ID_ = L3_TILE_ID
-
         try:
-            os.mkdir(L3_TILE_ID_)
-            os.mkdir(os.path.join(L3_TILE_ID_, QI_DATA))
-            self.config.logger.info('new working directory is: ' + L3_TILE_ID_)
+            os.mkdir(L3_TILE_ID)
+            os.mkdir(os.path.join(L3_TILE_ID, QI_DATA))
+            self.config.logger.info('new working directory is: ' + L3_TILE_ID)
         except:
             pass
 
-        filelist = sorted(os.listdir(L2A_TILE_ID_))
+        filelist = sorted(os.listdir(L2A_TILE_ID))
         found = False
         L2A_UP_MASK = '*_L2A_*'
         for filename in filelist:
@@ -435,10 +423,10 @@ class L3_Product(object):
             self.config.exitError()
 
         assert isinstance(filename, object)
-        L2A_TILE_MTD_XML = os.path.join(L2A_TILE_ID_, filename)
+        L2A_TILE_MTD_XML = os.path.join(L2A_TILE_ID, filename)
         L3_TILE_MTD_XML = filename
         L3_TILE_MTD_XML = L3_TILE_MTD_XML.replace('L2A_', 'L03_')
-        L3_TILE_MTD_XML = os.path.join(L3_TILE_ID_, L3_TILE_MTD_XML)
+        L3_TILE_MTD_XML = os.path.join(L3_TILE_ID, L3_TILE_MTD_XML)
         copy_file(L2A_TILE_MTD_XML, L3_TILE_MTD_XML)
         self.config.L2A_TILE_MTD_XML = L2A_TILE_MTD_XML
         xp = L3_XmlParser(self.config, 'T2A')
@@ -655,8 +643,59 @@ class L3_Product(object):
         h5file = tables.open_file(dbname, mode="w", title='Product')
         grp = h5file.create_group("/", 'group1', 'Statistics')
         h5file.create_table(grp, 'classes', Particle, 'Classes')
+        h5file.create_table(grp, 'bestval', BestVal, 'Best Values')
+        table = h5file.root.group1.bestval
+        row = table.row
+        row['AOT_MEAN'] = 1.0
+        row['SZA_MEAN'] = 0.0
+        row['DATE_TIME'] = 0.0
+        row.append()
         h5file.close()
         return
+
+    def setTableVal(self, key, value):
+        ''' Check if one of the two criteria for termination is reached:
+            :param key: the search key.
+            :type key: str
+            :param value: the value to be passed.
+            :type value: float
+            :return: false if wrong key
+            :rtype: bool
+        '''
+        result = True
+        dbname = os.path.join(self.config.L3_TARGET_DIR, '.database.h5')
+        h5file = tables.open_file(dbname, mode='a')
+        table = h5file.root.group1.bestval # default
+        try:
+            for row in table:
+                row[key] = value
+                row.update()
+        except:
+            result = False
+        finally:
+            table.flush()
+            h5file.close()
+            return result
+
+    def getTableVal(self, key):
+        ''' Check if one of the two criteria for termination is reached:
+            :param key: the search key.
+            :type key: str
+            :return: the value
+            :rtype: bool
+        '''
+        dbname = os.path.join(self.config.L3_TARGET_DIR, '.database.h5')
+        h5file = tables.open_file(dbname, mode='a')
+        table = h5file.root.group1.bestval # default
+        try:
+            for row in table.iterrows():
+                result = row[key]
+        except:
+            result = False
+        finally:
+            table.flush()
+            h5file.close()
+            return result
 
     def updateTableRow(self, classification):
         ''' Update the statistics of a row in the table.

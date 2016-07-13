@@ -87,12 +87,12 @@ class L3_Tables(object):
         else:
             product.createL3_Tile(L2A_TILE_ID)
 
-        L2A_UP_ID = self._config.L2A_UP_ID
-        L3_TILE_ID = self._config.L3_TILE_ID
+        L2A_UP_ID = self.config.L2A_UP_ID
+        L3_TILE_ID = self.config.L3_TILE_ID
         L2A_TILE_ID_SHORT = L2A_TILE_ID[:55]
-        L3_TILE_ID_SHORT = self._config.L3_TILE_ID[:55]
-        L2A_TILE_ID = os.path.join(self._config.sourceDir, L2A_UP_ID, GRANULE, L2A_TILE_ID)
-        L3_TILE_ID = os.path.join(self._config.targetDir, L3_TARGET_ID, GRANULE, L3_TILE_ID)
+        L3_TILE_ID_SHORT = self.config.L3_TILE_ID[:55]
+        L2A_TILE_ID = os.path.join(self.config.sourceDir, L2A_UP_ID, GRANULE, L2A_TILE_ID)
+        L3_TILE_ID = os.path.join(self.config.targetDir, L3_TARGET_ID, GRANULE, L3_TILE_ID)
         self._L2A_ImgDataDir = os.path.join(L2A_TILE_ID, IMG_DATA)
         self._L3_ImgDataDir = os.path.join(L3_TILE_ID, IMG_DATA)
         self._L2A_bandDir = os.path.join(self._L2A_ImgDataDir, BANDS)
@@ -641,7 +641,7 @@ class L3_Tables(object):
                 filemask = '*_L2A_*_B%2s_??m.jp2' % bandName[1:3]
                 if fnmatch.fnmatch(filename, filemask) == False:
                     continue
-                self.importBand(i, filename)  
+                self.importBand(i, os.path.join(bandDir,filename))
 
         # not used for the moment:
         # if os.path.isfile(self._L2A_Tile_CLD_File):
