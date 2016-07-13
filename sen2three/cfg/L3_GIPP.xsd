@@ -1,0 +1,396 @@
+<<<<<<< HEAD
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema attributeFormDefault="unqualified" elementFormDefault="qualified" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element name="Level-03_Ground_Image_Processing_Parameter" type="Level-03_Ground_Image_Processing_ParameterType"/>
+  <xs:complexType name="Level-03_Ground_Image_Processing_ParameterType">
+    <xs:sequence>
+      <xs:element type="Common_SectionType" name="Common_Section"/>
+      <xs:element type="L3_SynthesisType" name="L3_Synthesis"/>
+      <xs:element type="ClassificatorsType" name="Classificators"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="Common_SectionType">
+    <xs:sequence>
+      <xs:element type="xs:string" name="Log_Level"/>
+      <xs:element type="xs:string" name="Display_Data">
+        <xs:annotation>
+          <xs:documentation>NOTSET, DEBUG, INFO, WARNING, ERROR, CRITICAL</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element type="xs:string" name="Target_Directory"/>
+      <xs:element type="xs:string" name="UP_Scheme_2A">
+        <xs:annotation>
+          <xs:documentation>should be either a directory or 'DEFAULT'. If default, target will be created at root of L1C product</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element type="xs:string" name="UP_Scheme_3"/>
+      <xs:element type="xs:string" name="Tile_Scheme_2A"/>
+      <xs:element type="xs:string" name="Tile_Scheme_3"/>
+      <xs:element type="xs:string" name="DS_Scheme_2A"/>
+      <xs:element type="xs:string" name="DS_Scheme_3"/>
+      <xs:element type="xs:string" name="GIPP_Scheme"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="L3_SynthesisType">
+    <xs:sequence>
+      <xs:element type="xs:dateTime" name="Min_Time"/>
+      <xs:element type="xs:dateTime" name="Max_Time"/>
+      <xs:element type="xs:string" name="Tile_Filter"/>
+      <xs:element type="xs:string" name="Algorithm"/>
+      <xs:element type="xs:string" name="Radiometric_Preference">
+        <xs:annotation>
+          <xs:documentation>MOST_RECENT, TEMP_HOMOGENEITY, RADIOMETRIC_QUALITY, AVERAGE</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element type="xs:string" name="Cirrus_Removal">
+        <xs:annotation>
+          <xs:documentation>AEROSOL_OPTICAL_THICKNESS, SOLAR_ZENITH_ANGLE</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element type="xs:string" name="Shadow_Removal"/>
+      <xs:element type="xs:string" name="Snow_Removal"/>
+      <xs:element type="xs:float" name="Max_Cloud_Probability"/>
+      <xs:element type="xs:float" name="Max_Invalid_Pixels_Percentage"/>
+      <xs:element type="xs:float" name="Max_Aerosol_Optical_Thickness"/>
+      <xs:element type="xs:float" name="Max_Solar_Zenith_Angle"/>
+      <xs:element type="xs:byte" name="Median_Filter"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="ClassificatorsType">
+    <xs:sequence>
+      <xs:element type="xs:byte" name="NO_DATA"/>
+      <xs:element type="xs:byte" name="SATURATED_DEFECTIVE"/>
+      <xs:element type="xs:byte" name="DARK_FEATURES"/>
+      <xs:element type="xs:byte" name="CLOUD_SHADOWS"/>
+      <xs:element type="xs:byte" name="VEGETATION"/>
+      <xs:element type="xs:byte" name="BARE_SOILS"/>
+      <xs:element type="xs:byte" name="WATER"/>
+      <xs:element type="xs:byte" name="LOW_PROBA_CLOUDS"/>
+      <xs:element type="xs:byte" name="MEDIUM_PROBA_CLOUDS"/>
+      <xs:element type="xs:byte" name="HIGH_PROBA_CLOUDS"/>
+      <xs:element type="xs:byte" name="THIN_CIRRUS"/>
+      <xs:element type="xs:byte" name="SNOW_ICE"/>
+      <xs:element type="xs:byte" name="URBAN_AREAS"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>
+=======
+<?xml version="1.0" encoding="utf-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+    xmlns="https://psd-12.sentinel2.eo.esa.int/PSD/S2_PDI_Level-1C_Tile_Metadata.xsd"
+    xmlns:dimap="https://psd-12.sentinel2.eo.esa.int/DICO/1.0/PDGS/dimap/"
+    targetNamespace="https://psd-12.sentinel2.eo.esa.int/PSD/S2_PDI_Level-1C_Tile_Metadata.xsd"
+    elementFormDefault="qualified" version="12">
+
+	<xs:element name="WATER">
+		<xs:simpleType>
+			<xs:restriction base="xs:unsignedByte">
+				<xs:enumeration value="6"/>
+			</xs:restriction>
+		</xs:simpleType>
+	</xs:element>
+	<xs:element name="NO_DATA">
+		<xs:simpleType>
+			<xs:restriction base="xs:unsignedByte">
+				<xs:enumeration value="0"/>
+			</xs:restriction>
+		</xs:simpleType>
+	</xs:element>
+	<xs:element name="DN_Scale">
+		<xs:simpleType>
+			<xs:restriction base="xs:unsignedShort">
+				<xs:minInclusive value="0"/>
+				<xs:maxInclusive value="4095"/>
+			</xs:restriction>
+		</xs:simpleType>
+	</xs:element>
+	<xs:element name="Max_Time">
+		<xs:simpleType>
+			<xs:restriction base="xs:dateTime">
+			</xs:restriction>
+		</xs:simpleType>
+	</xs:element>
+	<xs:element name="Min_Time">
+		<xs:simpleType>
+			<xs:restriction base="xs:dateTime">
+			</xs:restriction>
+		</xs:simpleType>
+	</xs:element>
+	<xs:element name="Algorithm">
+		<xs:simpleType>
+			<xs:restriction base="xs:string">
+				<xs:enumeration value="MOST_RECENT"/>
+				<xs:enumeration value="TEMP_HOMOGENEITY"/>
+				<xs:enumeration value="RADIOMETRIC_QUALITY"/>
+				<xs:enumeration value="AVERAGE"/>				
+			</xs:restriction>
+		</xs:simpleType>
+	</xs:element>	
+	<xs:element name="Radiometric_Preference">
+		<xs:simpleType>
+			<xs:restriction base="xs:string">
+				<xs:enumeration value="AEROSOL_OPTICAL_THICKNESS"/>
+				<xs:enumeration value="SOLAR_ZENITH_ANGLE"/>
+			</xs:restriction>
+		</xs:simpleType>
+	</xs:element>	
+	<xs:element name="SNOW_ICE">
+		<xs:simpleType>
+			<xs:restriction base="xs:unsignedByte">
+				<xs:enumeration value="11"/>
+			</xs:restriction>
+		</xs:simpleType>
+	</xs:element>
+	<xs:element name="BARE_SOILS">
+		<xs:simpleType>
+			<xs:restriction base="xs:unsignedByte">
+				<xs:enumeration value="5"/>
+			</xs:restriction>
+		</xs:simpleType>
+	</xs:element>
+	<xs:element name="VEGETATION">
+		<xs:simpleType>
+			<xs:restriction base="xs:unsignedByte">
+				<xs:enumeration value="4"/>
+			</xs:restriction>
+		</xs:simpleType>
+	</xs:element>
+	<xs:element name="DS_Scheme_3">
+		<xs:simpleType>
+			<xs:restriction base="xs:string">
+			</xs:restriction>
+		</xs:simpleType>
+	</xs:element>
+	<xs:element name="THIN_CIRRUS">
+		<xs:simpleType>
+			<xs:restriction base="xs:unsignedByte">
+				<xs:enumeration value="10"/>
+			</xs:restriction>
+		</xs:simpleType>
+	</xs:element>
+	<xs:element name="Log_Level">
+		<xs:simpleType>
+			<xs:restriction base="xs:string">
+				<xs:enumeration value="NOTSET"/>
+				<xs:enumeration value="DEBUG"/>
+				<xs:enumeration value="INFO"/>
+				<xs:enumeration value="WARNING"/>
+				<xs:enumeration value="ERROR"/>
+				<xs:enumeration value="CRITICAL"/>
+			</xs:restriction>
+		</xs:simpleType>
+	</xs:element>
+	<xs:element name="Display_Data" type="xs:boolean"/>
+	<xs:element name="UP_Scheme_3">
+		<xs:simpleType>
+			<xs:restriction base="xs:string">
+			</xs:restriction>
+		</xs:simpleType>
+	</xs:element>
+	<xs:element name="URBAN_AREAS">
+		<xs:simpleType>
+			<xs:restriction base="xs:unsignedByte">
+				<xs:enumeration value="12"/>
+			</xs:restriction>
+		</xs:simpleType>
+	</xs:element>
+	<xs:element name="DS_Scheme_1C">
+		<xs:simpleType>
+			<xs:restriction base="xs:string">
+			</xs:restriction>
+		</xs:simpleType>
+	</xs:element>
+	<xs:element name="DS_Scheme_2A">
+		<xs:simpleType>
+			<xs:restriction base="xs:string">
+			</xs:restriction>
+		</xs:simpleType>
+	</xs:element>
+	<xs:element name="GIPP_Scheme">
+		<xs:simpleType>
+			<xs:restriction base="xs:string">
+			</xs:restriction>
+		</xs:simpleType>
+	</xs:element>
+	<xs:element name="L3_Synthesis">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="Min_Time"/>
+				<xs:element ref="Max_Time"/>
+				<xs:element ref="Algorithm"/>
+				<xs:element ref="Radiometric_Preference"/>
+				<xs:element ref="Cirrus_Removal"/>
+				<xs:element ref="Shadow_Removal"/>
+				<xs:element ref="Snow_Removal"/>		
+				<xs:element ref="Max_Cloud_Probability"/>
+				<xs:element ref="Max_Invalid_Pixels_Percentage"/>
+				<xs:element ref="Max_Aerosol_Optical_Thickness"/>
+				<xs:element ref="Max_Solar_Zenith_Angle"/>
+				<xs:element ref="Max_Viewing_Angle"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="Snow_Removal" type="xs:boolean"/>
+	<xs:element name="UP_Scheme_1C">
+		<xs:simpleType>
+			<xs:restriction base="xs:string">
+			</xs:restriction>
+		</xs:simpleType>
+	</xs:element>
+	<xs:element name="UP_Scheme_2A">
+		<xs:simpleType>
+			<xs:restriction base="xs:string">
+			</xs:restriction>
+		</xs:simpleType>
+	</xs:element>
+	<xs:element name="CLOUD_SHADOWS">
+		<xs:simpleType>
+			<xs:restriction base="xs:unsignedByte">
+				<xs:enumeration value="3"/>
+			</xs:restriction>
+		</xs:simpleType>
+	</xs:element>
+	<xs:element name="DARK_FEATURES">
+		<xs:simpleType>
+			<xs:restriction base="xs:unsignedByte">
+				<xs:enumeration value="2"/>
+			</xs:restriction>
+		</xs:simpleType>
+	</xs:element>
+	<xs:element name="Tile_Scheme_3">
+		<xs:simpleType>
+			<xs:restriction base="xs:string">
+			</xs:restriction>
+		</xs:simpleType>
+	</xs:element>
+	<xs:element name="Cirrus_Removal" type="xs:boolean"/>
+	<xs:element name="Classificators">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="NO_DATA"/>
+				<xs:element ref="SATURATED_DEFECTIVE"/>
+				<xs:element ref="DARK_FEATURES"/>
+				<xs:element ref="CLOUD_SHADOWS"/>
+				<xs:element ref="VEGETATION"/>
+				<xs:element ref="BARE_SOILS"/>
+				<xs:element ref="WATER"/>
+				<xs:element ref="LOW_PROBA_CLOUDS"/>
+				<xs:element ref="MEDIUM_PROBA_CLOUDS"/>
+				<xs:element ref="HIGH_PROBA_CLOUDS"/>
+				<xs:element ref="THIN_CIRRUS"/>
+				<xs:element ref="SNOW_ICE"/>
+				<xs:element ref="URBAN_AREAS"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="Common_Section">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="Log_Level"/>
+				<xs:element ref="Display_Data"/>
+				<xs:element ref="DN_Scale"/>
+				<xs:element ref="UP_Scheme_1C"/>
+				<xs:element ref="UP_Scheme_2A"/>
+				<xs:element ref="UP_Scheme_3"/>
+				<xs:element ref="Tile_Scheme_1C"/>
+				<xs:element ref="Tile_Scheme_2A"/>
+				<xs:element ref="Tile_Scheme_3"/>
+				<xs:element ref="DS_Scheme_1C"/>
+				<xs:element ref="DS_Scheme_2A"/>
+				<xs:element ref="DS_Scheme_3"/>
+				<xs:element ref="GIPP_Scheme"/>				
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="Shadow_Removal" type="xs:boolean"/>
+	<xs:element name="Tile_Scheme_1C">
+		<xs:simpleType>
+			<xs:restriction base="xs:string">
+			</xs:restriction>
+		</xs:simpleType>
+	</xs:element>
+	<xs:element name="Tile_Scheme_2A">
+		<xs:simpleType>
+			<xs:restriction base="xs:string">
+			</xs:restriction>
+		</xs:simpleType>
+	</xs:element>
+	<xs:element name="LOW_PROBA_CLOUDS">
+		<xs:simpleType>
+			<xs:restriction base="xs:unsignedByte">
+				<xs:enumeration value="7"/>
+			</xs:restriction>
+		</xs:simpleType>
+	</xs:element>
+	<xs:element name="HIGH_PROBA_CLOUDS">
+		<xs:simpleType>
+			<xs:restriction base="xs:unsignedByte">
+				<xs:enumeration value="9"/>
+			</xs:restriction>
+		</xs:simpleType>
+	</xs:element>
+	<xs:element name="Max_Viewing_Angle">
+		<xs:simpleType>
+			<xs:restriction base="xs:unsignedByte">
+				<xs:minInclusive value="0"/>
+				<xs:maxInclusive value="40"/>
+			</xs:restriction>
+		</xs:simpleType>
+	</xs:element>
+	<xs:element name="MEDIUM_PROBA_CLOUDS">
+		<xs:simpleType>
+			<xs:restriction base="xs:unsignedByte">
+				<xs:enumeration value="8"/>
+			</xs:restriction>
+		</xs:simpleType>
+	</xs:element>
+	<xs:element name="SATURATED_DEFECTIVE">
+		<xs:simpleType>
+			<xs:restriction base="xs:unsignedByte">
+				<xs:enumeration value="1"/>
+			</xs:restriction>
+		</xs:simpleType>
+	</xs:element>
+	<xs:element name="Max_Cloud_Probability">
+		<xs:simpleType>
+			<xs:restriction base="xs:unsignedByte">
+				<xs:minInclusive value="0"/>
+				<xs:maxInclusive value="100"/>
+			</xs:restriction>
+		</xs:simpleType>
+	</xs:element>
+	<xs:element name="Max_Solar_Zenith_Angle">
+		<xs:simpleType>
+			<xs:restriction base="xs:unsignedByte">
+				<xs:minInclusive value="0"/>
+				<xs:maxInclusive value="70"/>
+			</xs:restriction>
+		</xs:simpleType>
+	</xs:element>
+	<xs:element name="Max_Aerosol_Optical_Thickness">
+		<xs:simpleType>
+			<xs:restriction base="xs:unsignedByte">
+				<xs:minInclusive value="0"/>
+				<xs:maxInclusive value="100"/>
+			</xs:restriction>
+		</xs:simpleType>
+	</xs:element>
+	<xs:element name="Max_Invalid_Pixels_Percentage">
+		<xs:simpleType>
+			<xs:restriction base="xs:unsignedByte">
+				<xs:minInclusive value="0"/>
+				<xs:maxInclusive value="100"/>
+			</xs:restriction>
+		</xs:simpleType>
+	</xs:element>
+	<xs:element name="Level-03_Ground_Image_Processing_Parameter">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="Common_Section"/>
+				<xs:element ref="L3_Synthesis"/>
+				<xs:element ref="Classificators"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+</xs:schema>
+>>>>>>> FETCH_HEAD
