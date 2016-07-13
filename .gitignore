@@ -1,7 +1,6 @@
 bin/
 dist/
 build/
-cfg/.estimation
 dem/
 log/
 sen2three/build/
